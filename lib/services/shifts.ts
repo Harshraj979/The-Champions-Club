@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { db } from "../db";
 import { todayISO } from "../format";
 import { badRequest, conflict, notFound } from "../errors";
-import type { ShiftDTO, StaffRosterDTO } from "../types";
+import type { ShiftDTO, StaffDTO, StaffRosterDTO } from "../types";
 
 // The rota, kept basic: a person, a day, a part of the day.
 // Morning and evening are the club's two halves.
