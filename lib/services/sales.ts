@@ -13,6 +13,13 @@ import { memberState, findMemberByName } from "./members";
 type Item = { productId: number; qty: number };
 
 async function priceItems(items: Item[], category: "GEAR" | "BAR") {
+  // The service never trusts quantities: zod already checks them on
+  // the route, but this runs for every caller, so a bad qty can never
+  // reach the stock maths (a negative qty would increase stock).
+  for (const i of items) {
+    if (!Number.isInteger(i.qty) || i.qty < 1)
+      throw badRequest("Quantities must be whole numbers of at least 1");
+  }
   const ids = items.map((i) => i.productId);
   const products = await db.product.findMany({ where: { id: { in: ids } } });
   if (products.length !== ids.length) throw badRequest("One of those products does not exist");
@@ -52,6 +59,9 @@ export async function createOrder(input: {
     else acc.push({ ...i });
     return acc;
   }, []);
+  // Merging happens before validation, so 99 + 99 of one product
+  // cannot slip past the 99-per-line cap as 198.
+  if (items.some((i) => i.qty > 99)) throw badRequest("At most 99 of one product per order");
   const member = await findMemberByName(input.name);
   const active = member && memberState(member.expiresOn) !== "expired";
   const discountPct = active ? member.plan.shopDiscount : 0;
