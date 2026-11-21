@@ -33,6 +33,10 @@ export async function createOrder(input: {
   fulfilment?: "PICKUP" | "DELIVERY";
   address?: string;
   payOnline?: boolean;
+  // True only when a signed-in staff member takes the order at the
+  // counter. Public orders are PENDING until paid — never PAID on
+  // the caller's word alone.
+  paidAtCounter?: boolean;
 }) {
   const fulfilment = input.fulfilment ?? "PICKUP";
   const address = fulfilment === "DELIVERY" ? (input.address ?? "").trim() : "";
@@ -73,7 +77,7 @@ export async function createOrder(input: {
         discount,
         total: subtotal - discount,
         payMethod: input.payOnline ? "ONLINE" : input.payMethod,
-        payState: input.payOnline ? "PENDING" : "PAID",
+        payState: input.payOnline || !input.paidAtCounter ? "PENDING" : "PAID",
         fulfilment,
         address: address || null,
         items: {
