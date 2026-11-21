@@ -113,7 +113,7 @@ export default function Courts() {
             ) : (
               <div className="slots" role="group" aria-label="Start times">
                 {starts.map((t) => (
-                  <button key={t} className="slot num" disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
+                  <button key={t} className={`slot num${date === today && t + 60 <= istMinutesNow() ? " past" : ""}`} disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
                     {fmtTime(t)}
                   </button>
                 ))}

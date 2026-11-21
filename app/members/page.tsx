@@ -58,12 +58,13 @@ export default function Members() {
       ) : (
         <div className="ledger-wrap">
           <table className="ledger" style={{ marginTop: 12 }}>
-            <thead><tr><th>Name</th><th>Plan</th><th className="hide-m">Plan ends</th><th>Status</th></tr></thead>
+            <thead><tr><th>Name</th><th>Plan</th><th className="hide-m">Phone</th><th className="hide-m">Plan ends</th><th>Status</th></tr></thead>
             <tbody>
               {list.map((m) => (
                 <tr key={m.id}>
                   <td style={{ fontWeight: 500 }}>{m.name}</td>
                   <td>{m.plan}</td>
+                  <td className="num hide-m">{m.phone}</td>
                   <td className="num hide-m">{m.expiresOn}</td>
                   <td><span className={`status ${m.state}`}>{stateLabel[m.state]}</span></td>
                 </tr>

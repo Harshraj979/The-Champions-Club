@@ -142,6 +142,7 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .slot:hover { border-color: var(--pine); }
 .slot[aria-pressed="true"] { background: var(--pine); color: var(--volt); border-color: var(--pine); font-weight: 700; }
 .slot:disabled { opacity: 0.42; text-decoration: line-through; }
+.slot.past:disabled { opacity: 0.3; text-decoration: none; }
 .slot:disabled:hover { border-color: var(--line); color: inherit; }
 
 .stepper { display: inline-flex; align-items: center; gap: 14px; }
