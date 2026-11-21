@@ -87,7 +87,7 @@ export async function createBooking(input: {
 }): Promise<BookingDTO> {
   if (!isISODate(input.date)) throw badRequest("Date must be YYYY-MM-DD");
   if (input.date < todayISO()) throw badRequest("That date has already passed");
-  if (input.date === todayISO() && input.start + BOOKING_LEN <= istMinutesNow())
+  if (input.date === todayISO() && input.start <= istMinutesNow())
     throw badRequest("That time has already passed today");
   if (input.start < OPEN_MIN || input.start > LAST_START_MIN || input.start % SLOT_STEP !== 0)
     throw badRequest("Start times run on the half hour, 6 AM to 9 PM");
