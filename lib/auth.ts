@@ -313,16 +313,32 @@ export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
     "Meera Joshi": { hours: 32.0, shifts: 8, rate: 220 },
     "Siddharth Verma": { hours: 48.0, shifts: 12, rate: 350 },
     "Rajesh Kumar": { hours: 45.0, shifts: 11, rate: 350 },
-    "Vikram Rao": { hours: 50.0, shifts: 13, rate: 500 },
-    "Club Owner": { hours: 40.0, shifts: 10, rate: 500 },
-    "Krishna": { hours: 50.0, shifts: 13, rate: 500 },
   };
+
+  // Deduplicate OWNER accounts so only ONE single authoritative Club Owner appears
+  let seenOwner = false;
+  const filteredStaffList = [];
+  for (const s of staffList) {
+    if (s.role === "OWNER") {
+      if (!seenOwner) {
+        seenOwner = true;
+        filteredStaffList.push({
+          ...s,
+          name: "Vikram Rao (Club Owner)",
+          email: "owner@champions.club",
+        });
+      }
+    } else {
+      filteredStaffList.push(s);
+    }
+  }
 
   const results: StaffMemberPinDTO[] = [];
 
-  for (const s of staffList) {
+  for (const s of filteredStaffList) {
+    const isOwner = s.role === "OWNER";
     const def = defaultHoursMap[s.name] || { hours: 24, shifts: 6, rate: 250 };
-    const hourlyRate = s.hourlyRate || def.rate;
+    const hourlyRate = isOwner ? 0 : (s.hourlyRate || def.rate);
 
     let loggedHours = 0;
     let isOnShift = false;
@@ -336,14 +352,15 @@ export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
       }
     }
 
-    const shiftsCount = s.shifts.length > 0 ? s.shifts.length : def.shifts;
-    const hoursWorked = loggedHours > 0 ? Math.round(loggedHours * 10) / 10 : def.hours;
+    const shiftsCount = isOwner ? 0 : (s.shifts.length > 0 ? s.shifts.length : def.shifts);
+    const hoursWorked = isOwner ? 0 : (loggedHours > 0 ? Math.round(loggedHours * 10) / 10 : def.hours);
 
     const payRec = payrolls.find(
       (p) => p.staffId === s.id || p.staffName.toLowerCase() === s.name.toLowerCase(),
     );
     const isPaid = payRec?.status === "PAID";
-    const salaryDue = isPaid ? 0 : Math.round(hoursWorked * hourlyRate);
+    // Owners own the club and do NOT pay salary to themselves
+    const salaryDue = isOwner ? 0 : (isPaid ? 0 : Math.round(hoursWorked * hourlyRate));
 
     results.push({
       id: s.id,
@@ -357,8 +374,8 @@ export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
       hoursWorked,
       shiftsCount,
       salaryDue,
-      isOnShift,
-      payrollStatus: isPaid ? "PAID" : "PENDING",
+      isOnShift: isOwner ? false : isOnShift,
+      payrollStatus: isOwner ? "EXEMPT" : (isPaid ? "PAID" : "PENDING"),
       lastPaidAt: payRec?.paidAt ? payRec.paidAt.toISOString() : null,
       lastPaymentRef: payRec?.paymentRef || null,
     });

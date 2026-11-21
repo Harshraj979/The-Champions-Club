@@ -308,13 +308,13 @@ export default function Dashboard() {
               {/* Summary Stats */}
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, fontWeight: 600, color: "var(--pine)" }}>
                 <span style={{ padding: "4px 10px", borderRadius: 999, background: "#f0f4f1", border: "1px solid rgba(22,48,33,0.12)" }}>
-                  👥 <b>{staffList.length}</b> Staff Profiles
+                  👥 <b>{staffList.length}</b> Team Profiles
                 </span>
                 <span style={{ padding: "4px 10px", borderRadius: 999, background: "#f0f4f1", border: "1px solid rgba(22,48,33,0.12)" }}>
-                  ⏱️ <b>{Math.round(staffList.reduce((acc, s) => acc + s.hoursWorked, 0) * 10) / 10} hrs</b> Logged
+                  ⏱️ <b>{Math.round(staffList.filter((s) => s.role !== "OWNER").reduce((acc, s) => acc + s.hoursWorked, 0) * 10) / 10} hrs</b> Logged
                 </span>
                 <span style={{ padding: "4px 10px", borderRadius: 999, background: "#dfff45", color: "#163021", border: "1px solid #c2eb24" }}>
-                  💰 <b>{inr(staffList.reduce((acc, s) => acc + s.salaryDue, 0))}</b> Due for Payout
+                  💰 <b>{inr(staffList.filter((s) => s.role !== "OWNER").reduce((acc, s) => acc + s.salaryDue, 0))}</b> Due for Staff Payout
                 </span>
               </div>
             </div>
@@ -389,11 +389,12 @@ export default function Dashboard() {
                                 fontWeight: 700,
                                 padding: "2px 7px",
                                 borderRadius: 999,
-                                background: s.isOnShift ? "#dfff45" : "#f1f5f9",
-                                color: "#163021",
+                                background: s.role === "OWNER" ? "#ecfdf5" : s.isOnShift ? "#dfff45" : "#f1f5f9",
+                                color: s.role === "OWNER" ? "#065f46" : "#163021",
+                                border: s.role === "OWNER" ? "1px solid #a7f3d0" : "none",
                               }}
                             >
-                              {s.isOnShift ? "🟢 On Shift" : "⚪ Off Shift"}
+                              {s.role === "OWNER" ? "👑 Proprietor" : s.isOnShift ? "🟢 On Shift" : "⚪ Off Shift"}
                             </span>
                           </div>
                         </div>
@@ -402,7 +403,7 @@ export default function Dashboard() {
                         <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 12, background: "#fbfbfa", border: "1px solid rgba(22,48,33,0.08)" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                             <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#163021" }}>
-                              Set PIN for {s.name.split(" ")[0]}
+                              {s.role === "OWNER" ? "Owner Master PIN" : `Set PIN for ${s.name.split(" ")[0]}`}
                             </label>
                             {s.hasCustomPin && (
                               <button
@@ -448,134 +449,160 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        {/* Work & Wage Tracking ("how much the staff has worked") */}
-                        <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: "#f8faf8", border: "1px solid rgba(22,48,33,0.08)" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#617065" }}>
-                              Work Hours Logged
-                            </span>
-                            <button
-                              type="button"
-                              className="text-link"
-                              disabled={isBusy}
-                              onClick={() => handleToggleClock(s.id)}
-                              style={{ fontSize: 11, fontWeight: 600 }}
-                            >
-                              {s.isOnShift ? "⏱️ Clock Out" : "⏱️ Clock In"}
-                            </button>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
-                            <div>
-                              <span style={{ fontSize: 20, fontWeight: 700, color: "#163021" }}>{s.hoursWorked}</span>
-                              <span style={{ fontSize: 12, color: "#617065", marginLeft: 4 }}>hours ({s.shiftsCount} shifts)</span>
+                        {/* Owner is Business Proprietor; only hired staff track hourly shifts */}
+                        {s.role === "OWNER" ? (
+                          <div style={{ marginTop: 14, padding: "14px 16px", borderRadius: 12, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                            <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                              <span style={{ fontSize: 20 }}>👑</span>
+                              <div>
+                                <p style={{ fontSize: 13, fontWeight: 700, color: "#166534" }}>Business Proprietor & Executive Admin</p>
+                                <p style={{ fontSize: 11, color: "#15803d", marginTop: 3, lineHeight: 1.4 }}>
+                                  Club owner profile · Draws business profits & equity dividends (exempt from employee hourly shift payroll and salary payouts).
+                                </p>
+                              </div>
                             </div>
-                            <div style={{ textAlign: "right" }}>
-                              {!isEditingThisRate ? (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: "#163021" }}>₹{s.hourlyRate}/hr</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingRate((prev) => ({ ...prev, [s.id]: true }));
-                                      setRateInputs((prev) => ({ ...prev, [s.id]: String(s.hourlyRate) }));
-                                    }}
-                                    style={{ fontSize: 10, color: "#2563eb", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}
-                                  >
-                                    Edit
-                                  </button>
-                                </div>
-                              ) : (
-                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                                  <input
-                                    type="number"
-                                    value={rateInputs[s.id] || ""}
-                                    onChange={(e) => setRateInputs((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                                    style={{ width: 64, minHeight: 28, padding: "2px 6px", fontSize: 12, borderRadius: 6 }}
-                                  />
-                                  <button
-                                    type="button"
-                                    className="btn btn-ink"
-                                    onClick={() => handleSaveRate(s.id)}
-                                    style={{ minHeight: 28, padding: "2px 8px", fontSize: 11 }}
-                                  >
-                                    ✓
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bottom: Direct Salary Payout ("pay his salary directly from this") */}
-                      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(22, 48, 33, 0.1)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#617065" }}>
-                            Salary Payout
-                          </span>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: "#163021" }}>
-                            {inr(s.salaryDue)}
-                          </span>
-                        </div>
-
-                        {s.payrollStatus === "PAID" ? (
-                          <div
-                            style={{
-                              padding: "8px 12px",
-                              borderRadius: 10,
-                              background: "#ecfdf5",
-                              border: "1px solid #a7f3d0",
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: "#065f46",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <span>✓ Salary Paid for Month</span>
-                            <span style={{ fontSize: 10, color: "#047857" }}>{s.lastPaidAt ? s.lastPaidAt.slice(0, 10) : "Recent"}</span>
                           </div>
                         ) : (
-                          <button
-                            type="button"
-                            className="btn btn-ink"
-                            disabled={isBusy || s.salaryDue <= 0}
-                            onClick={() =>
-                              setSalaryModal({
-                                isOpen: true,
-                                staff: s,
-                                amount: s.salaryDue,
-                              })
-                            }
-                            style={{
-                              width: "100%",
-                              minHeight: 40,
-                              background: "#0b1a30",
-                              color: "#dfff45",
-                              border: "1px solid #3395ff",
-                              fontWeight: 700,
-                              fontSize: 13,
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <span>💳 Pay Salary with Demo Razorpay</span>
-                            <span>({inr(s.salaryDue)})</span>
-                          </button>
+                          /* Work & Wage Tracking ("how much the staff has worked") */
+                          <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: "#f8faf8", border: "1px solid rgba(22,48,33,0.08)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#617065" }}>
+                                Work Hours Logged
+                              </span>
+                              <button
+                                type="button"
+                                className="text-link"
+                                disabled={isBusy}
+                                onClick={() => handleToggleClock(s.id)}
+                                style={{ fontSize: 11, fontWeight: 600 }}
+                              >
+                                {s.isOnShift ? "⏱️ Clock Out" : "⏱️ Clock In"}
+                              </button>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
+                              <div>
+                                <span style={{ fontSize: 20, fontWeight: 700, color: "#163021" }}>{s.hoursWorked}</span>
+                                <span style={{ fontSize: 12, color: "#617065", marginLeft: 4 }}>hours ({s.shiftsCount} shifts)</span>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                {!isEditingThisRate ? (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: "#163021" }}>₹{s.hourlyRate}/hr</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingRate((prev) => ({ ...prev, [s.id]: true }));
+                                        setRateInputs((prev) => ({ ...prev, [s.id]: String(s.hourlyRate) }));
+                                      }}
+                                      style={{ fontSize: 10, color: "#2563eb", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <input
+                                      type="number"
+                                      value={rateInputs[s.id] || ""}
+                                      onChange={(e) => setRateInputs((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                                      style={{ width: 64, minHeight: 28, padding: "2px 6px", fontSize: 12, borderRadius: 6 }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="btn btn-ink"
+                                      onClick={() => handleSaveRate(s.id)}
+                                      style={{ minHeight: 28, padding: "2px 8px", fontSize: 11 }}
+                                    >
+                                      ✓
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
                         )}
+                      </div>
 
-                        {msg && (
+                      {/* Bottom: Direct Salary Payout only for hired staff */}
+                      {s.role !== "OWNER" ? (
+                        <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(22, 48, 33, 0.1)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#617065" }}>
+                              Salary Payout
+                            </span>
+                            <span style={{ fontSize: 14, fontWeight: 700, color: "#163021" }}>
+                              {inr(s.salaryDue)}
+                            </span>
+                          </div>
+
+                          {s.payrollStatus === "PAID" ? (
+                            <div
+                              style={{
+                                padding: "8px 12px",
+                                borderRadius: 10,
+                                background: "#ecfdf5",
+                                border: "1px solid #a7f3d0",
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#065f46",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <span>✓ Salary Paid for Month</span>
+                              <span style={{ fontSize: 10, color: "#047857" }}>{s.lastPaidAt ? s.lastPaidAt.slice(0, 10) : "Recent"}</span>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-ink"
+                              disabled={isBusy || s.salaryDue <= 0}
+                              onClick={() =>
+                                setSalaryModal({
+                                  isOpen: true,
+                                  staff: s,
+                                  amount: s.salaryDue,
+                                })
+                              }
+                              style={{
+                                width: "100%",
+                                minHeight: 40,
+                                background: "#0b1a30",
+                                color: "#dfff45",
+                                border: "1px solid #3395ff",
+                                fontWeight: 700,
+                                fontSize: 13,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 8,
+                              }}
+                            >
+                              <span>💳 Pay Salary with Demo Razorpay</span>
+                              <span>({inr(s.salaryDue)})</span>
+                            </button>
+                          )}
+
+                          {msg && (
+                            <div
+                              className={`notice ${msg.ok ? "ok" : "err"}`}
+                              style={{ marginTop: 10, padding: "6px 10px", fontSize: 12 }}
+                            >
+                              {msg.text}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        msg && (
                           <div
                             className={`notice ${msg.ok ? "ok" : "err"}`}
                             style={{ marginTop: 10, padding: "6px 10px", fontSize: 12 }}
                           >
                             {msg.text}
                           </div>
-                        )}
-                      </div>
+                        )
+                      )}
                     </div>
                   );
                 })}

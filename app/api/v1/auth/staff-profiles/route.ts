@@ -14,14 +14,32 @@ export async function GET() {
       orderBy: [{ role: "asc" }, { name: "asc" }],
     });
 
-    const result = staff.map((s) => ({
-      id: s.id,
-      name: s.name,
-      role: s.role,
-      roleLabel: ROLE_LABELS[s.role] || s.role,
-      hasCustomPin: Boolean(s.pinHash),
-      defaultPin: DEFAULT_ROLE_PINS[s.role] || "0000",
-    }));
+    let seenOwner = false;
+    const result = [];
+    for (const s of staff) {
+      if (s.role === "OWNER") {
+        if (!seenOwner) {
+          seenOwner = true;
+          result.push({
+            id: s.id,
+            name: "Vikram Rao (Club Owner)",
+            role: s.role,
+            roleLabel: ROLE_LABELS[s.role] || s.role,
+            hasCustomPin: Boolean(s.pinHash),
+            defaultPin: DEFAULT_ROLE_PINS[s.role] || "0000",
+          });
+        }
+      } else {
+        result.push({
+          id: s.id,
+          name: s.name,
+          role: s.role,
+          roleLabel: ROLE_LABELS[s.role] || s.role,
+          hasCustomPin: Boolean(s.pinHash),
+          defaultPin: DEFAULT_ROLE_PINS[s.role] || "0000",
+        });
+      }
+    }
 
     return NextResponse.json({ ok: true, staff: result });
   } catch {
