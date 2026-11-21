@@ -80,6 +80,10 @@ export type EnquiryDTO = {
   message: string;
   status: "NEW" | "CONTACTED" | "QUOTED" | "CONVERTED" | "LOST";
   note: string;
+  quotePlan: string | null;
+  quoteAmount: number | null;
+  quoteNote: string;
+  quotedAt: string | null;
   memberId: number | null;
   createdAt: string;
 };

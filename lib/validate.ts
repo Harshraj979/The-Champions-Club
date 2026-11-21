@@ -90,6 +90,12 @@ export const enquiryPatchInput = z.object({
 
 export const convertInput = z.object({ planCode: z.string().min(1) });
 
+export const quoteInput = z.object({
+  planCode: z.string().min(1),
+  amount: z.number().int().positive("The quote needs an amount").max(10000000),
+  note: z.string().trim().max(300).optional().default(""),
+});
+
 export const loginInput = z.object({
   email: z.string().trim().email("That email does not look right"),
   password: z.string().min(1, "Password is missing"),

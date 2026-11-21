@@ -181,6 +181,10 @@ model Enquiry {
   message   String        @default("")
   status    EnquiryStatus @default(NEW)
   note      String        @default("") // staff follow-up note
+  quotePlan   String? // plan name on the quote sent, if any
+  quoteAmount Int? // rupees quoted
+  quoteNote   String        @default("") // what the quote covered
+  quotedAt    DateTime? // when the quote was sent/recorded
   memberId  Int? // set when the enquiry converts to a member
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
