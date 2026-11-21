@@ -10,7 +10,8 @@ import { createBooking, listBookings } from "@/lib/services/bookings";
 export const GET = (req: Request) =>
   handle(async () => {
     await requireRole(req, "OWNER", "FRONT_DESK", "STAFF");
-    return listBookings(new URL(req.url).searchParams.get("date") ?? undefined);
+    const params = new URL(req.url).searchParams;
+    return listBookings(params.get("date") ?? undefined, params.get("state") ?? undefined);
   });
 
 export const POST = (req: Request) =>
