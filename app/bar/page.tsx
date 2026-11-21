@@ -132,6 +132,7 @@ export default function Bar() {
         </>
       ) : (
         <>
+          <div className="panel panel-main">
           <div className="field-row" style={{ maxWidth: 640, alignItems: "end" }}>
             <div>
               <label htmlFor="b-who">Open a tab for</label>
@@ -156,15 +157,19 @@ export default function Bar() {
               </div>
             </div>
           )}
+          </div>
 
           {tab ? (
             <>
-              <div className="panel" style={{ marginTop: 20 }}>
-                <p style={{ fontWeight: 600 }}>
-                  {tab.who}
-                  {tab.tableNo ? `, table ${tab.tableNo}` : ""}
-                  {plan ? `, ${plan.name} plan${plan.barDiscount ? `, ${plan.barDiscount}% off at settle` : ""}` : ", walk-in"}
-                </p>
+              <div className="panel panel-main" style={{ marginTop: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16, flexWrap: "wrap" }}>
+                  <p style={{ fontWeight: 600 }}>
+                    {tab.who}
+                    {tab.tableNo ? `, table ${tab.tableNo}` : ""}
+                    {plan ? `, ${plan.name} plan${plan.barDiscount ? `, ${plan.barDiscount}% off at settle` : ""}` : ", walk-in"}
+                  </p>
+                  <span className="s-price num">{inr(tab.subtotal)}</span>
+                </div>
                 {tab.items.length > 0 ? (
                   <div className="rows" style={{ marginTop: 10 }}>
                     {tab.items.map((i) => (
