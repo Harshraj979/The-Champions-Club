@@ -286,7 +286,6 @@ export async function memberSignup(data: {
   const dto = toMemberSessionDTO(newMember);
   return { member: dto, token: await signMemberToken(newMember.id) };
 }
-}
 
 export const GOOGLE_REDIRECT_URI = "https://the-champions-club.vercel.app/api/v1/auth/google/callback";
 
