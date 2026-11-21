@@ -861,8 +861,8 @@ export default function Dashboard() {
                           {s.payrollStatus === "PAID" ? (
                             <div
                               style={{
-                                padding: "8px 12px",
-                                borderRadius: 10,
+                                padding: "10px 14px",
+                                borderRadius: 12,
                                 background: "#ecfdf5",
                                 border: "1px solid #a7f3d0",
                                 fontSize: 12,
@@ -874,12 +874,11 @@ export default function Dashboard() {
                               }}
                             >
                               <span>✓ Salary Paid for Month</span>
-                              <span style={{ fontSize: 10, color: "#047857" }}>{s.lastPaidAt ? s.lastPaidAt.slice(0, 10) : "Recent"}</span>
+                              <span style={{ fontSize: 11, color: "#047857", fontWeight: 700 }}>{s.lastPaidAt ? s.lastPaidAt.slice(0, 10) : "Recent"}</span>
                             </div>
                           ) : (
                             <button
                               type="button"
-                              className="btn btn-ink"
                               disabled={isBusy || s.salaryDue <= 0}
                               onClick={() =>
                                 setSalaryModal({
@@ -890,20 +889,43 @@ export default function Dashboard() {
                               }
                               style={{
                                 width: "100%",
-                                minHeight: 40,
+                                minHeight: 44,
+                                padding: "8px 14px",
                                 background: "#0b1a30",
                                 color: "#dfff45",
                                 border: "1px solid #3395ff",
+                                borderRadius: 12,
                                 fontWeight: 700,
-                                fontSize: 13,
+                                fontSize: 12.5,
+                                textTransform: "none",
+                                letterSpacing: "0.01em",
                                 display: "flex",
                                 alignItems: "center",
-                                justifyContent: "center",
+                                justifyContent: "space-between",
                                 gap: 8,
+                                cursor: isBusy || s.salaryDue <= 0 ? "not-allowed" : "pointer",
+                                opacity: isBusy || s.salaryDue <= 0 ? 0.5 : 1,
+                                transition: "all 0.15s ease",
+                                boxShadow: "0 2px 8px rgba(11, 26, 48, 0.2)",
                               }}
                             >
-                              <span>💳 Pay Salary with Demo Razorpay</span>
-                              <span>({inr(s.salaryDue)})</span>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                <span style={{ fontSize: 14 }}>💳</span>
+                                <span>Pay via Demo Razorpay</span>
+                              </span>
+                              <span
+                                style={{
+                                  background: "#dfff45",
+                                  color: "#0b1a30",
+                                  padding: "3px 8px",
+                                  borderRadius: 6,
+                                  fontWeight: 800,
+                                  fontSize: 12,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {inr(s.salaryDue)}
+                              </span>
                             </button>
                           )}
 
