@@ -31,8 +31,8 @@ export async function createOrder(input: {
   payMethod: "CASH" | "CARD" | "UPI";
 }) {
   const member = await findMemberByName(input.name);
-  const active = member && memberState(member.expiresOn) === "active";
-  const discountPct = active ? member.plan.shopDiscount : 0;
+  const active = member && member.plan && memberState(member.expiresOn) === "active";
+  const discountPct = active && member?.plan ? member.plan.shopDiscount : 0;
 
   return db.$transaction(async (tx) => {
     const lines = await priceItems(input.items, "GEAR");
@@ -157,7 +157,7 @@ export async function openTab(input: { who: string; tableNo?: number }): Promise
       memberId: member?.id,
       tableNo: input.tableNo,
       status: "OPEN",
-      planCode: member?.plan.code ?? "walkin",
+      planCode: member?.plan?.code ?? "walkin",
     },
     include: tabInclude,
   });
@@ -194,13 +194,13 @@ export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI"):
   // settle time. Nobody types a discount, and nobody can inflate one.
   const member = tab.member;
   const discountPct =
-    member && memberState(member.expiresOn) === "active" ? member.plan.barDiscount : 0;
+    member && member.plan && memberState(member.expiresOn) === "active" ? member.plan.barDiscount : 0;
   const discount = Math.round((tab.subtotal * discountPct) / 100);
   const updated = await db.tab.update({
     where: { id },
     data: {
       status: "SETTLED",
-      planCode: discountPct && member ? member.plan.code : "walkin",
+      planCode: discountPct && member?.plan ? member.plan.code : "walkin",
       discountPct,
       total: tab.subtotal - discount,
       payMethod,

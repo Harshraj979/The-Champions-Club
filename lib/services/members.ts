@@ -7,13 +7,14 @@ type MemberRow = {
   id: number;
   name: string;
   phone: string;
-  expiresOn: Date;
-  plan: { name: string; code: string };
+  expiresOn: Date | null;
+  plan: { name: string; code: string } | null;
 };
 
 // Membership state is derived from the expiry date, never stored, so it
 // can never disagree with the dates.
-export const memberState = (expiresOn: Date, onISO: string = todayISO()): MemberState => {
+export const memberState = (expiresOn: Date | null | undefined, onISO: string = todayISO()): MemberState | "none" => {
+  if (!expiresOn) return "none";
   const exp = expiresOn.toISOString().slice(0, 10);
   if (exp < onISO) return "expired";
   const soon = new Date(Date.parse(onISO) + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -24,10 +25,10 @@ export const toMemberDTO = (m: MemberRow): MemberDTO => ({
   id: m.id,
   name: m.name,
   phone: m.phone,
-  plan: m.plan.name,
-  planCode: m.plan.code,
-  state: memberState(m.expiresOn),
-  expiresOn: m.expiresOn.toISOString().slice(0, 10),
+  plan: m.plan ? m.plan.name : "None",
+  planCode: m.plan ? m.plan.code : "none",
+  state: (memberState(m.expiresOn) === "none" ? "expired" : memberState(m.expiresOn)) as MemberState,
+  expiresOn: m.expiresOn ? m.expiresOn.toISOString().slice(0, 10) : "",
 });
 
 export const findMemberByName = (name: string) =>
@@ -61,4 +62,17 @@ export async function getMember(id: number): Promise<MemberDTO> {
   const row = await db.member.findUnique({ where: { id }, include: { plan: true } });
   if (!row) throw notFound("No such member");
   return toMemberDTO(row);
+}
+
+export async function buyPlanForMember(memberId: number, planCode: string): Promise<MemberDTO> {
+  const plan = await db.plan.findUnique({ where: { code: planCode } });
+  if (!plan) throw badRequest("Pick a plan that exists");
+  const joined = new Date(`${todayISO()}T00:00:00.000Z`);
+  const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+  const updated = await db.member.update({
+    where: { id: memberId },
+    data: { planId: plan.id, joinedOn: joined, expiresOn: expires },
+    include: { plan: true },
+  });
+  return toMemberDTO(updated);
 }

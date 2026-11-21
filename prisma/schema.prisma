@@ -73,17 +73,19 @@ model Court {
 }
 
 model Member {
-  id        Int       @id @default(autoincrement())
-  name      String
-  phone     String    @default("")
-  planId    Int
-  plan      Plan      @relation(fields: [planId], references: [id])
-  joinedOn  DateTime  @db.Date
-  expiresOn DateTime  @db.Date
-  bookings  Booking[]
-  orders    Order[]
-  tabs      Tab[]
-  createdAt DateTime  @default(now())
+  id           Int       @id @default(autoincrement())
+  name         String
+  phone        String    @default("")
+  email        String?   @unique
+  passwordHash String?
+  planId       Int?
+  plan         Plan?     @relation(fields: [planId], references: [id])
+  joinedOn     DateTime? @db.Date
+  expiresOn    DateTime? @db.Date
+  bookings     Booking[]
+  orders       Order[]
+  tabs         Tab[]
+  createdAt    DateTime  @default(now())
 
   @@index([name])
 }

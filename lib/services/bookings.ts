@@ -98,11 +98,18 @@ export async function createBooking(input: {
   if (!court) throw notFound("No such court");
 
   const member = await findMemberByName(input.name);
-  if (member && memberState(member.expiresOn, input.date) === "expired")
-    throw forbidden(`${member.name}'s plan has expired. The front desk can renew it in a minute.`);
+  if (input.type !== "TRIAL") {
+    if (!member || !member.plan || memberState(member.expiresOn, input.date) === "expired") {
+      throw forbidden(
+        member
+          ? `${member.name}'s membership plan is not active. Please choose an active plan to reserve courts.`
+          : "An active club membership is required to book a court. Please sign in or register with a membership plan.",
+      );
+    }
+  }
 
-  const planPrice = court.sport === "Cricket" ? member?.plan.cricketPrice : member?.plan.tennisPrice;
-  const price = input.type === "TRIAL" ? 0 : member ? planPrice! : court.walkinPrice;
+  const planPrice = member?.plan ? (court.sport === "Cricket" ? member.plan.cricketPrice : member.plan.tennisPrice) : court.walkinPrice;
+  const price = input.type === "TRIAL" ? 0 : planPrice;
   const day = new Date(`${input.date}T00:00:00.000Z`);
 
   const created = await db.$transaction(async (tx) => {

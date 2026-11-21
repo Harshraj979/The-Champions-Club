@@ -101,3 +101,20 @@ export type StaffDTO = {
   email: string;
   role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP";
 };
+
+export type MemberSessionDTO = {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string;
+  plan: {
+    code: string;
+    name: string;
+    tennisPrice: number;
+    cricketPrice: number;
+    shopDiscount: number;
+    barDiscount: number;
+  } | null;
+  state: "active" | "expiring" | "expired" | "none";
+  expiresOn: string | null;
+};

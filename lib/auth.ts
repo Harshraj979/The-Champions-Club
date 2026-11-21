@@ -2,8 +2,10 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { forbidden, unauthorized } from "./errors";
-import type { StaffDTO } from "./types";
+import { badRequest, forbidden, unauthorized } from "./errors";
+import { todayISO } from "./format";
+import { memberState } from "./services/members";
+import type { MemberSessionDTO, StaffDTO } from "./types";
 
 // Staff sign-in for the web today, the same token works as a Bearer token
 // for a future mobile app. Members have no login by product decision;
@@ -97,4 +99,165 @@ export async function currentStaff(): Promise<StaffDTO | null> {
   const jar = await cookies();
   const token = jar.get(COOKIE)?.value;
   return token ? verifyToken(token) : null;
+}
+
+const MEMBER_COOKIE = "cc_member_session";
+
+export const toMemberSessionDTO = (m: {
+  id: number;
+  name: string;
+  email: string | null;
+  phone: string;
+  expiresOn: Date | null;
+  plan: {
+    code: string;
+    name: string;
+    tennisPrice: number;
+    cricketPrice: number;
+    shopDiscount: number;
+    barDiscount: number;
+  } | null;
+}): MemberSessionDTO => {
+  const state = m.expiresOn ? memberState(m.expiresOn) : "none";
+  return {
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    phone: m.phone,
+    plan: m.plan
+      ? {
+          code: m.plan.code,
+          name: m.plan.name,
+          tennisPrice: m.plan.tennisPrice,
+          cricketPrice: m.plan.cricketPrice,
+          shopDiscount: m.plan.shopDiscount,
+          barDiscount: m.plan.barDiscount,
+        }
+      : null,
+    state,
+    expiresOn: m.expiresOn ? m.expiresOn.toISOString().slice(0, 10) : null,
+  };
+};
+
+export async function signMemberToken(memberId: number): Promise<string> {
+  return new SignJWT({ sub: String(memberId), type: "member" })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("7d")
+    .sign(secret);
+}
+
+export async function verifyMemberToken(token: string): Promise<MemberSessionDTO | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret);
+    if (!payload.sub) return null;
+    const member = await db.member.findUnique({
+      where: { id: Number(payload.sub) },
+      include: { plan: true },
+    });
+    return member ? toMemberSessionDTO(member) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setMemberSessionCookie(token: string) {
+  const jar = await cookies();
+  jar.set(MEMBER_COOKIE, token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+  });
+}
+
+export async function clearMemberSessionCookie() {
+  const jar = await cookies();
+  jar.delete(MEMBER_COOKIE);
+}
+
+export async function currentMember(): Promise<MemberSessionDTO | null> {
+  const jar = await cookies();
+  const token = jar.get(MEMBER_COOKIE)?.value;
+  return token ? verifyMemberToken(token) : null;
+}
+
+export async function requireMember(req?: Request): Promise<MemberSessionDTO> {
+  const jar = await cookies();
+  const token = jar.get(MEMBER_COOKIE)?.value;
+  if (token) {
+    const member = await verifyMemberToken(token);
+    if (member) return member;
+  }
+  throw unauthorized("Please log in with your member account first");
+}
+
+export async function memberLogin(
+  emailOrPhone: string,
+  password: string,
+): Promise<{ member: MemberSessionDTO; token: string }> {
+  const identifier = emailOrPhone.trim().toLowerCase();
+  const member = await db.member.findFirst({
+    where: {
+      OR: [
+        { email: { equals: identifier, mode: "insensitive" } },
+        { phone: identifier },
+        { name: { equals: identifier, mode: "insensitive" } },
+      ],
+    },
+    include: { plan: true },
+  });
+  if (!member || !member.passwordHash || !(await bcrypt.compare(password, member.passwordHash))) {
+    throw unauthorized("Account or password does not match");
+  }
+  const dto = toMemberSessionDTO(member);
+  return { member: dto, token: await signMemberToken(member.id) };
+}
+
+export async function memberSignup(data: {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  planCode?: string;
+}): Promise<{ member: MemberSessionDTO; token: string }> {
+  const existing = await db.member.findFirst({
+    where: {
+      OR: [
+        { email: { equals: data.email.trim(), mode: "insensitive" } },
+        { phone: data.phone.trim() },
+      ],
+    },
+  });
+  if (existing) {
+    throw badRequest("An account with that email or phone number already exists.");
+  }
+  const passwordHash = await bcrypt.hash(data.password, 10);
+  let planId: number | null = null;
+  let joinedOn: Date | null = null;
+  let expiresOn: Date | null = null;
+  if (data.planCode && data.planCode !== "none") {
+    const plan = await db.plan.findUnique({ where: { code: data.planCode } });
+    if (plan) {
+      planId = plan.id;
+      joinedOn = new Date(`${todayISO()}T00:00:00.000Z`);
+      expiresOn = new Date(joinedOn.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+    }
+  }
+
+  const newMember = await db.member.create({
+    data: {
+      name: data.name.trim(),
+      email: data.email.trim().toLowerCase(),
+      phone: data.phone.trim(),
+      passwordHash,
+      planId,
+      joinedOn,
+      expiresOn,
+    },
+    include: { plan: true },
+  });
+  const dto = toMemberSessionDTO(newMember);
+  return { member: dto, token: await signMemberToken(newMember.id) };
 }

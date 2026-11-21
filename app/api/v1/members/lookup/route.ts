@@ -14,13 +14,13 @@ export const GET = (req: Request) =>
     return {
       member: {
         name: m.name,
-        plan: m.plan.name,
-        planCode: m.plan.code,
+        plan: m.plan ? m.plan.name : "No Plan",
+        planCode: m.plan ? m.plan.code : "none",
         state: memberState(m.expiresOn),
-        tennisPrice: m.plan.tennisPrice,
-        cricketPrice: m.plan.cricketPrice,
-        shopDiscount: m.plan.shopDiscount,
-        barDiscount: m.plan.barDiscount,
+        tennisPrice: m.plan ? m.plan.tennisPrice : 500,
+        cricketPrice: m.plan ? m.plan.cricketPrice : 800,
+        shopDiscount: m.plan ? m.plan.shopDiscount : 0,
+        barDiscount: m.plan ? m.plan.barDiscount : 0,
       },
     };
   });

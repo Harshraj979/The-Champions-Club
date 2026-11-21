@@ -66,8 +66,11 @@ async function main() {
 
   const plans = await db.plan.findMany();
   const planId = (code: string) => plans.find((p) => p.code === code)!.id;
-  const member = (name: string, phone: string, code: string, expiresInDays: number) => ({
+  const demoMemberHash = await bcrypt.hash("demo1234", 10);
+  const member = (name: string, email: string, phone: string, code: string, expiresInDays: number) => ({
     name,
+    email,
+    passwordHash: demoMemberHash,
     phone,
     planId: planId(code),
     joinedOn: plus(today, -90),
@@ -75,12 +78,21 @@ async function main() {
   });
   await db.member.createMany({
     data: [
-      member("Aarav Mehta", "9811000001", "gold", 240),
-      member("Priya Nair", "9811000002", "gold", 300),
-      member("Rohan Shah", "9811000003", "silver", 120),
-      member("Sneha Kulkarni", "9811000004", "silver", 3), // renews this week
-      member("Kabir Singh", "9811000005", "junior", 200),
-      member("Ananya Iyer", "9811000006", "junior", -5), // already expired
+      member("Aarav Mehta", "aarav@example.com", "9811000001", "gold", 240),
+      member("Priya Nair", "priya@example.com", "9811000002", "gold", 300),
+      member("Rohan Shah", "rohan@example.com", "9811000003", "silver", 120),
+      member("Sneha Kulkarni", "sneha@example.com", "9811000004", "silver", 3), // renews this week
+      member("Kabir Singh", "kabir@example.com", "9811000005", "junior", 200),
+      member("Ananya Iyer", "ananya@example.com", "9811000006", "junior", -5), // already expired
+      {
+        name: "Rahul Verma",
+        email: "rahul@example.com",
+        phone: "9811000007",
+        passwordHash: demoMemberHash,
+        planId: null,
+        joinedOn: null,
+        expiresOn: null,
+      },
     ],
   });
 

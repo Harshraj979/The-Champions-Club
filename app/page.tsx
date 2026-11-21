@@ -3,8 +3,10 @@
 // The landing page, implemented exactly from the user's Figma Make design
 // ("Sports Club Management System"). Only wiring differs: Member login goes
 // to the real staff sign-in. Everything else keeps the design's behaviour.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/api";
+import type { MemberSessionDTO } from "@/lib/types";
 
 type IconName = "arrow" | "menu" | "close" | "court" | "cup" | "bag" | "clock" | "pin" | "instagram";
 
@@ -33,6 +35,42 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [email, setEmail] = useState("");
+  const [member, setMember] = useState<MemberSessionDTO | null>(null);
+  const [activating, setActivating] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.memberMe()
+      .then((r) => setMember(r.member))
+      .catch(() => setMember(null));
+  }, []);
+
+  async function handleMemberLogout() {
+    await api.memberLogout().catch(() => {});
+    setMember(null);
+    setNotice("Signed out");
+    window.setTimeout(() => setNotice(""), 2000);
+  }
+
+  async function handleSelectPlan(planCode: string) {
+    if (!member) {
+      window.location.href = `/member-login?tab=signup&plan=${planCode}`;
+      return;
+    }
+    setActivating(planCode);
+    try {
+      await api.buyPlan(planCode);
+      const res = await api.memberMe();
+      setMember(res.member);
+      setNotice(`Activated ${planCode.toUpperCase()} membership!`);
+      window.setTimeout(() => setNotice(""), 2500);
+      window.location.href = "/courts";
+    } catch {
+      setNotice("Failed to activate plan");
+      window.setTimeout(() => setNotice(""), 2500);
+    } finally {
+      setActivating(null);
+    }
+  }
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -59,15 +97,56 @@ export default function Home() {
             ))}
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden text-xs font-semibold text-white/75 hover:text-white sm:block">Member login</Link>
-            <button onClick={requestAccess} className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">Join the club</button>
+            {member ? (
+              <>
+                <Link href="/courts" className="hidden text-xs font-bold text-[#dfff45] sm:block hover:underline">
+                  ⚡ {member.name} ({member.plan ? member.plan.name : "No Plan"})
+                </Link>
+                <button onClick={handleMemberLogout} className="hidden text-xs font-semibold text-white/75 hover:text-white sm:block">
+                  Sign out
+                </button>
+                <Link href="/courts" className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">
+                  Book Courts
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/member-login" className="hidden text-xs font-semibold text-white/75 hover:text-white sm:block">
+                  Member sign-in
+                </Link>
+                <Link href="/member-login?tab=signup" className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">
+                  Join the club
+                </Link>
+              </>
+            )}
             <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 lg:hidden" aria-label="Toggle menu"><Icon name={menuOpen ? "close" : "menu"} /></button>
           </div>
         </div>
         {menuOpen && (
           <div className="border-t border-white/10 bg-[#132b1d] px-5 py-6 lg:hidden">
             {["The club", "Play", "Eat & drink", "Membership"].map((item, index) => <button key={item} onClick={() => scrollTo(["club", "play", "clubhouse", "membership"][index])} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">{item}</button>)}
-            <button onClick={requestAccess} className="mt-6 w-full rounded-full bg-[#dfff45] py-4 text-xs font-bold uppercase tracking-wider text-[#173020]">Join the club</button>
+            {member ? (
+              <>
+                <Link href="/courts" className="mt-4 block w-full border-b border-white/10 py-3 text-left font-display text-lg font-bold uppercase text-[#dfff45]">
+                  ⚡ {member.name} ({member.plan ? member.plan.name : "No Plan"})
+                </Link>
+                <Link href="/courts" className="mt-4 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
+                  Book Courts
+                </Link>
+                <button onClick={handleMemberLogout} className="mt-3 block w-full py-2 text-center text-xs font-semibold text-white/70">
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <>
+                <Link href="/member-login" className="mt-4 block w-full border-b border-white/10 py-3 text-left font-display text-lg font-bold uppercase">
+                  Member sign-in
+                </Link>
+                <Link href="/member-login?tab=signup" className="mt-4 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
+                  Join the club
+                </Link>
+              </>
+            )}
           </div>
         )}
       </header>
@@ -83,7 +162,15 @@ export default function Home() {
               <h1 className="font-display text-[64px] font-bold uppercase leading-[.84] tracking-[-.035em] sm:text-[86px] lg:text-[118px]">Play hard.<br /><span className="text-[#dfff45]">Stay longer.</span></h1>
               <p className="mt-8 max-w-lg text-sm leading-7 text-white/70 sm:text-base">More than a place to play. Champions is your home court, your local, and your community—all under one roof.</p>
               <div className="mt-9 flex flex-wrap gap-3">
-                <button onClick={requestAccess} className="group flex items-center gap-5 rounded-full bg-[#dfff45] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white">Explore membership <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" /></button>
+                {member ? (
+                  <Link href="/courts" className="group flex items-center gap-5 rounded-full bg-[#dfff45] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white">
+                    View Courts &amp; Book <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </Link>
+                ) : (
+                  <Link href="/member-login?tab=signup" className="group flex items-center gap-5 rounded-full bg-[#dfff45] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white">
+                    Join the club <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" />
+                  </Link>
+                )}
                 <button onClick={() => scrollTo("play")} className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Discover the club</button>
               </div>
             </div>
@@ -141,22 +228,306 @@ export default function Home() {
         </section>
 
         <section id="membership" className="bg-[#f2f0e8] py-24 sm:py-32">
-          <div className="mx-auto max-w-[1100px] px-5 text-center sm:px-8">
-            <p className="eyebrow">Memberships now open</p>
-            <h2 className="mx-auto mt-5 max-w-4xl font-display text-6xl font-bold uppercase leading-[.88] tracking-tight sm:text-8xl">Make Champions<br /><span className="text-[#7c887e]">your home court.</span></h2>
-            <p className="mx-auto mt-7 max-w-xl text-sm leading-7 text-[#68746b]">Priority booking, member rates, club events, and a community that always has room for one more.</p>
-            <div className="mx-auto mt-10 flex max-w-md rounded-full border border-[#173021]/15 bg-white p-1.5 shadow-sm">
-              <input aria-label="Email address" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-[#849087]" />
-              <button onClick={async () => {
-                const em = email.trim();
-                if (!em.includes("@")) { setNotice("Add an email address first"); return; }
-                try {
-                  const res = await fetch("/api/v1/enquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Website visitor", contact: em, interest: "Membership", message: "Membership info requested from the website" }) });
-                  if (!res.ok) throw new Error();
-                  setEmail("");
-                  setNotice("Thanks — we'll be in touch shortly");
-                } catch { setNotice("Could not send that — try again"); }
-              }} className="rounded-full bg-[#173021] px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#294d36]">Request info</button>
+          <div className="mx-auto max-w-[1280px] px-5 sm:px-8">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="eyebrow">Membership Tiers &amp; Player Returns</p>
+              <h2 className="mt-4 font-display text-5xl font-bold uppercase leading-[.92] tracking-tight sm:text-7xl">
+                Make Champions<br /><span className="text-[#7c887e]">your home court.</span>
+              </h2>
+              <p className="mt-6 text-sm sm:text-base leading-7 text-[#68746b]">
+                Priority court booking, exclusive member rates, and guaranteed player savings.
+                Explore the 1-month profits below—every plan pays for itself in just a few visits.
+              </p>
+            </div>
+
+            {/* 3 Membership Cards */}
+            <div className="mt-16 grid gap-8 lg:grid-cols-3 items-stretch">
+              {/* CARD 1: GOLD */}
+              <div className="relative flex flex-col justify-between rounded-3xl bg-[#163021] p-7 text-white shadow-xl sm:p-9 ring-2 ring-[#dfff45]">
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#dfff45] px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-[#163021] shadow">
+                  ⭐ Most Popular · Max Savings
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display text-3xl font-bold uppercase text-white">Gold Tier</h3>
+                      <p className="text-xs text-white/60 mt-1">For regular players &amp; active teams</p>
+                    </div>
+                    <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#dfff45]">
+                      All-Access
+                    </span>
+                  </div>
+
+                  <div className="mt-6 border-b border-white/15 pb-6">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-5xl font-bold text-[#dfff45]">₹1,500</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider text-white/60">/ month</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-white/50">or ₹15,000 / year (save ₹3,000 yearly)</p>
+                  </div>
+
+                  {/* Hourly Rates & Benefits */}
+                  <div className="mt-6 space-y-3 text-xs">
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">🎾 Tennis Court</span>
+                      <span className="font-bold text-[#dfff45]">₹300/hr <span className="font-normal text-white/40 line-through text-[10px]">₹500</span></span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">🏏 Cricket Turf</span>
+                      <span className="font-bold text-[#dfff45]">₹500/hr <span className="font-normal text-white/40 line-through text-[10px]">₹800</span></span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">☕ Clubhouse Bar &amp; Café</span>
+                      <span className="font-bold text-white">20% OFF Everything</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">🛍️ Pro Shop &amp; Gear</span>
+                      <span className="font-bold text-white">15% OFF Equipment</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">📅 Booking Window</span>
+                      <span className="font-bold text-white">7 Days in Advance</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">🎟️ Free Guest Passes</span>
+                      <span className="font-bold text-[#dfff45]">2 Passes / Month</span>
+                    </div>
+                  </div>
+
+                  {/* 1-Month Profit Box */}
+                  <div className="mt-7 rounded-2xl bg-[#dfff45]/10 border border-[#dfff45]/25 p-4 text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#dfff45]">
+                      📊 1-Month Member Profits:
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-white">
+                      Save ₹3,600/mo <span className="text-[#dfff45]">(Net Profit +₹2,100)</span>
+                    </p>
+                    <ul className="mt-2.5 space-y-1.5 text-[11px] text-white/70">
+                      <li className="flex items-center gap-2">✓ 4 Tennis matches: Save ₹800</li>
+                      <li className="flex items-center gap-2">✓ 2 Cricket games: Save ₹600</li>
+                      <li className="flex items-center gap-2">✓ 2 Free guest passes: Worth ₹1,000</li>
+                      <li className="flex items-center gap-2">✓ Café &amp; Shop discount: Save ~₹1,200</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  {member?.plan?.code === "gold" ? (
+                    <div className="w-full rounded-full bg-white/20 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white">
+                      Current Plan ✓
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleSelectPlan("gold")}
+                      disabled={activating === "gold"}
+                      className="w-full rounded-full bg-[#dfff45] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white"
+                    >
+                      {activating === "gold" ? "Activating..." : member ? "Activate Gold (₹1,500/mo)" : "Join Gold Membership"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* CARD 2: SILVER */}
+              <div className="flex flex-col justify-between rounded-3xl bg-white p-7 text-[#163021] border border-[#163021]/15 shadow-sm sm:p-9">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display text-3xl font-bold uppercase text-[#163021]">Silver Tier</h3>
+                      <p className="text-xs text-[#617065] mt-1">For regular weekly players</p>
+                    </div>
+                    <span className="rounded-full bg-[#163021]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#163021]">
+                      Club Favourite
+                    </span>
+                  </div>
+
+                  <div className="mt-6 border-b border-[#163021]/10 pb-6">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-5xl font-bold text-[#163021]">₹1,000</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider text-[#617065]">/ month</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#849087]">or ₹10,000 / year (save ₹2,000 yearly)</p>
+                  </div>
+
+                  {/* Hourly Rates & Benefits */}
+                  <div className="mt-6 space-y-3 text-xs">
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🎾 Tennis Court</span>
+                      <span className="font-bold text-[#163021]">₹400/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹500</span></span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🏏 Cricket Turf</span>
+                      <span className="font-bold text-[#163021]">₹650/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹800</span></span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">☕ Clubhouse Bar &amp; Café</span>
+                      <span className="font-bold text-[#163021]">10% OFF Everything</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🛍️ Pro Shop &amp; Gear</span>
+                      <span className="font-bold text-[#163021]">10% OFF Equipment</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">📅 Booking Window</span>
+                      <span className="font-bold text-[#163021]">5 Days in Advance</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🎟️ Free Guest Passes</span>
+                      <span className="font-bold text-[#163021]">1 Pass / Month</span>
+                    </div>
+                  </div>
+
+                  {/* 1-Month Profit Box */}
+                  <div className="mt-7 rounded-2xl bg-[#163021]/5 border border-[#163021]/10 p-4 text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#163021]">
+                      📊 1-Month Member Profits:
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-[#163021]">
+                      Save ₹1,650/mo <span className="text-[#2e7d32]">(Net Profit +₹650)</span>
+                    </p>
+                    <ul className="mt-2.5 space-y-1.5 text-[11px] text-[#617065]">
+                      <li className="flex items-center gap-2">✓ 4 Tennis matches: Save ₹400</li>
+                      <li className="flex items-center gap-2">✓ 1 Cricket match: Save ₹150</li>
+                      <li className="flex items-center gap-2">✓ 1 Free guest pass: Worth ₹500</li>
+                      <li className="flex items-center gap-2">✓ Café &amp; Shop discount: Save ~₹600</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  {member?.plan?.code === "silver" ? (
+                    <div className="w-full rounded-full bg-[#163021]/15 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021]">
+                      Current Plan ✓
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleSelectPlan("silver")}
+                      disabled={activating === "silver"}
+                      className="w-full rounded-full bg-[#163021] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021]"
+                    >
+                      {activating === "silver" ? "Activating..." : member ? "Activate Silver (₹1,000/mo)" : "Join Silver Membership"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* CARD 3: JUNIOR */}
+              <div className="flex flex-col justify-between rounded-3xl bg-white p-7 text-[#163021] border border-[#163021]/15 shadow-sm sm:p-9">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-display text-3xl font-bold uppercase text-[#163021]">Junior Tier</h3>
+                      <p className="text-xs text-[#617065] mt-1">Under 18, Students &amp; Youth</p>
+                    </div>
+                    <span className="rounded-full bg-[#163021]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#163021]">
+                      Youth 50% Off
+                    </span>
+                  </div>
+
+                  <div className="mt-6 border-b border-[#163021]/10 pb-6">
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-5xl font-bold text-[#163021]">₹600</span>
+                      <span className="text-sm font-semibold uppercase tracking-wider text-[#617065]">/ month</span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-[#849087]">or ₹6,000 / year (save ₹1,200 yearly)</p>
+                  </div>
+
+                  {/* Hourly Rates & Benefits */}
+                  <div className="mt-6 space-y-3 text-xs">
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🎾 Tennis Court</span>
+                      <span className="font-bold text-[#2e7d32]">₹250/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹500</span> (50% Off)</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🏏 Cricket Turf</span>
+                      <span className="font-bold text-[#2e7d32]">₹400/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹800</span> (50% Off)</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🛍️ Pro Shop Gear</span>
+                      <span className="font-bold text-[#163021]">5% OFF Training Gear</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">🏆 Skills Workshop</span>
+                      <span className="font-bold text-[#163021]">Free Monthly Clinic</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">📅 Booking Window</span>
+                      <span className="font-bold text-[#163021]">3 Days in Advance</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">⏰ Afternoon Priority</span>
+                      <span className="font-bold text-[#163021]">2 PM – 6 PM Slots</span>
+                    </div>
+                  </div>
+
+                  {/* 1-Month Profit Box */}
+                  <div className="mt-7 rounded-2xl bg-[#163021]/5 border border-[#163021]/10 p-4 text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#163021]">
+                      📊 1-Month Member Profits:
+                    </p>
+                    <p className="mt-1 text-sm font-bold text-[#163021]">
+                      Save ₹2,500/mo <span className="text-[#2e7d32]">(Net Profit +₹1,900)</span>
+                    </p>
+                    <ul className="mt-2.5 space-y-1.5 text-[11px] text-[#617065]">
+                      <li className="flex items-center gap-2">✓ 6 Tennis practice hrs: Save ₹1,500</li>
+                      <li className="flex items-center gap-2">✓ 1 Cricket turf game: Save ₹400</li>
+                      <li className="flex items-center gap-2">✓ Free monthly skills clinic: Worth ₹600</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  {member?.plan?.code === "junior" ? (
+                    <div className="w-full rounded-full bg-[#163021]/15 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021]">
+                      Current Plan ✓
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleSelectPlan("junior")}
+                      disabled={activating === "junior"}
+                      className="w-full rounded-full bg-[#163021] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021]"
+                    >
+                      {activating === "junior" ? "Activating..." : member ? "Activate Junior (₹600/mo)" : "Join Junior Membership"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Custom / Corporate Enquiry Bar */}
+            <div className="mt-20 rounded-3xl border border-[#163021]/15 bg-white p-8 sm:p-12 text-center max-w-3xl mx-auto shadow-sm">
+              <p className="eyebrow">Corporate &amp; Family Plans</p>
+              <h3 className="mt-3 font-display text-3xl font-bold uppercase text-[#163021] sm:text-4xl">
+                Need a Custom Club Package?
+              </h3>
+              <p className="mt-3 text-sm text-[#617065] max-w-md mx-auto">
+                We offer custom corporate memberships, team packages, and private family arrangements with dedicated court booking privileges.
+              </p>
+              <div className="mx-auto mt-7 flex max-w-md rounded-full border border-[#163021]/15 bg-[#f7f6f0] p-1.5">
+                <input
+                  aria-label="Email address"
+                  placeholder="Your corporate or family email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-[#849087]"
+                />
+                <button
+                  onClick={async () => {
+                    const em = email.trim();
+                    if (!em.includes("@")) { setNotice("Add an email address first"); return; }
+                    try {
+                      const res = await fetch("/api/v1/enquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Website visitor", contact: em, interest: "Custom Membership", message: "Custom corporate/family membership info requested" }) });
+                      if (!res.ok) throw new Error();
+                      setEmail("");
+                      setNotice("Thanks — our membership manager will be in touch shortly");
+                    } catch { setNotice("Could not send that — try again"); }
+                  }}
+                  className="rounded-full bg-[#163021] px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#294d36]"
+                >
+                  Request Info
+                </button>
+              </div>
             </div>
           </div>
         </section>

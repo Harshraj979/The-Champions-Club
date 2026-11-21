@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { allStarts, fmtTime, inr, istMinutesNow, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
-import Link from "next/link";
-import type { StaffDTO } from "@/lib/types";
+import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
 
 const starts = allStarts();
 
@@ -17,44 +17,82 @@ export default function Courts() {
   const [name, setName] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [buyingPlan, setBuyingPlan] = useState(false);
 
   const courts = useApi(() => api.courts());
   const avail = useApi(() => api.availability(courtId, date), [courtId, date]);
-  const lookup = useApi(
-    () => (name.trim().length >= 3 ? api.lookupMember(name.trim()) : Promise.resolve({ member: null })),
-    [name],
-  );
+  const [staff, setStaff] = useState<StaffDTO | null>(null);
+  const [member, setMember] = useState<MemberSessionDTO | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  async function refreshAuth() {
+    try {
+      const [sRes, mRes] = await Promise.allSettled([api.me(), api.memberMe()]);
+      if (sRes.status === "fulfilled" && sRes.value.staff) setStaff(sRes.value.staff);
+      else setStaff(null);
+
+      if (mRes.status === "fulfilled" && mRes.value.member) {
+        setMember(mRes.value.member);
+        setName(mRes.value.member.name);
+      } else {
+        setMember(null);
+      }
+    } finally {
+      setAuthChecked(true);
+    }
+  }
+
+  useEffect(() => {
+    refreshAuth();
+  }, []);
 
   const court = courts.data?.find((c) => c.id === courtId);
-  const member = lookup.data?.member ?? null;
-  const [staff, setStaff] = useState<StaffDTO | null>(null);
-  const [meKnown, setMeKnown] = useState(false);
-  useEffect(() => {
-    api.me()
-      .then((r) => setStaff(r.staff))
-      .catch(() => setStaff(null))
-      .finally(() => setMeKnown(true));
-  }, []);
-  const canBook = !!staff && (staff.role === "OWNER" || staff.role === "FRONT_DESK" || staff.role === "STAFF");
-  // a booking runs a full hour, so it also blocks the starts either side of it
+  const isStaff = !!staff && (staff.role === "OWNER" || staff.role === "FRONT_DESK" || staff.role === "STAFF");
+  const isMemberActive = !!member && (member.state === "active" || member.state === "expiring") && !!member.plan;
+  const canBook = isStaff || isMemberActive;
+
+  // A booking runs a full hour, so it blocks starts within 60 mins
   const taken = avail.data?.taken ?? [];
   const free = (t: number) =>
     !taken.some((b) => Math.abs(b - t) < 60) && (date !== today || t + 60 > istMinutesNow());
-  const price = slot === null || !court ? null : member ? (court.sport === "Cricket" ? member.cricketPrice : member.tennisPrice) : court.walkinPrice;
+
+  const memberPrice =
+    member?.plan && court
+      ? court.sport === "Cricket"
+        ? member.plan.cricketPrice
+        : member.plan.tennisPrice
+      : null;
+
+  const price =
+    slot === null || !court
+      ? null
+      : isMemberActive && memberPrice !== null
+      ? memberPrice
+      : court.walkinPrice;
 
   useEffect(() => {
     setSlot(null);
   }, [courtId, date]);
 
   async function book() {
-    if (slot === null || !name.trim() || !court) return;
+    const bookerName = member?.name ?? name.trim();
+    if (slot === null || !bookerName || !court) return;
     setBusy(true);
     setMsg(null);
     try {
-      const b = await api.createBooking({ courtId, date, start: slot, name: name.trim() });
+      const b = await api.createBooking({
+        courtId,
+        date,
+        start: slot,
+        name: bookerName,
+        phone: member?.phone ?? "",
+        type: "REGULAR",
+      });
       setMsg({
         ok: true,
-        text: `Booked. ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${b.price ? `, ${inr(b.price)} at the desk` : ", covered by your plan"}.`,
+        text: `Court booked! ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${
+          b.price ? `, ${inr(b.price)} at the desk` : ", covered by your plan"
+        }.`,
       });
       setSlot(null);
       void avail.reload();
@@ -66,13 +104,101 @@ export default function Courts() {
     }
   }
 
+  async function handleBuyPlan(planCode: string) {
+    setBuyingPlan(true);
+    setMsg(null);
+    try {
+      await api.buyPlan(planCode);
+      await refreshAuth();
+      setMsg({ ok: true, text: `Plan activated! You can now pick a slot and book your court directly.` });
+    } catch (e: any) {
+      setMsg({ ok: false, text: e.message || "Failed to activate plan" });
+    } finally {
+      setBuyingPlan(false);
+    }
+  }
+
   return (
-    <main className="wrap page">
-      <div className="page-head">
-        <p className="page-eyebrow">Play</p>
-        <h1 className="page-title">Courts</h1>
-        <p className="sub">Pick a court and a day. Crossed-out slots are taken, and a booking covers the full hour.</p>
+    <main className="mx-auto max-w-[1280px] px-5 py-12 sm:px-8 sm:py-16">
+      <div className="mb-8 max-w-2xl">
+        <div className="mb-3 flex items-center gap-3">
+          <span className="h-px w-8 bg-[#163021]" />
+          <span className="text-[10px] font-bold uppercase tracking-[.25em] text-[#163021]">
+            Championship Courts &amp; Turf
+          </span>
+        </div>
+        <h1 className="font-display text-5xl font-bold uppercase tracking-tight text-[#163021] sm:text-6xl">
+          Court availability
+        </h1>
+        <p className="mt-3 text-sm text-[#617065] sm:text-base leading-relaxed">
+          Real-time court and turf schedule. Active club members book directly at special member rates.
+        </p>
       </div>
+
+      {authChecked && (
+        <div className="mb-8 rounded-2xl border border-[#163021]/15 bg-white p-5 shadow-sm">
+          {!member && !staff ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <p className="font-bold text-sm text-[#163021]">Are you a club member?</p>
+                <p className="text-xs text-[#617065]">
+                  Sign in to your member account to unlock direct court bookings and plan rates.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Link
+                  href="/member-login?next=/courts"
+                  className="rounded-full bg-[#163021] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021]"
+                >
+                  Member Sign In
+                </Link>
+                <Link
+                  href="/member-login?tab=signup&next=/courts"
+                  className="rounded-full bg-[#dfff45] px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white border border-[#163021]/20"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            </div>
+          ) : member ? (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-[#163021]">Signed in as {member.name}</span>
+                  {isMemberActive ? (
+                    <span className="rounded-full bg-[#2e7d32]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#2e7d32]">
+                      {member.plan?.name} Member
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-[#b45309]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#b45309]">
+                      {member.state === "expired" ? "Membership Expired" : "No Active Membership"}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[#617065] mt-1">
+                  {isMemberActive
+                    ? `Your membership is active with special rates (${member.expiresOn ? `valid until ${member.expiresOn}` : ""}).`
+                    : "You need an active plan to reserve court slots."}
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  await api.memberLogout();
+                  window.location.reload();
+                }}
+                className="text-xs text-[#617065] hover:text-[#163021] underline"
+              >
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#163021]">Staff Mode: {staff?.name} ({staff?.role})</span>
+              <span className="text-[10px] uppercase text-[#2e7d32] font-semibold">Front Desk Booking Active</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {courts.loading ? (
         <Loading rows={2} />
@@ -83,8 +209,8 @@ export default function Courts() {
           <div className="step">
             <div className="step-head">
               <span className="step-n">1</span>
-              <h3>Pick a court</h3>
-              <span className="step-hint">Prices are the walk-in rate; member plans apply by name</span>
+              <h3>Pick a court / turf</h3>
+              <span className="step-hint">Walk-in rate shown; member rates apply on sign-in</span>
             </div>
             <div className="seg" role="group" aria-label="Court">
               {courts.data!.map((c) => (
@@ -100,7 +226,7 @@ export default function Courts() {
             <div className="step-head">
               <span className="step-n">2</span>
               <h3>Date and time</h3>
-              <span className="step-hint">One hour a booking, crossed-out slots are taken</span>
+              <span className="step-hint">60-minute slots; crossed-out slots are already taken</span>
             </div>
             <div style={{ maxWidth: 300 }}>
               <label htmlFor="date">Date</label>
@@ -124,48 +250,110 @@ export default function Courts() {
           <div className="step">
             <div className="step-head">
               <span className="step-n">3</span>
-              <h3>Your details</h3>
-              <span className="step-hint">Members: your registered name gets your plan price</span>
+              <h3>Confirmation &amp; Booking</h3>
+              <span className="step-hint">
+                {isMemberActive ? "Member rate applied" : "Active membership required"}
+              </span>
             </div>
-            {!meKnown ? null : !canBook ? (
-              <p className="muted" style={{ maxWidth: 520 }}>
-                Bookings are made at the front desk, so this page shows live availability for everyone.
-                Visiting first? <Link className="text-link" href="/trial">Book a free trial</Link>
-                {staff ? "." : <> or <Link className="text-link" href="/login">sign in as staff</Link> to book.</>}
-              </p>
+
+            {/* Gating check */}
+            {!authChecked ? null : !member && !staff ? (
+              <div className="rounded-2xl border border-[#163021]/15 bg-[#fbf9f4] p-6 text-center">
+                <p className="font-display text-2xl font-bold uppercase text-[#163021]">Member Login Required</p>
+                <p className="mt-2 text-xs text-[#617065] max-w-md mx-auto leading-relaxed">
+                  To book courts, please sign in to your member account or register. If you are new, you can also book a one-time free session.
+                </p>
+                <div className="mt-5 flex flex-wrap justify-center gap-3">
+                  <Link
+                    href="/member-login?next=/courts"
+                    className="rounded-full bg-[#163021] px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#dfff45] hover:text-[#163021] transition"
+                  >
+                    Member Sign In
+                  </Link>
+                  <Link
+                    href="/member-login?tab=signup&next=/courts"
+                    className="rounded-full bg-[#dfff45] px-6 py-3 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-white transition border border-[#163021]/20"
+                  >
+                    Create Account
+                  </Link>
+                  <Link
+                    href="/trial"
+                    className="rounded-full border border-[#163021]/25 px-5 py-3 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-white transition"
+                  >
+                    Book a Free Trial
+                  </Link>
+                </div>
+              </div>
+            ) : member && !isMemberActive ? (
+              <div className="rounded-2xl border border-[#b45309]/30 bg-[#fffdfa] p-6">
+                <div className="flex items-center gap-2 text-[#b45309]">
+                  <span className="font-bold text-sm uppercase tracking-wider">⚡ Membership Plan Required</span>
+                </div>
+                <p className="mt-2 text-xs text-[#617065] leading-relaxed">
+                  Hi <strong>{member.name}</strong>, your account does not have an active membership plan. You must have an active Gold, Silver, or Junior membership to reserve club courts. Select a plan below to activate it instantly:
+                </p>
+
+                <div className="grid sm:grid-cols-3 gap-3 mt-4">
+                  {[
+                    { code: "gold", name: "Gold Tier", tennis: "₹300/hr", cricket: "₹500/hr", discount: "15% shop · 20% bar", color: "border-[#dfff45] bg-[#163021] text-white" },
+                    { code: "silver", name: "Silver Tier", tennis: "₹400/hr", cricket: "₹650/hr", discount: "10% shop · 10% bar", color: "border-[#163021]/20 bg-white text-[#163021]" },
+                    { code: "junior", name: "Junior Tier", tennis: "₹250/hr", cricket: "₹400/hr", discount: "5% shop · Under 18", color: "border-[#163021]/20 bg-white text-[#163021]" },
+                  ].map((p) => (
+                    <div key={p.code} className="rounded-xl border p-4 flex flex-col justify-between border-[#163021]/15 bg-white shadow-sm">
+                      <div>
+                        <p className="font-display text-xl font-bold uppercase text-[#163021]">{p.name}</p>
+                        <p className="text-xs font-semibold text-[#163021] mt-1">Tennis {p.tennis} · Cricket {p.cricket}</p>
+                        <p className="text-[11px] text-[#617065] mt-1">{p.discount}</p>
+                      </div>
+                      <button
+                        onClick={() => handleBuyPlan(p.code)}
+                        disabled={buyingPlan}
+                        className="mt-4 w-full rounded-full bg-[#dfff45] py-2.5 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#163021] hover:text-white transition disabled:opacity-40"
+                      >
+                        {buyingPlan ? "Activating..." : `Activate ${p.name.split(" ")[0]}`}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ) : (
-            <div style={{ maxWidth: 420 }}>
-              <label htmlFor="name">Your name</label>
-              <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: your registered name" />
-            </div>
-            )}
-            {member && (
-              <p className="muted" style={{ marginTop: 10 }} role="status">
-                {member.state === "expired"
-                  ? `${member.name}, ${member.plan} plan, expired. Bookings are paused until it is renewed.`
-                  : `${member.name}, ${member.plan} plan, this court at ${inr(court?.sport === "Cricket" ? member.cricketPrice : member.tennisPrice)} an hour.`}
-              </p>
-            )}
+              <div>
+                {member ? (
+                  <div className="mb-4 text-sm text-[#163021]">
+                    Booking as <strong>{member.name}</strong> ({member.plan?.name} Member).
+                  </div>
+                ) : (
+                  <div style={{ maxWidth: 420 }} className="mb-4">
+                    <label htmlFor="name">Staff View: Member or Walk-in Name</label>
+                    <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Member name" />
+                  </div>
+                )}
 
-            {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
+                {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
 
-            <div className="summary">
-            <p className="s-lines">
-              {slot === null || !court ? (
-                "No slot picked yet."
-              ) : (
-                <>
-                  {court.name} at <span className="num">{fmtTime(slot)}</span> ·{" "}
-                  <span className="num s-total" style={{ fontSize: 16 }}>
-                    {price === 0 ? "Covered by your plan" : inr(price ?? 0)}
-                  </span>
-                </>
-              )}
-            </p>
-              <button className="btn btn-ink" disabled={!canBook || slot === null || !name.trim() || busy} onClick={book}>
-                {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
-              </button>
-            </div>
+                <div className="summary">
+                  <p className="s-lines">
+                    {slot === null || !court ? (
+                      "No slot picked yet."
+                    ) : (
+                      <>
+                        {court.name} at <span className="num">{fmtTime(slot)}</span> ·{" "}
+                        <span className="num s-total" style={{ fontSize: 16 }}>
+                          {price === 0 ? "Covered by your plan" : inr(price ?? 0)}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  <button
+                    className="btn btn-ink"
+                    disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
+                    onClick={book}
+                  >
+                    {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

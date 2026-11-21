@@ -3,11 +3,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
-import type { StaffDTO } from "@/lib/types";
+import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
 
 const publicLinks = [
   { href: "/courts", label: "Courts" },
-  { href: "/#plans", label: "Membership" },
+  { href: "/#membership", label: "Membership" },
   { href: "/shop", label: "Shop" },
   { href: "/bar", label: "Bar & Café" },
 ];
@@ -25,11 +25,13 @@ const staffLinksFor = (role: StaffDTO["role"]) => {
 export default function Nav() {
   const [open, setOpen] = useState(false);
   const [staff, setStaff] = useState<StaffDTO | null>(null);
+  const [member, setMember] = useState<MemberSessionDTO | null>(null);
   const path = usePathname();
 
   useEffect(() => {
     setOpen(false);
   }, [path]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -37,15 +39,25 @@ export default function Nav() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
   useEffect(() => {
     api.me()
       .then((r) => setStaff(r.staff))
       .catch(() => setStaff(null));
+    api.memberMe()
+      .then((r) => setMember(r.member))
+      .catch(() => setMember(null));
   }, [path]);
 
-  async function signOut() {
+  async function signStaffOut() {
     await api.logout().catch(() => {});
     setStaff(null);
+    window.location.href = "/";
+  }
+
+  async function signMemberOut() {
+    await api.memberLogout().catch(() => {});
+    setMember(null);
     window.location.href = "/";
   }
 
@@ -67,12 +79,26 @@ export default function Nav() {
           {staff ? (
             <>
               <span className="staff-name">{staff.name}</span>
-              <button className="btn btn-quiet" onClick={signOut}>Sign out</button>
+              <button className="btn btn-quiet" onClick={signStaffOut}>Sign out</button>
+            </>
+          ) : member ? (
+            <>
+              <Link href="/courts" className="staff-name font-bold text-xs" style={{ color: "var(--brand-ink, #163021)" }}>
+                ⚡ {member.name} ({member.plan ? member.plan.name : "No Plan"})
+              </Link>
+              <button className="btn btn-quiet" onClick={signMemberOut}>Sign out</button>
             </>
           ) : (
-            <Link className="btn btn-quiet" href="/login">Staff sign-in</Link>
+            <>
+              <Link className="btn btn-quiet" href="/member-login">Member sign-in</Link>
+              <Link className="btn btn-quiet text-xs opacity-60" href="/login" title="Staff portal sign in">Staff</Link>
+            </>
           )}
-          <Link className="btn btn-ink" href="/trial">Book a free trial</Link>
+          {member ? (
+            <Link className="btn btn-ink" href="/courts">Book a court</Link>
+          ) : (
+            <Link className="btn btn-ink" href="/member-login?tab=signup">Join the club</Link>
+          )}
           <button className="menu-btn" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? "✕" : "☰"}
           </button>
@@ -83,11 +109,20 @@ export default function Nav() {
           {links.map((l) => (
             <Link key={l.href} href={l.href}>{l.label}</Link>
           ))}
-          <Link href="/trial">Book a free trial</Link>
-          {staff ? (
-            <button className="mobile-signout" onClick={signOut}>Sign out ({staff.name})</button>
+          {member ? (
+            <Link href="/courts">Book a court</Link>
           ) : (
-            <Link href="/login">Staff sign-in</Link>
+            <Link href="/member-login?tab=signup">Join the club</Link>
+          )}
+          {staff ? (
+            <button className="mobile-signout" onClick={signStaffOut}>Sign out ({staff.name})</button>
+          ) : member ? (
+            <button className="mobile-signout" onClick={signMemberOut}>Sign out ({member.name})</button>
+          ) : (
+            <div className="flex flex-col gap-2 pt-2">
+              <Link href="/member-login">Member sign-in</Link>
+              <Link href="/login" className="text-xs opacity-60">Staff sign-in</Link>
+            </div>
           )}
         </nav>
       )}
