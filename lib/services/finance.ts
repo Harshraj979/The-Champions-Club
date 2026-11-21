@@ -20,7 +20,7 @@ const isRealDate = (s: string) => {
 const positiveInt = (n: number) => Number.isInteger(n) && n > 0;
 
 export async function listInvoices(): Promise<InvoiceDTO[]> {
-  const rows = await db.invoice.findMany({ orderBy: { issuedOn: "desc" } });
+  const rows = await db.invoice.findMany({ orderBy: { issuedOn: "desc" }, take: 200 });
   // Unpaid first — money owed should not be buried under paid bills.
   // (status is a plain String, so Prisma cannot order UNPAID before PAID.)
   rows.sort((a, b) => Number(a.status === "PAID") - Number(b.status === "PAID"));
@@ -52,7 +52,7 @@ export async function markInvoicePaid(id: number): Promise<InvoiceDTO> {
 }
 
 export async function listExpenses(): Promise<ExpenseDTO[]> {
-  const rows = await db.expense.findMany({ orderBy: { spentOn: "desc" } });
+  const rows = await db.expense.findMany({ orderBy: { spentOn: "desc" }, take: 200 });
   return rows.map((r) => ({
     id: r.id, title: r.title, category: r.category, amount: r.amount,
     spentOn: iso(r.spentOn), note: r.note,
@@ -69,7 +69,7 @@ export async function createExpense(input: { title: string; category: string; am
 }
 
 export async function listPayroll(): Promise<PayrollDTO[]> {
-  const rows = await db.payroll.findMany({ orderBy: [{ month: "desc" }, { staffName: "asc" }] });
+  const rows = await db.payroll.findMany({ orderBy: [{ month: "desc" }, { staffName: "asc" }], take: 200 });
   return rows.map((r) => ({
     id: r.id, staffName: r.staffName, month: r.month, salary: r.salary,
     leaveDays: r.leaveDays, tax: r.tax, net: r.salary - r.tax,
