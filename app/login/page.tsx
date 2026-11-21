@@ -81,7 +81,7 @@ export default function Login() {
       <div className="demo-box">
         <p><strong>Demo accounts.</strong> One tap, no typing — each button signs you in as that role.</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <button className="btn btn-primary" onClick={() => go("owner@champions.club", "champions")} disabled={busy}>Owner</button>
+          <button className="btn btn-ink" onClick={() => go("owner@champions.club", "champions")} disabled={busy}>Owner</button>
           <button className="btn btn-quiet" onClick={() => go("neha@champions.club", "demo1234")} disabled={busy}>Front desk</button>
           <button className="btn btn-quiet" onClick={() => go("arjun@champions.club", "demo1234")} disabled={busy}>Bar</button>
           <button className="btn btn-quiet" onClick={() => go("meera@champions.club", "demo1234")} disabled={busy}>Shop</button>
