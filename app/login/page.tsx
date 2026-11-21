@@ -12,6 +12,19 @@ export default function Login() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
+  async function demo() {
+    setErr("");
+    setBusy(true);
+    try {
+      await api.login("owner@champions.club", "champions");
+      const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard";
+      window.location.href = next.startsWith("/") ? next : "/dashboard";
+    } catch {
+      setErr("Demo sign-in failed. Try again.");
+      setBusy(false);
+    }
+  }
+
   async function submit() {
     setErr("");
     setBusy(true);
@@ -74,6 +87,14 @@ export default function Login() {
             {busy ? "Signing in..." : "Sign in"}
           </button>
         </div>
+      </div>
+
+      <div className="demo-box">
+        <p><strong>Just looking around?</strong> One tap, no typing.</p>
+        <div>
+          <button className="btn btn-primary" onClick={demo} disabled={busy}>Enter the demo</button>
+        </div>
+        <p className="demo-creds">Demo login: owner@champions.club · champions · Till PIN 2468</p>
       </div>
     </main>
   );
