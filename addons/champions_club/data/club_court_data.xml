@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="court_tennis_1" model="club.court">
+        <field name="name">Tennis 1</field><field name="sport">tennis</field>
+        <field name="walkin_price">500</field>
+    </record>
+    <record id="court_tennis_2" model="club.court">
+        <field name="name">Tennis 2</field><field name="sport">tennis</field>
+        <field name="walkin_price">500</field>
+    </record>
+    <record id="court_cricket_1" model="club.court">
+        <field name="name">Cricket 1</field><field name="sport">cricket</field>
+        <field name="walkin_price">800</field>
+    </record>
+</odoo>
