@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "../db";
 import { badRequest, conflict, forbidden, notFound } from "../errors";
-import { BOOKING_LEN, LAST_START_MIN, OPEN_MIN, SLOT_STEP, isISODate, istMinutesNow, todayISO } from "../format";
+import { BOOKING_LEN, LAST_START_MIN, OPEN_MIN, SLOT_STEP, fmtTime, isISODate, istMinutesNow, todayISO } from "../format";
 import type { BookingDTO } from "../types";
 import { findMemberByName, memberState } from "./members";
 import { createEnquiry } from "./enquiries";
@@ -152,7 +152,7 @@ export async function createBooking(input: {
       name: dto.who,
       contact: input.phone,
       interest: "Free trial",
-      message: `Trial on ${court.name}, ${input.date} at ${input.start}`,
+      message: `Trial on ${court.name}, ${input.date} at ${fmtTime(input.start)}`,
     }).catch(() => {});
   }
   return dto;
