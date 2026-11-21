@@ -57,7 +57,7 @@ export const api = {
     start: number;
     name: string;
     phone?: string;
-    type?: "REGULAR" | "TRIAL";
+    type?: "REGULAR" | "TRIAL" | "FRIDAY_SOCIAL";
   }) => post<BookingDTO>("/bookings", input),
   bookings: (date?: string) => call<BookingDTO[]>(`/bookings${date ? `?date=${date}` : ""}`),
   cancelBooking: (id: number) => post<BookingDTO>(`/bookings/${id}/cancel`),
