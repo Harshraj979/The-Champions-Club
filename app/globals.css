@@ -206,6 +206,9 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
   .field-row { grid-template-columns: 1fr; }
   .footer-in { grid-template-columns: 1fr 1fr; }
   .ledger .hide-m { display: none; }
+  .ledger th, .ledger td { padding: 10px 8px; font-size: 13.5px; }
+  .ledger .num { white-space: nowrap; }
+  .sec-head a { white-space: nowrap; }
   .seg { display: flex; width: 100%; }
   .seg button { flex: 1; padding: 8px 6px; font-size: 13px; white-space: nowrap; flex-direction: column; align-items: center; gap: 0; }
   .seg .seg-price { font-size: 11px; }
