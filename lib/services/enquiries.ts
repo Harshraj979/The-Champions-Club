@@ -62,6 +62,10 @@ export async function updateEnquiry(
   if (!row) throw notFound("No such enquiry");
   if (input.status === "CONVERTED")
     throw badRequest("Use the convert action to turn an enquiry into a member");
+  // CONVERTED is terminal: once the enquiry became a member, it
+  // cannot be moved back to NEW, QUOTED or LOST.
+  if (row.status === "CONVERTED" && row.memberId && input.status && input.status !== "CONVERTED")
+    throw conflict("That enquiry already became a member — it cannot go back");
   const updated = await db.enquiry.update({ where: { id }, data: input });
   return toDTO(updated);
 }
