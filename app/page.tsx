@@ -55,8 +55,8 @@ export default function Home() {
             <Link href="/#membership" className="text-xs font-semibold text-white/75 transition hover:text-white">Membership</Link>
           </nav>
           <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden rounded-full bg-white px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-[#dfff45] sm:block">Sign in</Link>
-            <Link href="/trial" className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">Join the club</Link>
+            <Link href="/login" className="rounded-full bg-white px-4 py-2.5 sm:px-5 sm:py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] shadow-md transition hover:bg-[#dfff45]">Sign in</Link>
+            <Link href="/trial" className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">Book a trial</Link>
             <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 lg:hidden" aria-label="Toggle menu"><Icon name={menuOpen ? "close" : "menu"} /></button>
           </div>
         </div>
@@ -84,7 +84,12 @@ export default function Home() {
                 <Link href="/courts" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Courts</Link>
                 <Link href="/#membership" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Membership</Link>
               </div>
-              <p className="mt-5 text-xs text-white/55">Working at the club? <Link href="/login" className="font-semibold text-white underline underline-offset-4 transition hover:text-[#dfff45]">Staff sign-in</Link></p>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Club staff:</span>
+                <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-md transition hover:bg-[#dfff45]">
+                  Sign in <Icon name="arrow" className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
             <div className="mt-16 flex flex-wrap gap-x-12 gap-y-5 border-t border-white/20 pt-6 text-[10px] uppercase tracking-[.18em] text-white/55 lg:absolute lg:bottom-20 lg:right-12 lg:mt-0 lg:w-[430px]">
               <span className="flex items-center gap-2"><Icon name="pin" className="h-4 w-4 text-[#dfff45]" />Jalandhar, Punjab</span>
