@@ -22,7 +22,7 @@ export const bookingInput = z.object({
   name: z.string().trim().min(1, "Your name is missing").max(80),
   phone: z.string().trim().max(20).optional().default(""),
   email: z.string().trim().email("That email does not look right").max(120).optional().or(z.literal("")),
-  type: z.enum(["REGULAR", "TRIAL"]).optional().default("REGULAR"),
+  type: z.enum(["REGULAR", "TRIAL", "FRIDAY_SOCIAL"]).optional().default("REGULAR"),
 });
 
 export const availPlanInput = z.object({
