@@ -240,6 +240,8 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 
 /* demo entry on the sign-in page */
 .demo-box { margin-top: 28px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; display: grid; gap: 12px; }
+.login-card { display: grid; gap: 4px; }
+.login-card .demo-box { margin-top: 18px; padding: 18px 0 0; background: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; }
 .demo-box p { font-size: 14px; color: var(--ink-2); }
 .demo-box p strong { color: var(--pine); }
 .demo-creds { font-size: 12.5px !important; }

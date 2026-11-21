@@ -47,6 +47,7 @@ export default function Login() {
         <p className="sub">Dashboard, bookings, members and the bar till live behind this.</p>
       </div>
 
+      <div className="panel login-card">
       <a className="btn btn-google" href={googleHref}>
         <span className="g-mark" aria-hidden="true">
           <svg width="18" height="18" viewBox="0 0 48 48">
@@ -86,6 +87,7 @@ export default function Login() {
           <button className="btn btn-quiet" onClick={() => go("meera@champions.club", "demo1234")} disabled={busy}>Shop</button>
         </div>
         <p className="demo-creds">owner@champions.club · champions — the rest use demo1234</p>
+      </div>
       </div>
     </main>
   );
