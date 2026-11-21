@@ -1,8 +1,9 @@
 "use client";
 
-// The landing page, implemented exactly from the user's Figma Make design
-// ("Sports Club Management System"). Only wiring differs: Member login goes
-// to the real staff sign-in. Everything else keeps the design's behaviour.
+// The landing page, from the user's Figma Make design ("Sports Club
+// Management System"), restyled to a centred layout on the user's call
+// (2026-11-22): same content and theme, hero and sections centred.
+// Wiring: Member login goes to the real staff sign-in.
 import { useState } from "react";
 import Link from "next/link";
 
@@ -163,9 +164,9 @@ export default function Home() {
       </main>
 
       <footer className="bg-[#10251a] px-5 py-10 text-white sm:px-8">
-        <div className="mx-auto flex max-w-[1280px] flex-col justify-between gap-8 border-b border-white/10 pb-10 md:flex-row md:items-center">
+        <div className="mx-auto flex max-w-[1280px] flex-col items-center gap-8 border-b border-white/10 pb-10 text-center">
           <Link href="/" className="font-display text-3xl font-bold uppercase">Champions <span className="text-[#dfff45]">Club.</span></Link>
-          <div className="flex flex-wrap gap-7 text-xs text-white/55">
+          <div className="flex flex-wrap justify-center gap-7 text-xs text-white/55">
             <Link href="/courts" className="transition hover:text-white">Courts</Link>
             <Link href="/shop" className="transition hover:text-white">Shop</Link>
             <Link href="/bar" className="transition hover:text-white">Bar &amp; Café</Link>
@@ -176,7 +177,7 @@ export default function Home() {
             <Icon name="instagram" className="h-4 w-4 text-white" />
           </div>
         </div>
-        <div className="mx-auto mt-7 flex max-w-[1280px] flex-col justify-between gap-3 text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row"><span>© 2025 Champions Club</span><span>Play · Eat · Belong</span></div>
+        <div className="mx-auto mt-7 flex max-w-[1280px] flex-col items-center gap-3 text-center text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row sm:justify-center sm:gap-10"><span>© 2025 Champions Club</span><span>Play · Eat · Belong</span></div>
       </footer>
 
       {notice && <div className="make-toast fixed bottom-5 right-5 z-50 rounded-full bg-white px-5 py-3 text-xs font-bold text-[#173021] shadow-2xl">{notice}</div>}
