@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { db } from "../db";
-import { badRequest, notFound } from "../errors";
+import { badRequest, conflict, notFound } from "../errors";
 import { todayISO } from "../format";
 import type { ExpiringDTO, MemberDTO, MemberHomeDTO, MemberState } from "../types";
 import { toBookingDTO } from "./bookings";
@@ -68,12 +68,22 @@ export async function listMembers(q?: string): Promise<MemberDTO[]> {
 export async function createMember(input: { name: string; phone: string; email?: string; planCode: string }): Promise<MemberDTO> {
   const plan = await db.plan.findUnique({ where: { code: input.planCode } });
   if (!plan) throw badRequest("Pick a plan that exists");
+  // No duplicate members: the same email, or the same name with the
+  // same phone, is the same person, not a second record.
+  const email = input.email?.trim().toLowerCase() || null;
+  if (email) {
+    const sameEmail = await db.member.findUnique({ where: { email } });
+    if (sameEmail) throw conflict("A member with that email already exists");
+  }
+  const samePerson = await db.member.findFirst({
+    where: { name: { equals: input.name.trim(), mode: "insensitive" }, phone: input.phone.trim() },
+  });
+  if (samePerson) throw conflict("A member with that name and phone already exists");
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
   // Portal access: with an email on file the member can sign in; the
   // first password is their phone number, the desk tells them to
   // change it later (no self-service reset in this version).
-  const email = input.email?.trim().toLowerCase() || null;
   const passwordHash = email && input.phone ? await bcrypt.hash(input.phone, 10) : null;
   const row = await db.member.create({
     data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
