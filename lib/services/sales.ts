@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { badRequest, conflict, forbidden, notFound } from "../errors";
-import { istDayStart, todayISO } from "../format";
+import { istDayStart, addDaysISO, todayISO } from "../format";
 import { createRazorpayOrder, razorpayConfigured, verifyPaymentSignature } from "../razorpay";
 import type { OrderDTO, TabDTO } from "../types";
 import { memberState, findMemberByName } from "./members";
@@ -177,13 +177,36 @@ export const toOrderDTO = (o: OrderRow): OrderDTO => ({
   items: o.items.map((i) => ({ productId: i.productId, name: i.product.name, qty: i.qty, price: i.price })),
 });
 
-export async function listOrders(): Promise<OrderDTO[]> {
+// Order history: no dates means today (the staff default); from/to
+// open any window, page is 1-based, 50 rows a page.
+export async function listOrders(opts: { from?: string; to?: string; page?: number } = {}): Promise<OrderDTO[]> {
+  const page = Math.max(1, opts.page ?? 1);
+  const from = opts.from ? istDayStart(opts.from) : istDayStart(todayISO());
+  const to = opts.to ? istDayStart(addDaysISO(opts.to, 1)) : istDayStart(addDaysISO(todayISO(), 1));
   const rows = await db.order.findMany({
-    where: { createdAt: { gte: istDayStart(todayISO()) } },
+    where: { createdAt: { gte: from, lt: to } },
     include: { items: { include: { product: true } } },
     orderBy: { createdAt: "desc" },
+    take: 50,
+    skip: (page - 1) * 50,
   });
   return rows.map(toOrderDTO);
+}
+
+// A PENDING counter order becomes PAID when the desk takes the money.
+// Atomic: only a PENDING order flips, so two staff cannot pay it twice.
+export async function markOrderPaid(id: number): Promise<OrderDTO> {
+  const updated = await db.order.updateMany({
+    where: { id, payState: "PENDING" },
+    data: { payState: "PAID" },
+  });
+  if (updated.count === 0) {
+    const exists = await db.order.findUnique({ where: { id } });
+    if (!exists) throw notFound("No such order");
+    throw conflict("That order is already paid");
+  }
+  const row = await db.order.findUnique({ where: { id }, include: { items: { include: { product: true } } } });
+  return toOrderDTO(row as OrderRow);
 }
 
 // ---------- Bar: tabs with a real open → settle life ----------
