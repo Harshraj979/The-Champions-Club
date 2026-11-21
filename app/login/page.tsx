@@ -29,6 +29,7 @@ export default function Login() {
   return (
     <main className="wrap page" style={{ maxWidth: 440 }}>
       <div className="page-head">
+        <span className="badge-mark">CC</span>
         <h1 className="page-title">Staff sign-in</h1>
         <p className="sub">Dashboard, bookings, members and the bar till live behind this.</p>
       </div>
