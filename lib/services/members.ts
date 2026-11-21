@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import type { Prisma } from "@prisma/client";
 import { db } from "../db";
 import { badRequest, conflict, notFound } from "../errors";
 import { todayISO } from "../format";
@@ -65,8 +66,13 @@ export async function listMembers(q?: string): Promise<MemberDTO[]> {
   return rows.map(toMemberDTO);
 }
 
-export async function createMember(input: { name: string; phone: string; email?: string; planCode: string }): Promise<MemberDTO> {
-  const plan = await db.plan.findUnique({ where: { code: input.planCode } });
+export async function createMember(
+  input: { name: string; phone: string; email?: string; planCode: string },
+  // Lets a caller run the creation inside its own transaction
+  // (enquiry conversion), so member + enquiry update are atomic.
+  client: Prisma.TransactionClient | typeof db = db,
+): Promise<MemberDTO> {
+  const plan = await client.plan.findUnique({ where: { code: input.planCode } });
   if (!plan) throw badRequest("Pick a plan that exists");
   // No duplicate members: the same email, or the same name with the
   // same phone, is the same person, not a second record.
@@ -89,7 +95,7 @@ export async function createMember(input: { name: string; phone: string; email?:
   const passwordHash = email
     ? await bcrypt.hash(input.phone.trim() ? input.phone : email, 10)
     : null;
-  const row = await db.member.create({
+  const row = await client.member.create({
     data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
     include: { plan: true },
   });
