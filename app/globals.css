@@ -286,4 +286,6 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
   .fixture .fx-t { min-width: 0; }
   .today-stats { gap: 10px; }
   .today-stats .ts-v { font-size: 22px; }
+  .seg { display: flex; width: 100%; }
+  .seg button { flex: 1; padding: 9px 6px; font-size: 13px; white-space: nowrap; }
 }
