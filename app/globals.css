@@ -158,6 +158,9 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 @keyframes skel-pulse { 50% { opacity: 0.45; } }
 
 .ledger-wrap { overflow-x: auto; }
+/* inner pages: footer rests at the bottom even on short pages */
+.shell { display: flex; flex-direction: column; min-height: 100dvh; }
+.shell > main { flex: 1 0 auto; }
 .staff-name { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.75); white-space: nowrap; }
 .mobile-signout { text-align: left; padding: 10px 0; font-weight: 500; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
 .empty { padding: 40px 24px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 14px; background: var(--surface); }

@@ -7,7 +7,7 @@ import type { StaffDTO } from "@/lib/types";
 
 const publicLinks = [
   { href: "/courts", label: "Courts" },
-  { href: "/#plans", label: "Membership" },
+  { href: "/#membership", label: "Membership" },
   { href: "/shop", label: "Shop" },
   { href: "/bar", label: "Bar & Café" },
 ];
