@@ -2,13 +2,11 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { useStore } from "@/lib/store";
-import { Role } from "@/lib/rbac";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const from = searchParams.get("from") || "/";
+  const from = searchParams.get("from") || searchParams.get("next") || "/";
 
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -16,8 +14,6 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [hintOtp, setHintOtp] = useState<string | null>(null);
-
-  const { setAuth } = useStore();
 
   async function handleSendOtp(targetEmail?: string) {
     const toSend = (targetEmail || email).trim().toLowerCase();
@@ -29,7 +25,7 @@ function LoginForm() {
     setHintOtp(null);
 
     try {
-      const res = await authClient.emailOTP.sendVerificationOTP({
+      const res = await authClient.emailOtp.sendVerificationOtp({
         email: toSend,
         type: "sign-in",
       });
@@ -43,7 +39,7 @@ function LoginForm() {
       setStep("otp");
       setMsg({ ok: true, text: `Verification code sent to ${toSend} via Resend.` });
 
-      // In local dev without live inbox, fetch the generated OTP for instant testing
+      // Dev helper for testing without live external mailbox
       try {
         const devRes = await fetch(`/api/auth/otp?email=${encodeURIComponent(toSend)}`);
         const devData = await devRes.json();
@@ -65,7 +61,7 @@ function LoginForm() {
     setMsg(null);
 
     try {
-      const res = await authClient.signIn.emailOTP({
+      const res = await authClient.signIn.emailOtp({
         email: email.trim().toLowerCase(),
         otp: cleanOtp,
       });
@@ -75,19 +71,6 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-
-      const role: Role = email.toLowerCase().startsWith("owner")
-        ? "owner"
-        : email.toLowerCase().startsWith("employee") || email.toLowerCase().startsWith("staff")
-        ? "employee"
-        : "customer";
-
-      setAuth(res.data?.token || "better-auth-session", {
-        id: res.data?.user?.id || "1",
-        email: res.data?.user?.email || email,
-        name: res.data?.user?.name || email.split("@")[0],
-        role,
-      });
 
       router.push(from);
       router.refresh();

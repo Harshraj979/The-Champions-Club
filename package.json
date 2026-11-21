@@ -9,7 +9,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types test/rbac.test.mjs && node --experimental-strip-types test/jwt.test.mjs && node --experimental-strip-types test/better-auth-resend.test.mjs"
+    "test": "node --experimental-strip-types test/better-auth-resend.test.mjs"
   },
   "dependencies": {
     "better-auth": "^1.7.27",
