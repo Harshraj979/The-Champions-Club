@@ -16,6 +16,9 @@ export default function Courts() {
   const [date, setDate] = useState(today);
   const [slot, setSlot] = useState<number | null>(null);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [staffAvailPlan, setStaffAvailPlan] = useState<string>("none");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [buyingPlan, setBuyingPlan] = useState(false);
@@ -96,12 +99,21 @@ export default function Courts() {
     setBusy(true);
     setMsg(null);
     try {
+      if (isStaff && staffAvailPlan !== "none" && email.trim()) {
+        await api.availMembership({
+          email: email.trim(),
+          name: name.trim() || undefined,
+          phone: phone.trim() || undefined,
+          planCode: staffAvailPlan,
+        });
+      }
       const b = await api.createBooking({
         courtId,
         date,
         start: slot,
         name: bookerName,
-        phone: member?.phone ?? "",
+        email: isStaff ? (email.trim() || undefined) : undefined,
+        phone: member?.phone ?? (phone.trim() || undefined),
         type: "REGULAR",
       });
       setMsg({
@@ -111,8 +123,12 @@ export default function Courts() {
             ? " · Paid online via Demo Razorpay"
             : b.price
             ? `, ${inr(b.price)} at the desk`
-            : ", covered by your plan"
-        }.`,
+            : ", covered by plan"
+        }.${
+          isStaff && email.trim()
+            ? ` Linked to ${email.trim()} — the customer can sign in with this email to view bookings & active membership.`
+            : ""
+        }`,
       });
       setSlot(null);
       void avail.reload();
@@ -358,9 +374,66 @@ export default function Courts() {
                     Booking as <strong>{member.name}</strong> ({member.plan?.name} Member).
                   </div>
                 ) : (
-                  <div style={{ maxWidth: 420 }} className="mb-4">
-                    <label htmlFor="name">Staff View: Member or Walk-in Name</label>
-                    <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Member name" />
+                  <div className="mb-5 rounded-2xl border border-[#163021]/15 bg-white p-5 shadow-sm">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#163021] mb-3">
+                      Front Desk Booking &amp; Member Account Sync
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <div>
+                        <label htmlFor="staff-name" className="text-xs font-semibold text-[#163021]">
+                          Customer / Member Name *
+                        </label>
+                        <input
+                          id="staff-name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g. Rahul Sharma"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="staff-email" className="text-xs font-semibold text-[#163021]">
+                          Customer Email (Syncs to Member Dashboard)
+                        </label>
+                        <input
+                          id="staff-email"
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="rahul@example.com"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="staff-phone" className="text-xs font-semibold text-[#163021]">
+                          Phone Number (Initial password for login)
+                        </label>
+                        <input
+                          id="staff-phone"
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="9811000001"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="staff-plan" className="text-xs font-semibold text-[#163021]">
+                          Avail Membership Plan (Optional)
+                        </label>
+                        <select
+                          id="staff-plan"
+                          value={staffAvailPlan}
+                          onChange={(e) => setStaffAvailPlan(e.target.value)}
+                        >
+                          <option value="none">None (Regular Walk-in rate)</option>
+                          <option value="gold">Gold Plan (₹1,500/mo · ₹300 tennis / ₹500 cricket)</option>
+                          <option value="silver">Silver Plan (₹1,000/mo · ₹400 tennis / ₹650 cricket)</option>
+                          <option value="junior">Junior Plan (₹600/mo · Under 18)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-[#617065] mt-2">
+                      💡 When booked with an email, the customer can later log in using that email to view this booking and active membership in their portal.
+                    </p>
                   </div>
                 )}
 

@@ -1,4 +1,5 @@
 import type { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { db } from "../db";
 import { badRequest, conflict, forbidden, notFound } from "../errors";
 import { BOOKING_LEN, LAST_START_MIN, OPEN_MIN, SLOT_STEP, fmtTime, isISODate, istMinutesNow, todayISO } from "../format";
@@ -83,7 +84,9 @@ export async function createBooking(input: {
   start: number;
   name: string;
   phone: string;
+  email?: string;
   type: "REGULAR" | "TRIAL";
+  isStaffBooking?: boolean;
 }): Promise<BookingDTO> {
   if (!isISODate(input.date)) throw badRequest("Date must be YYYY-MM-DD");
   if (input.date < todayISO()) throw badRequest("That date has already passed");
@@ -97,18 +100,79 @@ export async function createBooking(input: {
   const court = await db.court.findUnique({ where: { id: input.courtId } });
   if (!court) throw notFound("No such court");
 
-  const member = await findMemberByName(input.name);
-  if (input.type !== "TRIAL") {
-    if (!member || !member.plan || memberState(member.expiresOn, input.date) === "expired") {
-      throw forbidden(
-        member
-          ? `${member.name}'s membership plan is not active. Please choose an active plan to reserve courts.`
-          : "An active club membership is required to book a court. Please sign in or register with a membership plan.",
-      );
+  const cleanEmail = input.email?.trim().toLowerCase() || null;
+  let member: any = null;
+
+  if (cleanEmail) {
+    member = await db.member.findFirst({
+      where: { email: { equals: cleanEmail, mode: "insensitive" } },
+      include: { plan: true },
+    });
+  }
+
+  if (!member && input.phone) {
+    const cleanPhone = input.phone.replace(/\D/g, "");
+    if (cleanPhone.length >= 10) {
+      member = await db.member.findFirst({
+        where: { phone: cleanPhone },
+        include: { plan: true },
+      });
+      if (member && cleanEmail && !member.email) {
+        member = await db.member.update({
+          where: { id: member.id },
+          data: { email: cleanEmail },
+          include: { plan: true },
+        });
+      }
     }
   }
 
-  const planPrice = member?.plan ? (court.sport === "Cricket" ? member.plan.cricketPrice : member.plan.tennisPrice) : court.walkinPrice;
+  if (!member) {
+    member = await findMemberByName(input.name);
+    if (member && cleanEmail && !member.email) {
+      member = await db.member.update({
+        where: { id: member.id },
+        data: { email: cleanEmail },
+        include: { plan: true },
+      });
+    }
+  }
+
+  // If no member exists and an email was provided, auto-register them so they can login later
+  if (!member && cleanEmail) {
+    const phone = input.phone?.trim() || `9811${Math.floor(100000 + Math.random() * 900000)}`;
+    const passwordHash = await bcrypt.hash(phone, 10);
+    member = await db.member.create({
+      data: {
+        name: input.name.trim(),
+        email: cleanEmail,
+        phone,
+        passwordHash,
+        planId: null,
+        joinedOn: null,
+        expiresOn: null,
+      },
+      include: { plan: true },
+    });
+  }
+
+  const hasActivePlan = member?.plan && memberState(member.expiresOn, input.date) !== "expired";
+
+  if (input.type !== "TRIAL") {
+    if (!input.isStaffBooking) {
+      if (!member || !hasActivePlan) {
+        throw forbidden(
+          member
+            ? `${member.name}'s membership plan is not active. Please choose an active plan to reserve courts.`
+            : "An active club membership is required to book a court. Please sign in or register with a membership plan.",
+        );
+      }
+    }
+  }
+
+  const planPrice = hasActivePlan
+    ? (court.sport === "Cricket" ? member.plan.cricketPrice : member.plan.tennisPrice)
+    : court.walkinPrice;
   const price = input.type === "TRIAL" ? 0 : planPrice;
   const day = new Date(`${input.date}T00:00:00.000Z`);
 
@@ -130,7 +194,7 @@ export async function createBooking(input: {
           date: day,
           state: "BOOKED",
           type: { not: "FRIDAY_SOCIAL" },
-          who: { equals: input.name, mode: "insensitive" },
+          who: { equals: member?.name ?? input.name, mode: "insensitive" },
         },
       });
       if (mine >= 2) throw conflict("Two bookings a day is the limit, on every plan");
@@ -139,9 +203,9 @@ export async function createBooking(input: {
     return tx.booking.create({
       data: {
         courtId: court.id,
-        memberId: member?.id,
+        memberId: member?.id ?? null,
         who: member?.name ?? input.name,
-        phone: input.phone,
+        phone: input.phone || member?.phone || "",
         date: day,
         start: input.start,
         type: input.type,

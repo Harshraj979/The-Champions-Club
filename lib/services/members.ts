@@ -72,16 +72,104 @@ export async function createMember(input: { name: string; phone: string; email?:
   if (!plan) throw badRequest("Pick a plan that exists");
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
-  // Portal access: with an email on file the member can sign in; the
-  // first password is their phone number, the desk tells them to
-  // change it later (no self-service reset in this version).
   const email = input.email?.trim().toLowerCase() || null;
+
+  if (email || input.phone) {
+    const existing = await db.member.findFirst({
+      where: {
+        OR: [
+          ...(email ? [{ email: { equals: email, mode: "insensitive" } }] : []),
+          ...(input.phone ? [{ phone: input.phone.trim() }] : []),
+        ],
+      },
+      include: { plan: true },
+    });
+    if (existing) {
+      const passwordHash = existing.passwordHash ?? (input.phone ? await bcrypt.hash(input.phone, 10) : null);
+      const updated = await db.member.update({
+        where: { id: existing.id },
+        data: {
+          name: input.name.trim(),
+          phone: input.phone.trim() || existing.phone,
+          email: email || existing.email,
+          planId: plan.id,
+          joinedOn: joined,
+          expiresOn: expires,
+          passwordHash,
+        },
+        include: { plan: true },
+      });
+      return toMemberDTO(updated);
+    }
+  }
+
   const passwordHash = email && input.phone ? await bcrypt.hash(input.phone, 10) : null;
   const row = await db.member.create({
     data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
     include: { plan: true },
   });
   return toMemberDTO(row);
+}
+
+export async function availMembership(input: {
+  email: string;
+  name?: string;
+  phone?: string;
+  planCode: string;
+}): Promise<MemberDTO> {
+  const plan = await db.plan.findUnique({ where: { code: input.planCode } });
+  if (!plan) throw badRequest("Pick a valid plan (gold, silver, or junior)");
+
+  const cleanEmail = input.email.trim().toLowerCase();
+  const joined = new Date(`${todayISO()}T00:00:00.000Z`);
+  const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+
+  let member = await db.member.findFirst({
+    where: {
+      OR: [
+        { email: { equals: cleanEmail, mode: "insensitive" } },
+        ...(input.phone ? [{ phone: input.phone.trim() }] : []),
+      ],
+    },
+    include: { plan: true },
+  });
+
+  if (member) {
+    const cleanPhone = input.phone?.trim() || member.phone;
+    const cleanName = input.name?.trim() || member.name;
+    const passwordHash = member.passwordHash ?? (await bcrypt.hash(cleanPhone || "demo1234", 10));
+    const updated = await db.member.update({
+      where: { id: member.id },
+      data: {
+        planId: plan.id,
+        joinedOn: joined,
+        expiresOn: expires,
+        email: cleanEmail,
+        name: cleanName,
+        phone: cleanPhone,
+        passwordHash,
+      },
+      include: { plan: true },
+    });
+    return toMemberDTO(updated);
+  } else {
+    const cleanPhone = input.phone?.trim() || `9811${Math.floor(100000 + Math.random() * 900000)}`;
+    const cleanName = input.name?.trim() || cleanEmail.split("@")[0];
+    const passwordHash = await bcrypt.hash(cleanPhone, 10);
+    const created = await db.member.create({
+      data: {
+        name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        passwordHash,
+        planId: plan.id,
+        joinedOn: joined,
+        expiresOn: expires,
+      },
+      include: { plan: true },
+    });
+    return toMemberDTO(created);
+  }
 }
 
 export async function getMember(id: number): Promise<MemberDTO> {

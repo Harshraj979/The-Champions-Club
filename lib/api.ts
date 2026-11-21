@@ -57,6 +57,7 @@ export const api = {
     start: number;
     name: string;
     phone?: string;
+    email?: string;
     type?: "REGULAR" | "TRIAL";
   }) => post<BookingDTO>("/bookings", input),
   bookings: (date?: string) => call<BookingDTO[]>(`/bookings${date ? `?date=${date}` : ""}`),
@@ -65,6 +66,8 @@ export const api = {
   expiringMembers: () => call<ExpiringDTO[]>("/members/expiring"),
   createMember: (input: { name: string; phone?: string; email?: string; planCode: string }) =>
     post<MemberDTO>("/members", input),
+  availMembership: (input: { email: string; name?: string; phone?: string; planCode: string }) =>
+    post<MemberDTO>("/members/avail-plan", input),
   createOrder: (input: {
     items: { productId: number; qty: number }[];
     name: string;

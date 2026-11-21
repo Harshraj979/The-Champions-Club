@@ -31,8 +31,8 @@ export default function MemberAuth() {
     const passVal = customPass ?? password;
     try {
       await api.memberLogin({ identifier: idVal, password: passVal });
-      const next = new URLSearchParams(window.location.search).get("next") ?? "/courts";
-      window.location.href = next.startsWith("/") ? next : "/courts";
+      const next = new URLSearchParams(window.location.search).get("next") ?? "/member";
+      window.location.href = next.startsWith("/") ? next : "/member";
     } catch (ex) {
       setErr(ex instanceof ApiClientError ? ex.message : "Sign-in failed. Check your details.");
       setBusy(false);
@@ -141,6 +141,9 @@ export default function MemberAuth() {
               >
                 {busy ? "Signing in..." : "Sign in as Member"}
               </button>
+              <p className="mt-3 text-center text-xs text-[#617065] leading-relaxed">
+                💡 Booked or joined at the Front Desk? Sign in with your email and phone number as your initial password.
+              </p>
             </div>
 
             <div className="mt-6 pt-5 border-t border-[#163021]/10 text-center">

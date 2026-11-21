@@ -75,7 +75,16 @@ export default function Nav() {
     window.location.href = "/";
   }
 
-  const links = staff ? staffLinksFor(staff.role) : publicLinks;
+  const links = staff
+    ? staffLinksFor(staff.role)
+    : member
+    ? [
+        { href: "/courts", label: "Courts" },
+        { href: "/member", label: "My Club" },
+        { href: "/shop", label: "Shop" },
+        { href: "/bar", label: "Bar & Café" },
+      ]
+    : publicLinks;
 
   return (
     <header className="nav">
@@ -97,7 +106,7 @@ export default function Nav() {
             </>
           ) : member ? (
             <>
-              <Link href="/courts" className="member-chip" title="View courts and membership status">
+              <Link href="/member" className="member-chip" title="View my club portal & bookings">
                 <span>⚡ {member.name}</span>
                 <span className="chip-tier">{member.plan ? member.plan.name : "No Plan"}</span>
               </Link>

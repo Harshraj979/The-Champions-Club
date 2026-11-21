@@ -16,9 +16,9 @@ export const GET = (req: Request) =>
 export const POST = (req: Request) =>
   handle(async () => {
     const input = parse(bookingInput, await body(req));
+    const staffUser = await currentStaff();
+    const memberUser = await currentMember();
     if (input.type !== "TRIAL") {
-      const staffUser = await currentStaff();
-      const memberUser = await currentMember();
       if (!staffUser && !memberUser) {
         throw unauthorized("Sign in required to book a court");
       }
@@ -28,7 +28,13 @@ export const POST = (req: Request) =>
         }
         input.name = memberUser.name;
         if (!input.phone) input.phone = memberUser.phone;
+        if (!input.email) input.email = memberUser.email ?? undefined;
       }
     }
-    return createBooking({ ...input, phone: input.phone ?? "" });
+    return createBooking({
+      ...input,
+      phone: input.phone ?? "",
+      email: input.email || undefined,
+      isStaffBooking: !!staffUser,
+    });
   }, 201);
