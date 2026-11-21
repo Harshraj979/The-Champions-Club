@@ -169,11 +169,11 @@ export type StaffDTO = {
   id: number;
   name: string;
   email: string;
-  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP" | "BAR_OWNER" | "BAR_STAFF" | "SHOP_OWNER" | "SHOP_STAFF";
+  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP";
 };
 
 export type RolePinDTO = {
-  role: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP" | "BAR_OWNER" | "BAR_STAFF" | "SHOP_OWNER" | "SHOP_STAFF";
+  role: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
   label: string;
   defaultPin: string;
   hasCustomPin: boolean;
@@ -183,7 +183,7 @@ export type StaffMemberPinDTO = {
   id: number;
   name: string;
   email: string;
-  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP" | "BAR_OWNER" | "BAR_STAFF" | "SHOP_OWNER" | "SHOP_STAFF";
+  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP";
   roleLabel: string;
   defaultPin: string;
   hasCustomPin: boolean;
@@ -192,7 +192,7 @@ export type StaffMemberPinDTO = {
   shiftsCount: number;
   salaryDue: number;
   isOnShift: boolean;
-  payrollStatus: "PENDING" | "PAID";
+  payrollStatus: "PENDING" | "PAID" | "EXEMPT";
   lastPaidAt: string | null;
   lastPaymentRef: string | null;
 };

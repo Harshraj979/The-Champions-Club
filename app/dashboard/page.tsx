@@ -8,6 +8,8 @@ import { Loading, ErrorBox, Empty } from "@/components/States";
 import NumberTicker from "@/components/NumberTicker";
 import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { RolePinDTO, StaffMemberPinDTO } from "@/lib/types";
+import type { BarDashboardDTO } from "@/lib/services/bar-stats";
+import type { ShopDashboardDTO } from "@/lib/services/shop-stats";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
 const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Demo Razorpay" } as const;
@@ -21,8 +23,11 @@ const periods = [
 export default function Dashboard() {
   const today = todayISO();
   const dash = useApi(() => api.dashboard(today), [today]);
+  const barDash = useApi<BarDashboardDTO>(() => api.barStats(today), [today]);
+  const shopDash = useApi<ShopDashboardDTO>(() => api.shopStats(today), [today]);
   const d = dash.data;
   const [period, setPeriod] = useState<(typeof periods)[number]["code"]>("today");
+  const [viewTab, setViewTab] = useState<"overview" | "bar" | "shop" | "staff">("overview");
   const [pins, setPins] = useState<RolePinDTO[]>([]);
   const [staffList, setStaffList] = useState<StaffMemberPinDTO[]>([]);
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
@@ -160,16 +165,69 @@ export default function Dashboard() {
       <div className="page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
         <div>
           <p className="page-eyebrow">The club</p>
-          <h1 className="page-title">Owner dashboard</h1>
-          <p className="sub">The whole day in one place: courts, shop and bar.</p>
+          <h1 className="page-title">Owner Executive Dashboard</h1>
+          <p className="sub">Executive club management: court revenue, live bar takings, pro shop turnover, and staff payroll.</p>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link className="mini-link" href="/bar/dashboard" style={{ background: "#f0fdf4", borderColor: "#86efac", fontWeight: 700 }}>
-            🍷 Bar Owner Dashboard →
-          </Link>
-          <Link className="mini-link" href="/shop/dashboard" style={{ background: "#fefce8", borderColor: "#fde047", fontWeight: 700 }}>
-            🏷️ Shop Owner Dashboard →
-          </Link>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="mini-link"
+            aria-pressed={viewTab === "overview"}
+            onClick={() => setViewTab("overview")}
+            style={{
+              background: viewTab === "overview" ? "#163021" : "#f1f5f9",
+              color: viewTab === "overview" ? "#dfff45" : "#163021",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            🏛️ Club Overview
+          </button>
+          <button
+            type="button"
+            className="mini-link"
+            aria-pressed={viewTab === "bar"}
+            onClick={() => setViewTab("bar")}
+            style={{
+              background: viewTab === "bar" ? "#166534" : "#f0fdf4",
+              color: viewTab === "bar" ? "#dcfce7" : "#166534",
+              borderColor: "#86efac",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            🍷 Bar &amp; Cafeteria Stats
+          </button>
+          <button
+            type="button"
+            className="mini-link"
+            aria-pressed={viewTab === "shop"}
+            onClick={() => setViewTab("shop")}
+            style={{
+              background: viewTab === "shop" ? "#854d0e" : "#fefce8",
+              color: viewTab === "shop" ? "#fef9c3" : "#854d0e",
+              borderColor: "#fde047",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            🛍️ Pro Shop Stats
+          </button>
+          <button
+            type="button"
+            className="mini-link"
+            aria-pressed={viewTab === "staff"}
+            onClick={() => setViewTab("staff")}
+            style={{
+              background: viewTab === "staff" ? "#0b1a30" : "#f8fafc",
+              color: viewTab === "staff" ? "#dfff45" : "#0b1a30",
+              borderColor: "#94a3b8",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            👥 Staff &amp; Payroll
+          </button>
         </div>
       </div>
 
@@ -179,101 +237,332 @@ export default function Dashboard() {
         <ErrorBox message={dash.error} onRetry={dash.reload} />
       ) : (
         <>
-          <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
-            {periods.map((p) => (
-              <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
-            ))}
-          </div>
-
-          <div className="figures">
-            {figures.map((f) => (
-              <div className={`figure${f.total ? " total" : ""}`} key={f.label}>
-                <p className="f-label">{f.label}</p>
-                <p className="f-value num"><NumberTicker value={f.value} /></p>
+          {/* VIEW: BAR & CAFETERIA DETAILED STATS */}
+          {viewTab === "bar" && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 20 }}>🍷 Clubhouse Kitchen, Bar &amp; Cafeteria Analytics</h2>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>Live beverage &amp; kitchen takings, active table tabs, and till metrics.</p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link className="btn btn-ink" href="/bar" style={{ padding: "8px 16px", fontSize: 13 }}>
+                    🍸 Open Bar Till (POS)
+                  </Link>
+                  <button type="button" className="mini-link" onClick={() => setViewTab("overview")}>
+                    ← Back to Overview
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
 
-          {period === "today" && d!.byMethod.length > 0 && (
-            <p className="pay-strip">
-              Taken today by{" "}
-              {d!.byMethod.map((m, i) => (
-                <span key={m.method}>
-                  {i > 0 ? " · " : ""}
-                  {methodLabel[m.method]} <span className="num">{inr(m.amount)}</span>
-                </span>
-              ))}{" "}
-              at the shop and bar tills. Court money is paid at the desk.
-            </p>
-          )}
+              {/* Period selector */}
+              <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
+                {periods.map((p) => (
+                  <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
+                ))}
+              </div>
 
-          {d!.lowStock.length > 0 && (
-            <div className="notice warn" role="status">
-              Running low in the shop: {d!.lowStock.map((p) => `${p.name} (${p.stock} left)`).join(", ")}.
+              {/* Revenue Figures */}
+              <div className="figures">
+                <div className="figure total">
+                  <p className="f-label">Bar &amp; Café Revenue ({period.toUpperCase()})</p>
+                  <p className="f-value num">
+                    <NumberTicker value={barDash.data?.revenue?.[period] ?? split?.bar ?? 0} />
+                  </p>
+                </div>
+                <div className="figure">
+                  <p className="f-label">Open Tabs Right Now</p>
+                  <p className="f-value num">
+                    {barDash.data?.metrics?.openTabsCount ?? 0}{" "}
+                    <span style={{ fontSize: 15, fontWeight: 500 }}>({inr(barDash.data?.metrics?.openTabsValue ?? 0)})</span>
+                  </p>
+                </div>
+                <div className="figure">
+                  <p className="f-label">Tabs Settled Today</p>
+                  <p className="f-value num">{barDash.data?.metrics?.settledTodayCount ?? 0}</p>
+                </div>
+                <div className="figure">
+                  <p className="f-label">Average Spend / Tab</p>
+                  <p className="f-value num">{inr(barDash.data?.metrics?.averageTabValue ?? 0)}</p>
+                </div>
+              </div>
+
+              {/* Table Status Grid */}
+              <div className="panel" style={{ padding: 20, borderRadius: 16, marginTop: 20 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Live Tables Status (T1 - T8)</h3>
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {barDash.data?.metrics?.activeTables?.length ?? 0} / 8 Tables Occupied
+                  </span>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((tableNum) => {
+                    const isOccupied = barDash.data?.metrics?.activeTables?.includes(tableNum);
+                    return (
+                      <div
+                        key={tableNum}
+                        style={{
+                          padding: "12px 8px",
+                          textAlign: "center",
+                          borderRadius: 12,
+                          background: isOccupied ? "#ecfdf5" : "#f8fafc",
+                          border: isOccupied ? "2px solid #10b981" : "1px solid #e2e8f0",
+                        }}
+                      >
+                        <div style={{ fontSize: 15, fontWeight: 800, color: isOccupied ? "#065f46" : "#64748b" }}>
+                          Table {tableNum}
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4, color: isOccupied ? "#059669" : "#94a3b8" }}>
+                          {isOccupied ? "🟢 OCCUPIED" : "⚪ AVAILABLE"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
 
-          {period === "today" && d!.expiring.length > 0 && (
-            <section className="block">
-              <div className="sec-head">
-                <h2>Expiring in the next 14 days</h2>
-                <Link className="text-link" href="/members">All members</Link>
+          {/* VIEW: PRO SHOP DETAILED STATS */}
+          {viewTab === "shop" && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 16 }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: 20 }}>🛍️ Pro Shop Gear &amp; Inventory Analytics</h2>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: 13 }}>Equipment turnover, real-time stock valuation, and counter sales.</p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link className="btn btn-ink" href="/shop" style={{ padding: "8px 16px", fontSize: 13 }}>
+                    🛍️ Open Shop Counter (POS)
+                  </Link>
+                  <button type="button" className="mini-link" onClick={() => setViewTab("overview")}>
+                    ← Back to Overview
+                  </button>
+                </div>
               </div>
-              <div className="ledger-wrap">
-                <table className="ledger">
-                  <thead><tr><th>Member</th><th className="hide-m">Plan</th><th className="hide-m">Phone</th><th>Expires</th><th className="r">Days left</th></tr></thead>
-                  <tbody>
-                    {d!.expiring.map((m) => (
-                      <tr key={m.id}>
-                        <td>{m.name}</td>
-                        <td className="hide-m">{m.planName}</td>
-                        <td className="hide-m num">{m.phone}</td>
-                        <td>{m.expiresOn}</td>
-                        <td className="r num">{m.daysLeft === 0 ? "Today" : m.daysLeft}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              {/* Period selector */}
+              <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
+                {periods.map((p) => (
+                  <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
+                ))}
               </div>
-            </section>
+
+              {/* Revenue Figures */}
+              <div className="figures">
+                <div className="figure total">
+                  <p className="f-label">Gear Sales ({period.toUpperCase()})</p>
+                  <p className="f-value num">
+                    <NumberTicker value={shopDash.data?.revenue?.[period] ?? split?.shop ?? 0} />
+                  </p>
+                </div>
+                <div className="figure">
+                  <p className="f-label">Orders Placed Today</p>
+                  <p className="f-value num">{shopDash.data?.metrics?.ordersCount ?? 0}</p>
+                </div>
+                <div className="figure">
+                  <p className="f-label">Average Order Size</p>
+                  <p className="f-value num">{inr(shopDash.data?.metrics?.averageOrderValue ?? 0)}</p>
+                </div>
+                <div className="figure">
+                  <p className="f-label">Total Inventory Valuation</p>
+                  <p className="f-value num">{inr(shopDash.data?.metrics?.inventoryTotalValuation ?? 0)}</p>
+                </div>
+              </div>
+
+              {/* Low Stock Warning Banner */}
+              {(shopDash.data?.inventorySummary?.lowStockItems?.length ?? 0) > 0 && (
+                <div className="notice warn" role="status" style={{ marginTop: 18 }}>
+                  ⚠️ Stock alerts ({shopDash.data?.inventorySummary?.lowStockCount} low, {shopDash.data?.inventorySummary?.outOfStockCount} out):{" "}
+                  {shopDash.data?.inventorySummary?.lowStockItems?.map((p) => `${p.name} (${p.stock === 0 ? "OUT OF STOCK" : `${p.stock} left`})`).join(", ")}.
+                </div>
+              )}
+
+              {/* Fulfilment Split */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginTop: 20 }}>
+                <div className="panel" style={{ padding: 18, borderRadius: 16 }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700 }}>Desk Pickup Orders</h3>
+                  <div style={{ fontSize: 26, fontWeight: 800 }}>{shopDash.data?.metrics?.pickupCount ?? 0}</div>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>Collected directly at the clubhouse counter</p>
+                </div>
+                <div className="panel" style={{ padding: 18, borderRadius: 16 }}>
+                  <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700 }}>Door Delivery Orders</h3>
+                  <div style={{ fontSize: 26, fontWeight: 800 }}>{shopDash.data?.metrics?.deliveryCount ?? 0}</div>
+                  <p className="muted" style={{ margin: "4px 0 0", fontSize: 12 }}>Delivered to members&apos; registered addresses</p>
+                </div>
+              </div>
+            </div>
           )}
 
-          <section className="block">
-            <div className="sec-head">
-              <h2>On court today</h2>
-              <Link className="text-link" href="/bookings">All bookings</Link>
-            </div>
-            {d!.onCourt.length === 0 ? (
-              <Empty>Nothing on court today yet. Bookings made on the Courts page will show up here.</Empty>
-            ) : (
-              <div className="ledger-wrap">
-                <table className="ledger">
-                  <thead><tr><th>Time</th><th>Court</th><th>Who</th><th className="hide-m">Type</th><th className="r">Price</th></tr></thead>
-                  <tbody>
-                    {d!.onCourt.map((b) => (
-                      <tr key={b.id}>
-                        <td className="num">{fmtTime(b.start)}</td>
-                        <td>{b.court}</td>
-                        <td>{b.who}</td>
-                        <td className="hide-m">{typeLabel[b.type]}</td>
-                        <td className="r num">{b.price ? inr(b.price) : "Plan"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* VIEW: CLUB OVERVIEW */}
+          {viewTab === "overview" && (
+            <>
+              <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
+                {periods.map((p) => (
+                  <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
+                ))}
               </div>
-            )}
-            <p style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Link className="mini-link" href="/members">Members</Link>
-              <Link className="mini-link" href="/bar">Bar tabs</Link>
-              <Link className="mini-link" href="/shop">Shop</Link>
-              <Link className="mini-link" href="/invoices">Invoices</Link>
-              <Link className="mini-link" href="/expenses">Expenses</Link>
-              <Link className="mini-link" href="/payroll">Payroll</Link>
-              <Link className="mini-link" href="/shifts">Staff rota</Link>
-            </p>
-          </section>
 
+              <div className="figures">
+                {figures.map((f) => (
+                  <div className={`figure${f.total ? " total" : ""}`} key={f.label}>
+                    <p className="f-label">{f.label}</p>
+                    <p className="f-value num"><NumberTicker value={f.value} /></p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Executive Department Summary Cards for Bar and Shop */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16, margin: "20px 0" }}>
+                {/* Bar Executive Card */}
+                <div className="panel" style={{ padding: 20, borderRadius: 16, borderLeft: "4px solid #10b981", background: "#fbfdfc" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 20 }}>🍷</span>
+                      <strong style={{ fontSize: 16 }}>Bar &amp; Cafeteria Live Stats</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="mini-link"
+                      onClick={() => setViewTab("bar")}
+                      style={{ fontSize: 12, padding: "4px 10px" }}
+                    >
+                      Deep Stats →
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, textAlign: "center" }}>
+                    <div style={{ padding: "8px 6px", background: "#f0fdf4", borderRadius: 8 }}>
+                      <div className="muted" style={{ fontSize: 11 }}>Today Takings</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>{inr(barDash.data?.revenue?.today ?? split?.bar ?? 0)}</div>
+                    </div>
+                    <div style={{ padding: "8px 6px", background: "#f0fdf4", borderRadius: 8 }}>
+                      <div className="muted" style={{ fontSize: 11 }}>Open Tabs</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>{barDash.data?.metrics?.openTabsCount ?? 0} ({inr(barDash.data?.metrics?.openTabsValue ?? 0)})</div>
+                    </div>
+                    <div style={{ padding: "8px 6px", background: "#f0fdf4", borderRadius: 8 }}>
+                      <div className="muted" style={{ fontSize: 11 }}>Active Tables</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>{barDash.data?.metrics?.activeTables?.length ?? 0} / 8</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pro Shop Executive Card */}
+                <div className="panel" style={{ padding: 20, borderRadius: 16, borderLeft: "4px solid #f59e0b", background: "#fdfdfb" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 20 }}>🛍️</span>
+                      <strong style={{ fontSize: 16 }}>Pro Shop Live Stats</strong>
+                    </div>
+                    <button
+                      type="button"
+                      className="mini-link"
+                      onClick={() => setViewTab("shop")}
+                      style={{ fontSize: 12, padding: "4px 10px" }}
+                    >
+                      Deep Stats →
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, textAlign: "center" }}>
+                    <div style={{ padding: "8px 6px", background: "#fefce8", borderRadius: 8 }}>
+                      <div className="muted" style={{ fontSize: 11 }}>Today Sales</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#854d0e" }}>{inr(shopDash.data?.revenue?.today ?? split?.shop ?? 0)}</div>
+                    </div>
+                    <div style={{ padding: "8px 6px", background: "#fefce8", borderRadius: 8 }}>
+                      <div className="muted" style={{ fontSize: 11 }}>Orders Placed</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#854d0e" }}>{shopDash.data?.metrics?.ordersCount ?? 0}</div>
+                    </div>
+                    <div style={{ padding: "8px 6px", background: "#fefce8", borderRadius: 8 }}>
+                      <div className="muted" style={{ fontSize: 11 }}>Inventory Value</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#854d0e" }}>{inr(shopDash.data?.metrics?.inventoryTotalValuation ?? 0)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {period === "today" && d!.byMethod.length > 0 && (
+                <p className="pay-strip">
+                  Taken today by{" "}
+                  {d!.byMethod.map((m, i) => (
+                    <span key={m.method}>
+                      {i > 0 ? " · " : ""}
+                      {methodLabel[m.method]} <span className="num">{inr(m.amount)}</span>
+                    </span>
+                  ))}{" "}
+                  at the shop and bar tills. Court money is paid at the desk.
+                </p>
+              )}
+
+              {d!.lowStock.length > 0 && (
+                <div className="notice warn" role="status">
+                  Running low in the shop: {d!.lowStock.map((p) => `${p.name} (${p.stock} left)`).join(", ")}.
+                </div>
+              )}
+
+              {period === "today" && d!.expiring.length > 0 && (
+                <section className="block">
+                  <div className="sec-head">
+                    <h2>Expiring in the next 14 days</h2>
+                    <Link className="text-link" href="/members">All members</Link>
+                  </div>
+                  <div className="ledger-wrap">
+                    <table className="ledger">
+                      <thead><tr><th>Member</th><th className="hide-m">Plan</th><th className="hide-m">Phone</th><th>Expires</th><th className="r">Days left</th></tr></thead>
+                      <tbody>
+                        {d!.expiring.map((m) => (
+                          <tr key={m.id}>
+                            <td>{m.name}</td>
+                            <td className="hide-m">{m.planName}</td>
+                            <td className="hide-m num">{m.phone}</td>
+                            <td>{m.expiresOn}</td>
+                            <td className="r num">{m.daysLeft === 0 ? "Today" : m.daysLeft}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              <section className="block">
+                <div className="sec-head">
+                  <h2>On court today</h2>
+                  <Link className="text-link" href="/bookings">All bookings</Link>
+                </div>
+                {d!.onCourt.length === 0 ? (
+                  <Empty>Nothing on court today yet. Bookings made on the Courts page will show up here.</Empty>
+                ) : (
+                  <div className="ledger-wrap">
+                    <table className="ledger">
+                      <thead><tr><th>Time</th><th>Court</th><th>Who</th><th className="hide-m">Type</th><th className="r">Price</th></tr></thead>
+                      <tbody>
+                        {d!.onCourt.map((b) => (
+                          <tr key={b.id}>
+                            <td className="num">{fmtTime(b.start)}</td>
+                            <td>{b.court}</td>
+                            <td>{b.who}</td>
+                            <td className="hide-m">{typeLabel[b.type]}</td>
+                            <td className="r num">{b.price ? inr(b.price) : "Plan"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <p style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <Link className="mini-link" href="/members">Members</Link>
+                  <Link className="mini-link" href="/bar">Bar tabs</Link>
+                  <Link className="mini-link" href="/shop">Shop</Link>
+                  <Link className="mini-link" href="/invoices">Invoices</Link>
+                  <Link className="mini-link" href="/expenses">Expenses</Link>
+                  <Link className="mini-link" href="/payroll">Payroll</Link>
+                  <Link className="mini-link" href="/shifts">Staff rota</Link>
+                </p>
+              </section>
+            </>
+          )}
+
+          {/* VIEW: STAFF & PAYROLL (Shown when on overview or staff tab) */}
+          {(viewTab === "overview" || viewTab === "staff") && (
           <section className="block">
             <div className="sec-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
               <div>
@@ -324,8 +613,8 @@ export default function Dashboard() {
               {staffList
                 .filter((s) => {
                   if (roleFilter === "FRONT_DESK") return s.role === "FRONT_DESK" || s.role === "STAFF";
-                  if (roleFilter === "BAR") return s.role === "BAR" || s.role === "BAR_OWNER" || s.role === "BAR_STAFF";
-                  if (roleFilter === "SHOP") return s.role === "SHOP" || s.role === "SHOP_OWNER" || s.role === "SHOP_STAFF";
+                  if (roleFilter === "BAR") return s.role === "BAR";
+                  if (roleFilter === "SHOP") return s.role === "SHOP";
                   if (roleFilter === "OWNER") return s.role === "OWNER";
                   return true;
                 })
@@ -336,9 +625,7 @@ export default function Dashboard() {
                   const roleIcons: Record<string, string> = {
                     OWNER: "👑",
                     FRONT_DESK: "📋",
-                    BAR_OWNER: "🍷",
                     BAR: "🍸",
-                    SHOP_OWNER: "🏷️",
                     SHOP: "🛍️",
                   };
 
@@ -608,6 +895,7 @@ export default function Dashboard() {
                 })}
             </div>
           </section>
+        )}
 
           {/* Salary Payout Demo Razorpay Modal */}
           {salaryModal.staff && (

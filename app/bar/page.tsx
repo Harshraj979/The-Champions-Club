@@ -15,11 +15,22 @@ const methods = [
   { code: "ONLINE", label: "Demo Razorpay" },
 ] as const;
 
+const isAlcoholItem = (name: string) => {
+  const n = name.toLowerCase();
+  return [
+    "beer", "wine", "cocktail", "whiskey", "whisky", "vodka", "gin", "rum", "tequila",
+    "alcohol", "liquor", "draught", "cider", "brandy", "shot", "bar drink", "spirit", "tonic"
+  ].some((k) => n.includes(k));
+};
+
 // Menu photos, in the club's own colours. Hero art is a warm café photo;
 // dish photos are stable Unsplash images, checked live, with a pine
 // gradient behind them if one ever fails.
 const menuImage = (name: string) => {
   const n = name.toLowerCase();
+  if (n.includes("beer") || n.includes("draught")) return "https://images.unsplash.com/photo-1535958636474-b021ee887b13?w=800&q=80&auto=format&fit=crop";
+  if (n.includes("wine")) return "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=800&q=80&auto=format&fit=crop";
+  if (n.includes("cocktail") || n.includes("gin") || n.includes("tonic")) return "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?w=800&q=80&auto=format&fit=crop";
   if (n.includes("cold coffee")) return "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&q=80&auto=format&fit=crop";
   if (n.includes("protein shake")) return "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=800&q=80&auto=format&fit=crop";
   if (n.includes("sandwich")) return "https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&q=80&auto=format&fit=crop";
@@ -33,12 +44,13 @@ const menuImage = (name: string) => {
 
 const menuCategory = (name: string) => {
   const n = name.toLowerCase();
+  if (isAlcoholItem(n)) return "Bar (18+)";
   if (n.includes("coffee") || n.includes("shake")) return "Coffee & shakes";
   if (n.includes("sandwich") || n.includes("fries")) return "Food";
   return "Drinks";
 };
 
-const barCategories = ["All", "Drinks", "Coffee & shakes", "Food"] as const;
+const barCategories = ["All", "Cafeteria", "Drinks", "Coffee & shakes", "Food", "Bar (18+)"] as const;
 
 const barHeroImage = "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=1600&q=80&auto=format&fit=crop";
 
@@ -59,15 +71,19 @@ export default function Bar() {
   const [busy, setBusy] = useState(false);
 
   const items = menu.data ?? [];
-  const shown = items.filter(
-    (p) =>
-      (category === "All" || menuCategory(p.name) === category) &&
-      p.name.toLowerCase().includes(query.trim().toLowerCase()),
-  );
   const open = (tabs ?? []).filter((t) => t.status === "OPEN");
   const settled = (tabs ?? []).filter((t) => t.status === "SETTLED");
   const tab = open.find((t) => t.id === selected) ?? open[0] ?? null;
   const plan = plans.data?.find((p) => p.code === tab?.planCode);
+  const isJuniorTab = tab?.planCode === "junior";
+  const shown = items.filter((p) => {
+    if (category === "Cafeteria") return !isAlcoholItem(p.name);
+    if (category === "Bar (18+)") return isAlcoholItem(p.name);
+    return (
+      (category === "All" || menuCategory(p.name) === category) &&
+      p.name.toLowerCase().includes(query.trim().toLowerCase())
+    );
+  });
   const draftTotal = items.reduce((s, p) => s + (draft[p.id] ?? 0) * p.price, 0);
   const set = (id: number, qty: number) => setDraft((t) => ({ ...t, [id]: Math.max(0, qty) }));
 
@@ -162,8 +178,8 @@ export default function Bar() {
               <h1 className="shop-title">Bar &amp; Café</h1>
               <p className="shop-sub">Open a tab, add as they order, settle before they leave. The member&apos;s plan discount applies itself at settle — no asking, no maths at the table.</p>
             </div>
-            <Link className="mini-link" href="/bar/dashboard" style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)", color: "white" }}>
-              🍷 Bar Owner Dashboard
+            <Link className="mini-link" href="/dashboard" style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)", color: "white" }}>
+              👑 Club Owner Dashboard
             </Link>
           </div>
           <div className="shop-hero-chips">
@@ -182,7 +198,6 @@ export default function Bar() {
           ))}
         </div>
         <input className="shop-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search the menu…" aria-label="Search the menu" />
-      </div>
       </div>
 
       {menu.loading ? (
@@ -277,6 +292,15 @@ export default function Bar() {
                   </p>
                   <span className="s-price num">{inr(tab.subtotal)}</span>
                 </div>
+                {isJuniorTab && (
+                  <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e", fontSize: 13, display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontSize: 20 }}>🛡️</span>
+                    <div>
+                      <strong style={{ display: "block" }}>Junior Minor Account — Cafeteria Access Only:</strong>
+                      <span>Minors are legally restricted from bar &amp; alcohol services. Only cafeteria items (shakes, coffee, sandwiches, fries, sodas) can be added to this tab.</span>
+                    </div>
+                  </div>
+                )}
                 {tab.items.length > 0 ? (
                   <div className="rows" style={{ marginTop: 10 }}>
                     {tab.items.map((i) => (
@@ -306,27 +330,36 @@ export default function Bar() {
 
               <div className="sec-head" style={{ marginTop: 28 }}><h2>The menu</h2></div>
               <div className="shop-grid">
-                {shown.map((p) => (
-                  <div className={`product-card${(draft[p.id] ?? 0) > 0 ? " picked" : ""}`} key={p.id}>
-                    <div className="product-media">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={menuImage(p.name)} alt={p.name} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
-                      <span className="p-cat">{menuCategory(p.name)}</span>
-                    </div>
-                    <div className="p-body">
-                      <p className="p-name">{p.name}</p>
-                      <p className="p-price">{inr(p.price)}</p>
-                      <div className="p-foot">
-                        <span className="muted">{(draft[p.id] ?? 0) > 0 ? <><span className="num">{inr((draft[p.id] ?? 0) * p.price)}</span> on this tab</> : "Add to the tab"}</span>
-                        <div className="stepper">
-                          <button aria-label={`One less ${p.name}`} disabled={!(draft[p.id] ?? 0)} onClick={() => set(p.id, (draft[p.id] ?? 0) - 1)}>−</button>
-                          <b className="num">{draft[p.id] ?? 0}</b>
-                          <button aria-label={`One more ${p.name}`} onClick={() => set(p.id, (draft[p.id] ?? 0) + 1)}>+</button>
-                        </div>
+                {shown.map((p) => {
+                  const isRestrictedForThisTab = isJuniorTab && isAlcoholItem(p.name);
+                  return (
+                    <div className={`product-card${(draft[p.id] ?? 0) > 0 ? " picked" : ""}${isRestrictedForThisTab ? " disabled" : ""}`} key={p.id}>
+                      <div className="product-media">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={menuImage(p.name)} alt={p.name} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                        <span className="p-cat">{menuCategory(p.name)}</span>
+                      </div>
+                      <div className="p-body">
+                        <p className="p-name">{p.name}</p>
+                        <p className="p-price">{inr(p.price)}</p>
+                        {isRestrictedForThisTab ? (
+                          <div style={{ marginTop: 8, padding: "6px 8px", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 8, color: "#991b1b", fontSize: 11, fontWeight: 700 }}>
+                            🚫 Restricted for Junior (Cafeteria only)
+                          </div>
+                        ) : (
+                          <div className="p-foot">
+                            <span className="muted">{(draft[p.id] ?? 0) > 0 ? <><span className="num">{inr((draft[p.id] ?? 0) * p.price)}</span> on this tab</> : "Add to the tab"}</span>
+                            <div className="stepper">
+                              <button aria-label={`One less ${p.name}`} disabled={!(draft[p.id] ?? 0)} onClick={() => set(p.id, (draft[p.id] ?? 0) - 1)}>−</button>
+                              <b className="num">{draft[p.id] ?? 0}</b>
+                              <button aria-label={`One more ${p.name}`} onClick={() => set(p.id, (draft[p.id] ?? 0) + 1)}>+</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               {draftTotal > 0 && (
                 <div className="summary">

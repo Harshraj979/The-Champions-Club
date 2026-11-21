@@ -5,7 +5,7 @@ import { getShopDashboard } from "@/lib/services/shop-stats";
 
 export const GET = (req: Request) =>
   handle(async () => {
-    await requireRole(req, "OWNER", "SHOP_OWNER");
+    await requireRole(req, "OWNER", "SHOP");
     const date = new URL(req.url).searchParams.get("date") ?? todayISO();
     return getShopDashboard(date);
   });

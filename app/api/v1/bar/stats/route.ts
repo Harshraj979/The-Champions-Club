@@ -5,7 +5,7 @@ import { getBarDashboard } from "@/lib/services/bar-stats";
 
 export const GET = (req: Request) =>
   handle(async () => {
-    await requireRole(req, "OWNER", "BAR_OWNER");
+    await requireRole(req, "OWNER", "BAR");
     const date = new URL(req.url).searchParams.get("date") ?? todayISO();
     return getBarDashboard(date);
   });

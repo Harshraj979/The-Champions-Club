@@ -21,7 +21,7 @@ export default function ShopDashboard() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 700, background: "#fef9c3", color: "#854d0e", padding: "3px 8px", borderRadius: 999, border: "1px solid #fde047" }}>
-              🏷️ PRO SHOP OWNER CONSOLE
+              🛍️ PRO SHOP ANALYTICS
             </span>
             <span className="muted" style={{ fontSize: 13 }}>Gear, Rackets &amp; Turf Apparel</span>
           </div>

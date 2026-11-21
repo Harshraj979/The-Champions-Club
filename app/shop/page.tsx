@@ -145,8 +145,8 @@ export default function Shop() {
               <h1 className="shop-title">Club shop</h1>
               <p className="shop-sub">The same shelf as the counter. What is listed here is what is actually in stock — order from home, collect at the club, or have it delivered.</p>
             </div>
-            <Link className="mini-link" href="/shop/dashboard" style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)", color: "white" }}>
-              🏷️ Shop Owner Dashboard
+            <Link className="mini-link" href="/dashboard" style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)", color: "white" }}>
+              👑 Club Owner Dashboard
             </Link>
           </div>
           <div className="shop-hero-chips">

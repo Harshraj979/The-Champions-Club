@@ -131,10 +131,15 @@ export default async function MemberHome() {
         )}
       </section>
 
-      <section style={{ marginTop: 30 }} aria-label="My bar tabs">
-        <div className="sec-head"><h2>My bar tabs</h2></div>
+      <section style={{ marginTop: 30 }} aria-label={m.planCode === "junior" ? "My cafeteria tabs" : "My bar tabs"}>
+        <div className="sec-head"><h2>{m.planCode === "junior" ? "My cafeteria tabs" : "My bar tabs"}</h2></div>
+        {m.planCode === "junior" && (
+          <p style={{ margin: "0 0 12px", fontSize: 13, color: "#617065" }}>
+            ☕ <strong>Cafeteria access only:</strong> As a Junior member (minor), your account has cafeteria food &amp; beverage access. Bar &amp; alcohol services are restricted.
+          </p>
+        )}
         {home.tabs.length === 0 ? (
-          <p className="empty">No bar tabs yet.</p>
+          <p className="empty">{m.planCode === "junior" ? "No cafeteria tabs yet." : "No bar tabs yet."}</p>
         ) : (
           <div className="ledger-wrap">
             <table className="ledger">

@@ -237,10 +237,50 @@ export async function openTab(input: { who: string; tableNo?: number }): Promise
   return toTabDTO(tab as TabRow);
 }
 
+// Bar vs Cafeteria item classification:
+// Junior members are minors (under 18) and do not have access to the bar / alcohol,
+// they only have access to cafeteria items (food, coffee, shakes, non-alcoholic beverages).
+export function isBarRestrictedItem(product: { name: string; category?: string }): boolean {
+  const n = product.name.toLowerCase();
+  const barKeywords = [
+    "beer",
+    "wine",
+    "cocktail",
+    "whiskey",
+    "whisky",
+    "vodka",
+    "gin",
+    "rum",
+    "tequila",
+    "alcohol",
+    "liquor",
+    "draught",
+    "cider",
+    "brandy",
+    "shot",
+    "bar drink",
+    "spirit",
+    "tonic",
+  ];
+  return barKeywords.some((k) => n.includes(k));
+}
+
 export async function addTabItems(id: number, items: Item[]): Promise<TabDTO> {
   const tab = await getTabRow(id);
   if (tab.status !== "OPEN") throw conflict("That tab is already settled");
   const lines = await priceItems(items, "BAR");
+
+  // Junior membership restriction check:
+  // Junior members do not have access to the bar, only to cafeteria.
+  if (tab.planCode === "junior") {
+    const barRestricted = lines.filter((l) => isBarRestrictedItem(l.product));
+    if (barRestricted.length > 0) {
+      throw forbidden(
+        `Junior members do not have access to the bar. Only cafeteria items (food, coffee, shakes, juices) are permitted. Restricted item(s): ${barRestricted.map((b) => b.product.name).join(", ")}`
+      );
+    }
+  }
+
   await db.$transaction(async (tx) => {
     for (const l of lines) {
       await tx.tabItem.upsert({

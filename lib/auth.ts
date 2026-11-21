@@ -59,20 +59,14 @@ export const DEFAULT_ROLE_PINS: Record<string, string> = {
   OWNER: "1234",
   FRONT_DESK: "2222",
   STAFF: "2222",
-  BAR_OWNER: "3001",
   BAR: "3333",
-  BAR_STAFF: "3333",
-  SHOP_OWNER: "4001",
   SHOP: "4444",
-  SHOP_STAFF: "4444",
 };
 
 export const ROLE_LABELS: Record<string, string> = {
   OWNER: "Club Owner",
   FRONT_DESK: "Club Staff",
-  BAR_OWNER: "Bar & Cafeteria Owner",
   BAR: "Bar & Cafeteria Staff",
-  SHOP_OWNER: "Pro Shop Owner",
   SHOP: "Pro Shop Staff",
 };
 
@@ -311,8 +305,6 @@ export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
     "Neha Gupta": { hours: 42.5, shifts: 11, rate: 250 },
     "Arjun Patel": { hours: 36.0, shifts: 9, rate: 200 },
     "Meera Joshi": { hours: 32.0, shifts: 8, rate: 220 },
-    "Siddharth Verma": { hours: 48.0, shifts: 12, rate: 350 },
-    "Rajesh Kumar": { hours: 45.0, shifts: 11, rate: 350 },
   };
 
   // Deduplicate OWNER accounts so only ONE single authoritative Club Owner appears
@@ -385,7 +377,7 @@ export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
 }
 
 export async function updateRolePin(role: StaffDTO["role"], newPin: string) {
-  const allowed = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "BAR_OWNER", "BAR_STAFF", "SHOP", "SHOP_OWNER", "SHOP_STAFF"];
+  const allowed = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "SHOP"];
   if (!allowed.includes(role)) {
     throw badRequest("Invalid role specified");
   }
@@ -402,7 +394,7 @@ export async function updateRolePin(role: StaffDTO["role"], newPin: string) {
 }
 
 export async function resetRolePin(role: StaffDTO["role"]) {
-  const allowed = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "BAR_OWNER", "BAR_STAFF", "SHOP", "SHOP_OWNER", "SHOP_STAFF"];
+  const allowed = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "SHOP"];
   if (!allowed.includes(role)) {
     throw badRequest("Invalid role specified");
   }
@@ -416,9 +408,7 @@ export async function resetRolePin(role: StaffDTO["role"]) {
 export async function getRolePinStatuses() {
   const roles: StaffDTO["role"][] = [
     "FRONT_DESK",
-    "BAR_OWNER",
     "BAR",
-    "SHOP_OWNER",
     "SHOP",
     "OWNER",
   ];
@@ -479,10 +469,8 @@ export async function requireRole(req: Request, ...roles: StaffDTO["role"][]): P
   if (staff.role === "OWNER") return staff;
   if (roles.includes(staff.role)) return staff;
 
-  const isBarAllowed = (roles.includes("BAR") || roles.includes("BAR_STAFF") || roles.includes("BAR_OWNER")) &&
-    (staff.role === "BAR" || staff.role === "BAR_OWNER" || staff.role === "BAR_STAFF");
-  const isShopAllowed = (roles.includes("SHOP") || roles.includes("SHOP_STAFF") || roles.includes("SHOP_OWNER")) &&
-    (staff.role === "SHOP" || staff.role === "SHOP_OWNER" || staff.role === "SHOP_STAFF");
+  const isBarAllowed = roles.includes("BAR") && staff.role === "BAR";
+  const isShopAllowed = roles.includes("SHOP") && staff.role === "SHOP";
   const isStaffAllowed = (roles.includes("FRONT_DESK") || roles.includes("STAFF")) &&
     (staff.role === "FRONT_DESK" || staff.role === "STAFF");
 

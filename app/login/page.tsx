@@ -5,7 +5,7 @@ import ClubLogo from "@/components/ClubLogo";
 import type { StaffMemberPinDTO } from "@/lib/types";
 
 type RoleOption = {
-  id: "OWNER" | "FRONT_DESK" | "BAR_OWNER" | "BAR" | "SHOP_OWNER" | "SHOP";
+  id: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
   label: string;
   category: "General" | "Bar & Café" | "Pro Shop";
   icon: string;
@@ -15,10 +15,8 @@ type RoleOption = {
 const ROLES: RoleOption[] = [
   { id: "OWNER", label: "Club Owner", category: "General", icon: "👑", defaultPin: "1234" },
   { id: "FRONT_DESK", label: "Club Staff", category: "General", icon: "📋", defaultPin: "2222" },
-  { id: "BAR_OWNER", label: "Bar Owner", category: "Bar & Café", icon: "🍷", defaultPin: "3001" },
-  { id: "BAR", label: "Bar Staff", category: "Bar & Café", icon: "🍸", defaultPin: "3333" },
-  { id: "SHOP_OWNER", label: "Shop Owner", category: "Pro Shop", icon: "🏷️", defaultPin: "4001" },
-  { id: "SHOP", label: "Shop Staff", category: "Pro Shop", icon: "🛍️", defaultPin: "4444" },
+  { id: "BAR", label: "Bar & Cafeteria Staff", category: "Bar & Café", icon: "🍸", defaultPin: "3333" },
+  { id: "SHOP", label: "Pro Shop Staff", category: "Pro Shop", icon: "🛍️", defaultPin: "4444" },
 ];
 
 export default function Login() {
@@ -39,9 +37,7 @@ export default function Login() {
     const next = new URLSearchParams(window.location.search).get("next");
     if (next && next.startsWith("/")) return next;
     if (role === "OWNER") return "/dashboard";
-    if (role === "BAR_OWNER") return "/bar/dashboard";
     if (role === "BAR" || role === "BAR_STAFF") return "/bar";
-    if (role === "SHOP_OWNER") return "/shop/dashboard";
     if (role === "SHOP" || role === "SHOP_STAFF") return "/shop";
     return "/bookings";
   }
@@ -78,10 +74,8 @@ export default function Login() {
 
   const roleStaffMembers = staffList.filter((s) => {
     if (selectedRole === "FRONT_DESK") return s.role === "FRONT_DESK" || s.role === "STAFF";
-    if (selectedRole === "BAR") return s.role === "BAR" || s.role === "BAR_STAFF";
-    if (selectedRole === "BAR_OWNER") return s.role === "BAR_OWNER";
-    if (selectedRole === "SHOP") return s.role === "SHOP" || s.role === "SHOP_STAFF";
-    if (selectedRole === "SHOP_OWNER") return s.role === "SHOP_OWNER";
+    if (selectedRole === "BAR") return s.role === "BAR";
+    if (selectedRole === "SHOP") return s.role === "SHOP";
     if (selectedRole === "OWNER") return s.role === "OWNER";
     return s.role === selectedRole;
   });
@@ -271,30 +265,12 @@ export default function Login() {
             </button>
             <button
               type="button"
-              className="btn btn-ink"
-              onClick={() => goDemo("barowner@champions.club", "demo1234")}
-              disabled={busy}
-              style={{ fontSize: 12, padding: "8px 6px" }}
-            >
-              🍷 BAR OWNER
-            </button>
-            <button
-              type="button"
               className="btn btn-quiet"
               onClick={() => goDemo("arjun@champions.club", "demo1234")}
               disabled={busy}
               style={{ fontSize: 12, padding: "8px 6px" }}
             >
               🍸 BAR STAFF
-            </button>
-            <button
-              type="button"
-              className="btn btn-ink"
-              onClick={() => goDemo("shopowner@champions.club", "demo1234")}
-              disabled={busy}
-              style={{ fontSize: 12, padding: "8px 6px" }}
-            >
-              🏷️ SHOP OWNER
             </button>
             <button
               type="button"

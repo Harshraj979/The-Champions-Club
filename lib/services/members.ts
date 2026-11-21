@@ -105,7 +105,7 @@ export async function createMember(input: {
     const existing = await db.member.findFirst({
       where: {
         OR: [
-          ...(email ? [{ email: { equals: email, mode: "insensitive" } }] : []),
+          ...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
           ...(input.phone ? [{ phone: input.phone.trim() }] : []),
         ],
       },

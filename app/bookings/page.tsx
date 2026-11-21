@@ -281,7 +281,6 @@ export default function Bookings() {
                 </button>
               </div>
             </div>
-          </div>
         </section>
       )}
 

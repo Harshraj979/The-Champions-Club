@@ -21,7 +21,7 @@ export default function BarDashboard() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
             <span style={{ fontSize: 11, fontWeight: 700, background: "#dcfce7", color: "#166534", padding: "3px 8px", borderRadius: 999, border: "1px solid #86efac" }}>
-              🍷 BAR OWNER CONSOLE
+              🍷 BAR &amp; CAFETERIA ANALYTICS
             </span>
             <span className="muted" style={{ fontSize: 13 }}>Clubhouse Kitchen &amp; Bar</span>
           </div>
