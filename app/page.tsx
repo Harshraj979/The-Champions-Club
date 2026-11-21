@@ -32,6 +32,7 @@ const facilities = [
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [email, setEmail] = useState("");
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -145,8 +146,17 @@ export default function Home() {
             <h2 className="mx-auto mt-5 max-w-4xl font-display text-6xl font-bold uppercase leading-[.88] tracking-tight sm:text-8xl">Make Champions<br /><span className="text-[#7c887e]">your home court.</span></h2>
             <p className="mx-auto mt-7 max-w-xl text-sm leading-7 text-[#68746b]">Priority booking, member rates, club events, and a community that always has room for one more.</p>
             <div className="mx-auto mt-10 flex max-w-md rounded-full border border-[#173021]/15 bg-white p-1.5 shadow-sm">
-              <input aria-label="Email address" placeholder="Your email address" className="min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-[#849087]" />
-              <button onClick={() => setNotice("Thanks — we'll be in touch shortly")} className="rounded-full bg-[#173021] px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#294d36]">Request info</button>
+              <input aria-label="Email address" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-[#849087]" />
+              <button onClick={async () => {
+                const em = email.trim();
+                if (!em.includes("@")) { setNotice("Add an email address first"); return; }
+                try {
+                  const res = await fetch("/api/v1/enquiries", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "Website visitor", contact: em, interest: "Membership", message: "Membership info requested from the website" }) });
+                  if (!res.ok) throw new Error();
+                  setEmail("");
+                  setNotice("Thanks — we'll be in touch shortly");
+                } catch { setNotice("Could not send that — try again"); }
+              }} className="rounded-full bg-[#173021] px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#294d36]">Request info</button>
             </div>
           </div>
         </section>
