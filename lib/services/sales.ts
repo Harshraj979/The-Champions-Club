@@ -254,7 +254,7 @@ export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI"):
   // settle time. Nobody types a discount, and nobody can inflate one.
   const member = tab.member;
   const discountPct =
-    member && memberState(member.expiresOn) === "active" ? member.plan.barDiscount : 0;
+    member && memberState(member.expiresOn) !== "expired" ? member.plan.barDiscount : 0;
   const discount = Math.round((tab.subtotal * discountPct) / 100);
   const updated = await db.tab.update({
     where: { id },
