@@ -118,6 +118,11 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .figure:hover { box-shadow: var(--shadow-lift); }
 .figure.total:hover { box-shadow: var(--shadow); }
 .pay-strip { margin-top: 14px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; font-size: 14px; color: var(--ink-2); }
+.toolbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+.count-line { font-size: 13px; font-weight: 600; color: var(--ink-2); padding-bottom: 12px; }
+.count-line b { color: var(--pine); }
+.ledger tr.row-off td { opacity: 0.55; }
+.ledger tr.row-off td .status { opacity: 1; }
 .mini-link { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--pine); transition: border-color 0.15s, background-color 0.15s; }
 .mini-link:hover { border-color: var(--pine); background: var(--volt); }
 .ledger .r, .ledger th.r { text-align: right; }

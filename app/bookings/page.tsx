@@ -32,13 +32,18 @@ export default function Bookings() {
         <p className="sub">Every booking on the books from today on. Cancelling frees the slot at once. Staff view.</p>
       </div>
 
-      <div style={{ maxWidth: 260, marginBottom: 8 }}>
-        <label htmlFor="b-date">Show one day</label>
-        <input id="b-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        {date && (
-          <button className="text-link" style={{ marginTop: 6 }} onClick={() => setDate("")}>
-            Show all upcoming days
-          </button>
+      <div className="toolbar">
+        <div style={{ width: 260, maxWidth: "100%" }}>
+          <label htmlFor="b-date">Show one day</label>
+          <input id="b-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          {date && (
+            <button className="text-link" style={{ marginTop: 6 }} onClick={() => setDate("")}>
+              Show all upcoming days
+            </button>
+          )}
+        </div>
+        {!bookings.loading && !bookings.error && (
+          <p className="count-line"><b>{live.length}</b> {live.length === 1 ? "booking" : "bookings"} standing{date ? " that day" : ""}</p>
         )}
       </div>
 
@@ -55,7 +60,7 @@ export default function Bookings() {
             <thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Who</th><th className="hide-m">Type</th><th className="hide-m">Price</th><th>Status</th><th /></tr></thead>
             <tbody>
               {rows.map((b) => (
-                <tr key={b.id}>
+                <tr key={b.id} className={b.state === "CANCELLED" ? "row-off" : ""}>
                   <td className="num">{b.date}</td>
                   <td className="num">{fmtTime(b.start)}</td>
                   <td>{b.court}</td>
