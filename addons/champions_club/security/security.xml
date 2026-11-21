@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="module_category_champions_club" model="ir.module.category">
+        <field name="name">Champions Club</field>
+        <field name="sequence">20</field>
+    </record>
+
+    <record id="group_club_shop" model="res.groups">
+        <field name="name">Shop Staff</field>
+        <field name="category_id" ref="module_category_champions_club"/>
+    </record>
+    <record id="group_club_bar" model="res.groups">
+        <field name="name">Bar Staff</field>
+        <field name="category_id" ref="module_category_champions_club"/>
+    </record>
+    <record id="group_club_front_desk" model="res.groups">
+        <field name="name">Front Desk</field>
+        <field name="category_id" ref="module_category_champions_club"/>
+        <field name="implied_ids" eval="[(4, ref('champions_club.group_club_shop')), (4, ref('champions_club.group_club_bar'))]"/>
+    </record>
+    <record id="group_club_owner" model="res.groups">
+        <field name="name">Owner</field>
+        <field name="category_id" ref="module_category_champions_club"/>
+        <field name="implied_ids" eval="[(4, ref('champions_club.group_club_front_desk'))]"/>
+        <field name="users" eval="[(4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

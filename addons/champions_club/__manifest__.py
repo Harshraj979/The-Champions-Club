@@ -1,0 +1,20 @@
+{
+    "name": "The Champions Club",
+    "version": "20.0.1.0.0",
+    "category": "Services",
+    "summary": "Members, plans and (later) court booking for The Champions Club",
+    "license": "LGPL-3",
+    "author": "The Champions Club",
+    "depends": ["base", "contacts", "mail", "product"],
+    "data": [
+        "security/security.xml",
+        "security/ir.model.access.csv",
+        "data/club_plan_data.xml",
+        "data/cron.xml",
+        "views/club_plan_views.xml",
+        "views/res_partner_views.xml",
+        "views/menus.xml",
+    ],
+    "installable": True,
+    "application": True,
+}

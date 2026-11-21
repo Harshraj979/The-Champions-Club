@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_club_root" name="Champions Club" sequence="90"/>
+    <menuitem id="menu_club_plans" name="Membership Plans" parent="menu_club_root"
+              action="action_club_plan" groups="champions_club.group_club_front_desk"/>
+    <menuitem id="menu_club_members" name="Members" parent="menu_club_root"
+              action="action_club_member" groups="champions_club.group_club_front_desk"/>
+</odoo>
