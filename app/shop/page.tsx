@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { inr } from "@/lib/format";
@@ -98,10 +99,15 @@ export default function Shop() {
 
   return (
     <main className="wrap page">
-      <div className="page-head">
-        <p className="page-eyebrow">Pro shop</p>
-        <h1 className="page-title">Club shop</h1>
-        <p className="sub">The same shelf as the counter. What is listed here is what is actually in stock.</p>
+      <div className="page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <p className="page-eyebrow">Pro shop</p>
+          <h1 className="page-title">Club shop</h1>
+          <p className="sub">The same shelf as the counter. What is listed here is what is actually in stock.</p>
+        </div>
+        <Link className="mini-link" href="/shop/dashboard" style={{ background: "var(--surface)", borderColor: "var(--pine)" }}>
+          🏷️ Shop Owner Dashboard
+        </Link>
       </div>
 
       {products.loading ? (

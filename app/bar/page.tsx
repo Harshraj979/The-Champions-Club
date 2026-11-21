@@ -5,12 +5,14 @@ import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { inr } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
+import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { TabDTO } from "@/lib/types";
 
 const methods = [
   { code: "CASH", label: "Cash" },
   { code: "CARD", label: "Card" },
   { code: "UPI", label: "UPI" },
+  { code: "ONLINE", label: "Demo Razorpay" },
 ] as const;
 
 export default function Bar() {
@@ -22,7 +24,8 @@ export default function Bar() {
   const [tableNo, setTableNo] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<number, number>>({});
-  const [payMethod, setPayMethod] = useState<"CASH" | "CARD" | "UPI">("CASH");
+  const [payMethod, setPayMethod] = useState<"CASH" | "CARD" | "UPI" | "ONLINE">("CASH");
+  const [showRazorpay, setShowRazorpay] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -82,18 +85,28 @@ export default function Bar() {
     }
   }
 
-  async function settle() {
+  async function handleSettleClick() {
+    if (!tab) return;
+    if (payMethod === "ONLINE") {
+      setShowRazorpay(true);
+      return;
+    }
+    await executeSettle(payMethod);
+  }
+
+  async function executeSettle(method: "CASH" | "CARD" | "UPI" | "ONLINE", paymentId?: string) {
     if (!tab) return;
     setBusy(true);
     setMsg(null);
     try {
-      const t = await api.settleTab(tab.id, payMethod);
+      const t = await api.settleTab(tab.id, method);
       const off = t.subtotal - t.total;
       setMsg({
         ok: true,
-        text: `Settled ${t.who}'s tab, ${inr(t.total)} by ${payMethod.toLowerCase()}${off ? `, plan discount ${inr(off)} applied` : ""}.`,
+        text: `Settled ${t.who}'s tab, ${inr(t.total)} by ${method === "ONLINE" ? `Demo Razorpay (${paymentId || "authorized"})` : method.toLowerCase()}${off ? `, plan discount ${inr(off)} applied` : ""}.`,
       });
       setSelected(null);
+      setShowRazorpay(false);
       await loadTabs();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Settling failed. Try again." });
@@ -104,10 +117,15 @@ export default function Bar() {
 
   return (
     <main className="wrap page">
-      <div className="page-head">
-        <p className="page-eyebrow">Clubhouse</p>
-        <h1 className="page-title">Bar &amp; Café</h1>
-        <p className="sub">Open a tab, add as they order, settle before they leave. The member&apos;s plan discount applies itself at settle.</p>
+      <div className="page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+        <div>
+          <p className="page-eyebrow">Clubhouse</p>
+          <h1 className="page-title">Bar &amp; Café</h1>
+          <p className="sub">Open a tab, add as they order, settle before they leave. The member&apos;s plan discount applies itself at settle.</p>
+        </div>
+        <Link className="mini-link" href="/bar/dashboard" style={{ background: "var(--surface)", borderColor: "var(--pine)" }}>
+          🍷 Bar Owner Dashboard
+        </Link>
       </div>
 
       {menu.loading ? (
@@ -216,7 +234,7 @@ export default function Bar() {
                       ))}
                     </div>
                   </div>
-                  <button className="btn btn-ink" disabled={busy || tab.items.length === 0} onClick={settle}>
+                  <button className="btn btn-ink" disabled={busy || tab.items.length === 0} onClick={handleSettleClick}>
                     {busy ? "Settling..." : tab.items.length === 0 ? "No items on tab" : `Settle tab, ${inr(tab.subtotal)}`}
                   </button>
                 </div>
@@ -265,6 +283,18 @@ export default function Bar() {
             </section>
           )}
         </>
+      )}
+
+      {tab && (
+        <DemoRazorpayModal
+          isOpen={showRazorpay}
+          onClose={() => setShowRazorpay(false)}
+          onSuccess={(details) => executeSettle("ONLINE", details.paymentId)}
+          amount={tab.subtotal - Math.round((tab.subtotal * (plan?.barDiscount ?? 0)) / 100)}
+          title={`Bar Tab #${tab.id}`}
+          description={`${tab.who}${tab.tableNo ? ` · Table ${tab.tableNo}` : ""}`}
+          customerName={tab.who}
+        />
       )}
     </main>
   );

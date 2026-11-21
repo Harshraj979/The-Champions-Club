@@ -19,15 +19,21 @@ const staffLinksFor = (role: StaffDTO["role"]) => {
   ];
   if (role === "OWNER") return [{ href: "/dashboard", label: "Dashboard" }, ...desk, { href: "/bar", label: "Bar" }, { href: "/shop", label: "Shop" }];
   if (role === "FRONT_DESK" || role === "STAFF") return desk;
-  if (role === "BAR") return [{ href: "/bar", label: "Bar" }];
+  if (role === "BAR_OWNER") return [{ href: "/bar/dashboard", label: "Bar Stats" }, { href: "/bar", label: "Bar Till" }];
+  if (role === "BAR" || role === "BAR_STAFF") return [{ href: "/bar", label: "Bar" }];
+  if (role === "SHOP_OWNER") return [{ href: "/shop/dashboard", label: "Shop Stats" }, { href: "/shop", label: "Shop Till" }];
   return [{ href: "/shop", label: "Shop" }];
 };
 const roleLabel: Record<StaffDTO["role"], string> = {
   OWNER: "Owner",
-  FRONT_DESK: "Front desk",
-  STAFF: "Staff",
-  BAR: "Bar",
-  SHOP: "Shop",
+  FRONT_DESK: "Club staff",
+  STAFF: "Club staff",
+  BAR_OWNER: "Bar owner",
+  BAR: "Bar staff",
+  BAR_STAFF: "Bar staff",
+  SHOP_OWNER: "Shop owner",
+  SHOP: "Shop staff",
+  SHOP_STAFF: "Shop staff",
 };
 
 export default function Nav() {

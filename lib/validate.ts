@@ -101,7 +101,7 @@ export const tabOpenInput = z.object({
 export const tabItemsInput = z.object({ items: itemsInput });
 
 export const tabSettleInput = z.object({
-  payMethod: z.enum(["CASH", "CARD", "UPI"]),
+  payMethod: z.enum(["CASH", "CARD", "UPI", "ONLINE"]),
 });
 
 export const enquiryInput = z.object({

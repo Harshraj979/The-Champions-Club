@@ -119,7 +119,7 @@ export type TabDTO = {
   discountPct: number;
   subtotal: number;
   total: number;
-  payMethod: "CASH" | "CARD" | "UPI" | null;
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" | null;
   items: { productId: number; name: string; qty: number; price: number }[];
 };
 
@@ -165,11 +165,11 @@ export type StaffDTO = {
   id: number;
   name: string;
   email: string;
-  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP";
+  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP" | "BAR_OWNER" | "BAR_STAFF" | "SHOP_OWNER" | "SHOP_STAFF";
 };
 
 export type RolePinDTO = {
-  role: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
+  role: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP" | "BAR_OWNER" | "BAR_STAFF" | "SHOP_OWNER" | "SHOP_STAFF";
   label: string;
   defaultPin: string;
   hasCustomPin: boolean;

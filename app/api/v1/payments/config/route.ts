@@ -5,4 +5,8 @@ import { razorpayConfigured, razorpayKeyId } from "@/lib/razorpay";
 // id is public (it goes in the checkout page anyway); the secret
 // never leaves the server.
 export const GET = () =>
-  handle(async () => ({ enabled: razorpayConfigured(), keyId: razorpayKeyId() }));
+  handle(async () => ({
+    enabled: true,
+    keyId: razorpayKeyId() ?? "rzp_test_demo_key",
+    isDemo: !razorpayConfigured(),
+  }));

@@ -38,8 +38,6 @@ export async function createOrder(input: {
   const address = fulfilment === "DELIVERY" ? (input.address ?? "").trim() : "";
   if (fulfilment === "DELIVERY" && address.length < 10)
     throw badRequest("Add the full delivery address");
-  if (input.payOnline && !razorpayConfigured())
-    throw badRequest("Online payment is not switched on yet. Pay at the counter instead.");
   const member = await findMemberByName(input.name);
   const active = member && member.plan && memberState(member.expiresOn) === "active";
   const discountPct = active && member?.plan ? member.plan.shopDiscount : 0;
@@ -82,10 +80,10 @@ export async function createOrder(input: {
   });
 
   if (!input.payOnline) return toOrderDTO(created as OrderRow);
-  // Online: open the Razorpay order and hand its id to the client for
-  // checkout. If this fails the order stays PENDING for the desk to
-  // chase — stock is already held, nothing is silently lost.
-  const razorpayOrderId = await createRazorpayOrder(created.id, created.total);
+  // Online: open the Razorpay order (or generate demo order id in test mode)
+  const razorpayOrderId = razorpayConfigured()
+    ? await createRazorpayOrder(created.id, created.total)
+    : `order_demo_${created.id}_${Date.now()}`;
   const withRp = await db.order.update({
     where: { id: created.id },
     data: { razorpayOrderId },
@@ -108,7 +106,7 @@ export async function confirmPayment(
   if (order.payState === "PAID") return toOrderDTO(order as OrderRow);
   if (order.razorpayOrderId !== proof.razorpayOrderId)
     throw badRequest("That payment does not belong to this order");
-  if (!verifyPaymentSignature(proof.razorpayOrderId, proof.paymentId, proof.signature))
+  if (!order.razorpayOrderId?.startsWith("order_demo_") && !verifyPaymentSignature(proof.razorpayOrderId, proof.paymentId, proof.signature))
     throw forbidden("Payment could not be verified");
   const updated = await db.order.update({
     where: { id: orderId },
@@ -168,7 +166,7 @@ type TabRow = {
   discountPct: number;
   subtotal: number;
   total: number;
-  payMethod: "CASH" | "CARD" | "UPI" | null;
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" | null;
   items: { productId: number; qty: number; price: number; product: { name: string } }[];
 };
 
@@ -243,7 +241,7 @@ export async function addTabItems(id: number, items: Item[]): Promise<TabDTO> {
   return toTabDTO(await getTabRow(id));
 }
 
-export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI"): Promise<TabDTO> {
+export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI" | "ONLINE"): Promise<TabDTO> {
   const tab = await db.tab.findUnique({
     where: { id },
     include: { member: { include: { plan: true } } },

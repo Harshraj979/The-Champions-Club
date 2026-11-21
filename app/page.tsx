@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { MemberSessionDTO } from "@/lib/types";
 
 type IconName = "arrow" | "menu" | "close" | "court" | "cup" | "bag" | "clock" | "pin" | "instagram";
@@ -51,17 +52,41 @@ export default function Home() {
     window.setTimeout(() => setNotice(""), 2000);
   }
 
+  const [razorpayPlan, setRazorpayPlan] = useState<{
+    isOpen: boolean;
+    planCode: string;
+    amount: number;
+    title: string;
+  }>({
+    isOpen: false,
+    planCode: "",
+    amount: 0,
+    title: "",
+  });
+
   async function handleSelectPlan(planCode: string) {
     if (!member) {
       window.location.href = `/member-login?tab=signup&plan=${planCode}`;
       return;
     }
+    const amounts: Record<string, number> = { gold: 1500, silver: 1000, junior: 600 };
+    const titles: Record<string, string> = { gold: "Gold Tier", silver: "Silver Tier", junior: "Junior Tier" };
+    setRazorpayPlan({
+      isOpen: true,
+      planCode,
+      amount: amounts[planCode] ?? 1000,
+      title: titles[planCode] ?? "Club Membership",
+    });
+  }
+
+  async function executePlanPayment(planCode: string) {
     setActivating(planCode);
+    setRazorpayPlan((p) => ({ ...p, isOpen: false }));
     try {
       await api.buyPlan(planCode);
       const res = await api.memberMe();
       setMember(res.member);
-      setNotice(`Activated ${planCode.toUpperCase()} membership!`);
+      setNotice(`Activated ${planCode.toUpperCase()} membership via Demo Razorpay!`);
       window.setTimeout(() => setNotice(""), 2500);
       window.location.href = "/courts";
     } catch {
@@ -568,6 +593,17 @@ export default function Home() {
       </footer>
 
       {notice && <div className="make-toast fixed bottom-5 right-5 z-50 rounded-full bg-white px-5 py-3 text-xs font-bold text-[#173021] shadow-2xl">{notice}</div>}
+
+      <DemoRazorpayModal
+        isOpen={razorpayPlan.isOpen}
+        onClose={() => setRazorpayPlan((p) => ({ ...p, isOpen: false }))}
+        onSuccess={() => executePlanPayment(razorpayPlan.planCode)}
+        amount={razorpayPlan.amount}
+        title={razorpayPlan.title}
+        description="1 Month Full Membership Subscription"
+        customerName={member?.name ?? "Club Member"}
+        customerPhone={member?.phone ?? ""}
+      />
     </div>
   );
 }

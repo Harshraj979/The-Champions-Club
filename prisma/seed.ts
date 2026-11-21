@@ -223,13 +223,15 @@ async function main() {
   const demoHash = await bcrypt.hash("demo1234", 10);
   await db.staff.createMany({
     data: [
-      { name: "Vikram Rao", email: "vikram@champions.club", passwordHash: demoHash, role: "OWNER" },
-      { name: "Neha Gupta", email: "neha@champions.club", passwordHash: demoHash, role: "FRONT_DESK" },
-      { name: "Arjun Patel", email: "arjun@champions.club", passwordHash: demoHash, role: "BAR" },
-      { name: "Meera Joshi", email: "meera@champions.club", passwordHash: demoHash, role: "SHOP" },
+      { name: "Vikram Rao", email: "vikram@champions.club", passwordHash: demoHash, pinHash: await bcrypt.hash("1234", 10), role: "OWNER" },
+      { name: "Neha Gupta", email: "neha@champions.club", passwordHash: demoHash, pinHash: await bcrypt.hash("2222", 10), role: "FRONT_DESK" },
+      { name: "Siddharth Verma", email: "barowner@champions.club", passwordHash: demoHash, pinHash: await bcrypt.hash("3001", 10), role: "BAR_OWNER" },
+      { name: "Arjun Patel", email: "arjun@champions.club", passwordHash: demoHash, pinHash: await bcrypt.hash("3333", 10), role: "BAR" },
+      { name: "Rajesh Kumar", email: "shopowner@champions.club", passwordHash: demoHash, pinHash: await bcrypt.hash("4001", 10), role: "SHOP_OWNER" },
+      { name: "Meera Joshi", email: "meera@champions.club", passwordHash: demoHash, pinHash: await bcrypt.hash("4444", 10), role: "SHOP" },
       // The demo-login button and Google sign-in accounts.
-      { name: "Club Owner", email: "owner@champions.club", passwordHash: await bcrypt.hash("champions", 10), role: "OWNER" },
-      { name: "Krishna", email: "techbroyt@gmail.com", passwordHash: "$2b$10$MFmhdzW4QLmWPqFUOZRbP.PdYbcr6YzR6X0WEbXVTOKgboCGKqUTa", role: "OWNER" },
+      { name: "Club Owner", email: "owner@champions.club", passwordHash: await bcrypt.hash("champions", 10), pinHash: await bcrypt.hash("1234", 10), role: "OWNER" },
+      { name: "Krishna", email: "techbroyt@gmail.com", passwordHash: "$2b$10$MFmhdzW4QLmWPqFUOZRbP.PdYbcr6YzR6X0WEbXVTOKgboCGKqUTa", pinHash: await bcrypt.hash("1234", 10), role: "OWNER" },
     ],
   });
 

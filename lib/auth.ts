@@ -58,15 +58,22 @@ export async function login(email: string, password: string): Promise<{ staff: S
 export const DEFAULT_ROLE_PINS: Record<string, string> = {
   OWNER: "1234",
   FRONT_DESK: "2222",
+  STAFF: "2222",
+  BAR_OWNER: "3001",
   BAR: "3333",
+  BAR_STAFF: "3333",
+  SHOP_OWNER: "4001",
   SHOP: "4444",
+  SHOP_STAFF: "4444",
 };
 
 export const ROLE_LABELS: Record<string, string> = {
-  OWNER: "Owner",
-  FRONT_DESK: "Front Desk",
-  BAR: "Bar & Café",
-  SHOP: "Pro Shop",
+  OWNER: "Club Owner",
+  FRONT_DESK: "Club Staff",
+  BAR_OWNER: "Bar & Cafeteria Owner",
+  BAR: "Bar & Cafeteria Staff",
+  SHOP_OWNER: "Pro Shop Owner",
+  SHOP: "Pro Shop Staff",
 };
 
 export async function pinLogin(role: StaffDTO["role"], pin: string): Promise<{ staff: StaffDTO; token: string }> {
@@ -112,7 +119,8 @@ export async function pinLogin(role: StaffDTO["role"], pin: string): Promise<{ s
 }
 
 export async function updateRolePin(role: StaffDTO["role"], newPin: string) {
-  if (!["OWNER", "FRONT_DESK", "BAR", "SHOP"].includes(role)) {
+  const allowed = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "BAR_OWNER", "BAR_STAFF", "SHOP", "SHOP_OWNER", "SHOP_STAFF"];
+  if (!allowed.includes(role)) {
     throw badRequest("Invalid role specified");
   }
   const cleanPin = newPin.trim();
@@ -128,7 +136,8 @@ export async function updateRolePin(role: StaffDTO["role"], newPin: string) {
 }
 
 export async function resetRolePin(role: StaffDTO["role"]) {
-  if (!["OWNER", "FRONT_DESK", "BAR", "SHOP"].includes(role)) {
+  const allowed = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "BAR_OWNER", "BAR_STAFF", "SHOP", "SHOP_OWNER", "SHOP_STAFF"];
+  if (!allowed.includes(role)) {
     throw badRequest("Invalid role specified");
   }
   await db.staff.updateMany({
@@ -139,7 +148,14 @@ export async function resetRolePin(role: StaffDTO["role"]) {
 }
 
 export async function getRolePinStatuses() {
-  const roles: StaffDTO["role"][] = ["OWNER", "FRONT_DESK", "BAR", "SHOP"];
+  const roles: StaffDTO["role"][] = [
+    "FRONT_DESK",
+    "BAR_OWNER",
+    "BAR",
+    "SHOP_OWNER",
+    "SHOP",
+    "OWNER",
+  ];
   const result = [];
   for (const r of roles) {
     const staff = await db.staff.findFirst({
@@ -194,8 +210,19 @@ export async function requireStaff(req: Request): Promise<StaffDTO> {
 // the dashboard is the owner's, the bar till is bar staff's, and so on.
 export async function requireRole(req: Request, ...roles: StaffDTO["role"][]): Promise<StaffDTO> {
   const staff = await requireStaff(req);
-  if (!roles.includes(staff.role)) throw forbidden("Your role cannot do this");
-  return staff;
+  if (staff.role === "OWNER") return staff;
+  if (roles.includes(staff.role)) return staff;
+
+  const isBarAllowed = (roles.includes("BAR") || roles.includes("BAR_STAFF") || roles.includes("BAR_OWNER")) &&
+    (staff.role === "BAR" || staff.role === "BAR_OWNER" || staff.role === "BAR_STAFF");
+  const isShopAllowed = (roles.includes("SHOP") || roles.includes("SHOP_STAFF") || roles.includes("SHOP_OWNER")) &&
+    (staff.role === "SHOP" || staff.role === "SHOP_OWNER" || staff.role === "SHOP_STAFF");
+  const isStaffAllowed = (roles.includes("FRONT_DESK") || roles.includes("STAFF")) &&
+    (staff.role === "FRONT_DESK" || staff.role === "STAFF");
+
+  if (isBarAllowed || isShopAllowed || isStaffAllowed) return staff;
+
+  throw forbidden("Your role cannot do this");
 }
 
 export async function currentStaff(): Promise<StaffDTO | null> {

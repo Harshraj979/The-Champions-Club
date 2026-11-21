@@ -3,17 +3,20 @@ import { useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
 
 type RoleOption = {
-  id: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
+  id: "OWNER" | "FRONT_DESK" | "BAR_OWNER" | "BAR" | "SHOP_OWNER" | "SHOP";
   label: string;
+  category: "General" | "Bar & Café" | "Pro Shop";
   icon: string;
   defaultPin: string;
 };
 
 const ROLES: RoleOption[] = [
-  { id: "OWNER", label: "Owner", icon: "👑", defaultPin: "1234" },
-  { id: "FRONT_DESK", label: "Front Desk", icon: "📋", defaultPin: "2222" },
-  { id: "BAR", label: "Bar & Café", icon: "🍸", defaultPin: "3333" },
-  { id: "SHOP", label: "Pro Shop", icon: "🛍️", defaultPin: "4444" },
+  { id: "OWNER", label: "Club Owner", category: "General", icon: "👑", defaultPin: "1234" },
+  { id: "FRONT_DESK", label: "Club Staff", category: "General", icon: "📋", defaultPin: "2222" },
+  { id: "BAR_OWNER", label: "Bar Owner", category: "Bar & Café", icon: "🍷", defaultPin: "3001" },
+  { id: "BAR", label: "Bar Staff", category: "Bar & Café", icon: "🍸", defaultPin: "3333" },
+  { id: "SHOP_OWNER", label: "Shop Owner", category: "Pro Shop", icon: "🏷️", defaultPin: "4001" },
+  { id: "SHOP", label: "Shop Staff", category: "Pro Shop", icon: "🛍️", defaultPin: "4444" },
 ];
 
 export default function Login() {
@@ -26,8 +29,10 @@ export default function Login() {
     const next = new URLSearchParams(window.location.search).get("next");
     if (next && next.startsWith("/")) return next;
     if (role === "OWNER") return "/dashboard";
-    if (role === "BAR") return "/bar";
-    if (role === "SHOP") return "/shop";
+    if (role === "BAR_OWNER") return "/bar/dashboard";
+    if (role === "BAR" || role === "BAR_STAFF") return "/bar";
+    if (role === "SHOP_OWNER") return "/shop/dashboard";
+    if (role === "SHOP" || role === "SHOP_STAFF") return "/shop";
     return "/bookings";
   }
 
@@ -62,7 +67,7 @@ export default function Login() {
   const activeRoleObj = ROLES.find((r) => r.id === selectedRole) || ROLES[0];
 
   return (
-    <main className="wrap page login-main" style={{ maxWidth: 440 }}>
+    <main className="wrap page login-main" style={{ maxWidth: 460 }}>
       <div className="page-head" style={{ textAlign: "center" }}>
         <span className="badge-mark" style={{ margin: "0 auto 16px" }}>CC</span>
         <h1 className="page-title">Sign in</h1>
@@ -93,7 +98,7 @@ export default function Login() {
                     background: active ? "#dfff45" : "var(--surface)",
                     color: "#163021",
                     fontWeight: active ? 700 : 500,
-                    fontSize: 14,
+                    fontSize: 13,
                     display: "flex",
                     alignItems: "center",
                     gap: 8,
@@ -103,7 +108,10 @@ export default function Login() {
                   }}
                 >
                   <span style={{ fontSize: 18 }}>{r.icon}</span>
-                  <span>{r.label}</span>
+                  <div>
+                    <span style={{ display: "block", lineHeight: 1.2 }}>{r.label}</span>
+                    <span style={{ fontSize: 10, color: "#555" }}>{r.category}</span>
+                  </div>
                 </button>
               );
             })}
@@ -169,36 +177,58 @@ export default function Login() {
               className="btn btn-ink"
               onClick={() => goDemo("owner@champions.club", "champions")}
               disabled={busy}
+              style={{ fontSize: 12, padding: "8px 6px" }}
             >
-              OWNER
+              👑 CLUB OWNER
             </button>
             <button
               type="button"
               className="btn btn-quiet"
               onClick={() => goDemo("neha@champions.club", "demo1234")}
               disabled={busy}
+              style={{ fontSize: 12, padding: "8px 6px" }}
             >
-              FRONT DESK
+              📋 CLUB STAFF
+            </button>
+            <button
+              type="button"
+              className="btn btn-ink"
+              onClick={() => goDemo("barowner@champions.club", "demo1234")}
+              disabled={busy}
+              style={{ fontSize: 12, padding: "8px 6px" }}
+            >
+              🍷 BAR OWNER
             </button>
             <button
               type="button"
               className="btn btn-quiet"
               onClick={() => goDemo("arjun@champions.club", "demo1234")}
               disabled={busy}
+              style={{ fontSize: 12, padding: "8px 6px" }}
             >
-              BAR
+              🍸 BAR STAFF
+            </button>
+            <button
+              type="button"
+              className="btn btn-ink"
+              onClick={() => goDemo("shopowner@champions.club", "demo1234")}
+              disabled={busy}
+              style={{ fontSize: 12, padding: "8px 6px" }}
+            >
+              🏷️ SHOP OWNER
             </button>
             <button
               type="button"
               className="btn btn-quiet"
               onClick={() => goDemo("meera@champions.club", "demo1234")}
               disabled={busy}
+              style={{ fontSize: 12, padding: "8px 6px" }}
             >
-              SHOP
+              🛍️ SHOP STAFF
             </button>
           </div>
           <p className="demo-creds" style={{ fontSize: 11, color: "#777", marginTop: 8 }}>
-            One-tap bypass for testing & evaluation
+            One-tap bypass for instant testing & evaluation
           </p>
         </div>
       </div>

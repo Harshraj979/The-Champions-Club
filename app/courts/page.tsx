@@ -5,6 +5,7 @@ import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { allStarts, fmtTime, inr, istMinutesNow, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
+import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
 
 const starts = allStarts();
@@ -74,7 +75,22 @@ export default function Courts() {
     setSlot(null);
   }, [courtId, date]);
 
-  async function book() {
+  const [razorpayModal, setRazorpayModal] = useState<{
+    isOpen: boolean;
+    amount: number;
+    title: string;
+    description: string;
+    type: "booking" | "plan";
+    planCode?: string;
+  }>({
+    isOpen: false,
+    amount: 0,
+    title: "",
+    description: "",
+    type: "booking",
+  });
+
+  async function book(paidOnline = false) {
     const bookerName = member?.name ?? name.trim();
     if (slot === null || !bookerName || !court) return;
     setBusy(true);
@@ -91,7 +107,11 @@ export default function Courts() {
       setMsg({
         ok: true,
         text: `Court booked! ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${
-          b.price ? `, ${inr(b.price)} at the desk` : ", covered by your plan"
+          paidOnline
+            ? " · Paid online via Demo Razorpay"
+            : b.price
+            ? `, ${inr(b.price)} at the desk`
+            : ", covered by your plan"
         }.`,
       });
       setSlot(null);
@@ -104,13 +124,24 @@ export default function Courts() {
     }
   }
 
-  async function handleBuyPlan(planCode: string) {
+  function handleBuyPlan(planCode: string, planAmount: number, planName: string) {
+    setRazorpayModal({
+      isOpen: true,
+      amount: planAmount,
+      title: `${planName} Membership`,
+      description: `1 Month Active Membership Tier`,
+      type: "plan",
+      planCode,
+    });
+  }
+
+  async function executeBuyPlan(planCode: string) {
     setBuyingPlan(true);
     setMsg(null);
     try {
       await api.buyPlan(planCode);
       await refreshAuth();
-      setMsg({ ok: true, text: `Plan activated! You can now pick a slot and book your court directly.` });
+      setMsg({ ok: true, text: `Plan activated via Demo Razorpay! You can now pick a slot and book your court directly.` });
     } catch (e: any) {
       setMsg({ ok: false, text: e.message || "Failed to activate plan" });
     } finally {
@@ -310,7 +341,7 @@ export default function Courts() {
                         <p className="text-[10px] font-bold text-[#2e7d32] mt-1.5">📊 {p.profit}</p>
                       </div>
                       <button
-                        onClick={() => handleBuyPlan(p.code)}
+                        onClick={() => handleBuyPlan(p.code, p.code === "gold" ? 1500 : p.code === "silver" ? 1000 : 600, p.name)}
                         disabled={buyingPlan}
                         className="mt-4 w-full rounded-full bg-[#dfff45] py-2.5 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#163021] hover:text-white transition disabled:opacity-40"
                       >
@@ -348,13 +379,39 @@ export default function Courts() {
                       </>
                     )}
                   </p>
-                  <button
-                    className="btn btn-ink"
-                    disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
-                    onClick={book}
-                  >
-                    {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
-                  </button>
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                    <button
+                      className="btn btn-ink"
+                      disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
+                      onClick={() => book(false)}
+                    >
+                      {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book (${price ? `${inr(price)} at desk` : "Covered by plan"})`}
+                    </button>
+                    {price !== null && price > 0 && (
+                      <button
+                        type="button"
+                        className="btn btn-quiet"
+                        disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
+                        onClick={() =>
+                          setRazorpayModal({
+                            isOpen: true,
+                            amount: price,
+                            title: `Court Booking - ${court?.name}`,
+                            description: `${date === today ? "Today" : date} at ${fmtTime(slot!)} (60 min)`,
+                            type: "booking",
+                          })
+                        }
+                        style={{
+                          background: "#0b1a30",
+                          color: "#dfff45",
+                          border: "1px solid #3395ff",
+                          fontWeight: 700,
+                        }}
+                      >
+                        🔒 Pay with Demo Razorpay ({inr(price)})
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -365,6 +422,25 @@ export default function Courts() {
       <p className="muted" style={{ marginTop: 28, maxWidth: 640 }}>
         The rules are the same for everyone: one hour a booking, two bookings a day at most, and an expired plan pauses booking until it is renewed. Friday Social Play is the one exception, shared courts from 7 PM.
       </p>
+
+      <DemoRazorpayModal
+        isOpen={razorpayModal.isOpen}
+        onClose={() => setRazorpayModal((prev) => ({ ...prev, isOpen: false }))}
+        onSuccess={async () => {
+          if (razorpayModal.type === "plan" && razorpayModal.planCode) {
+            setRazorpayModal((prev) => ({ ...prev, isOpen: false }));
+            await executeBuyPlan(razorpayModal.planCode);
+          } else {
+            setRazorpayModal((prev) => ({ ...prev, isOpen: false }));
+            await book(true);
+          }
+        }}
+        amount={razorpayModal.amount}
+        title={razorpayModal.title}
+        description={razorpayModal.description}
+        customerName={member?.name ?? name.trim() ?? "Club Guest"}
+        customerPhone={member?.phone ?? ""}
+      />
     </main>
   );
 }

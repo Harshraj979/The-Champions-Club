@@ -9,7 +9,7 @@ import NumberTicker from "@/components/NumberTicker";
 import type { RolePinDTO } from "@/lib/types";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
-const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Online" } as const;
+const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Demo Razorpay" } as const;
 
 const periods = [
   { code: "today", label: "Today" },
@@ -79,10 +79,20 @@ export default function Dashboard() {
 
   return (
     <main className="wrap page">
-      <div className="page-head">
-        <p className="page-eyebrow">The club</p>
-        <h1 className="page-title">Owner dashboard</h1>
-        <p className="sub">The whole day in one place: courts, shop and bar.</p>
+      <div className="page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <p className="page-eyebrow">The club</p>
+          <h1 className="page-title">Owner dashboard</h1>
+          <p className="sub">The whole day in one place: courts, shop and bar.</p>
+        </div>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <Link className="mini-link" href="/bar/dashboard" style={{ background: "#f0fdf4", borderColor: "#86efac", fontWeight: 700 }}>
+            🍷 Bar Owner Dashboard →
+          </Link>
+          <Link className="mini-link" href="/shop/dashboard" style={{ background: "#fefce8", borderColor: "#fde047", fontWeight: 700 }}>
+            🏷️ Shop Owner Dashboard →
+          </Link>
+        </div>
       </div>
 
       {dash.loading ? (
@@ -203,7 +213,9 @@ export default function Dashboard() {
                 const roleIcons: Record<string, string> = {
                   OWNER: "👑",
                   FRONT_DESK: "📋",
+                  BAR_OWNER: "🍷",
                   BAR: "🍸",
+                  SHOP_OWNER: "🏷️",
                   SHOP: "🛍️",
                 };
                 return (

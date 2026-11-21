@@ -15,6 +15,10 @@ enum Role {
   FRONT_DESK
   BAR
   SHOP
+  BAR_OWNER
+  BAR_STAFF
+  SHOP_OWNER
+  SHOP_STAFF
 }
 
 enum TabState {

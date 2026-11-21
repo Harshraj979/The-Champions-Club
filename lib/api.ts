@@ -94,7 +94,7 @@ export const api = {
   openTab: (input: { who: string; tableNo?: number }) => post<TabDTO>("/tabs", input),
   addTabItems: (id: number, items: { productId: number; qty: number }[]) =>
     post<TabDTO>(`/tabs/${id}/items`, { items }),
-  settleTab: (id: number, payMethod: "CASH" | "CARD" | "UPI") =>
+  settleTab: (id: number, payMethod: "CASH" | "CARD" | "UPI" | "ONLINE") =>
     post<TabDTO>(`/tabs/${id}/settle`, { payMethod }),
   createEnquiry: (input: { name: string; contact: string; interest: string; message?: string }) =>
     post<EnquiryDTO>("/enquiries", input),
@@ -104,6 +104,8 @@ export const api = {
   convertEnquiry: (id: number, planCode: string) => post<EnquiryDTO>(`/enquiries/${id}/convert`, { planCode }),
   quoteEnquiry: (id: number, input: { planCode: string; amount: number; note?: string }) => post<EnquiryDTO>(`/enquiries/${id}/quote`, input),
   dashboard: (date?: string) => call<DashboardDTO>(`/dashboard${date ? `?date=${date}` : ""}`),
+  barStats: (date?: string) => call<any>(`/bar/stats${date ? `?date=${date}` : ""}`),
+  shopStats: (date?: string) => call<any>(`/shop/stats${date ? `?date=${date}` : ""}`),
   login: (email: string, password: string) => post<{ staff: StaffDTO }>("/auth/login", { email, password }),
   pinLogin: (role: string, pin: string) => post<{ staff: StaffDTO; token: string }>("/auth/pin-login", { role, pin }),
   staffPins: () => call<{ roles: RolePinDTO[] }>("/staff/pins"),
