@@ -78,7 +78,7 @@ input:focus, select:focus { border-color: var(--pine); outline: none; box-shadow
 .nav { position: sticky; top: 0; z-index: 50; background: var(--pine-deep); color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding: 0; }
 .nav-in { max-width: 1200px; margin: 0 auto; padding: 0 32px; height: 72px; display: flex; align-items: center; gap: 26px; background: none; border: 0; border-radius: 0; box-shadow: none; color: #fff; }
 .brand { display: flex; align-items: center; gap: 11px; white-space: nowrap; color: #fff; }
-.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--volt); color: var(--volt); font-family: var(--font-display), sans-serif; font-style: italic; font-weight: 700; font-size: 16px; flex: none; }
+.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--volt); color: var(--volt); font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 15px; letter-spacing: 0.05em; flex: none; background: #0f2115; box-shadow: 0 0 12px rgba(223, 255, 69, 0.15); }
 .brand-words { display: flex; flex-direction: column; line-height: 1; }
 .brand-words b { font-family: var(--font-display), sans-serif; font-size: 19px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 .brand-words small { font-size: 8px; font-weight: 600; letter-spacing: 0.34em; text-transform: uppercase; color: rgba(255, 255, 255, 0.55); margin-top: 3px; }
@@ -285,7 +285,7 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .page-eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--volt-dark); flex: none; }
 
 /* the club badge on light ground (the landing header's mark, in green) */
-.badge-mark { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid var(--pine); color: var(--pine); font-family: var(--font-display), sans-serif; font-style: italic; font-weight: 700; font-size: 18px; margin-bottom: 16px; background: var(--volt); }
+.badge-mark { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 50%; border: 1.8px solid var(--volt); color: var(--volt); font-family: var(--font-display), sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.05em; margin-bottom: 16px; background: var(--pine); box-shadow: 0 4px 14px rgba(22, 48, 33, 0.25); }
 
 /* demo entry on the sign-in page */
 .demo-box { margin-top: 28px; padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; display: grid; gap: 12px; }

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import DemoRazorpayModal from "@/components/DemoRazorpayModal";
+import ClubLogo from "@/components/ClubLogo";
 import type { MemberSessionDTO } from "@/lib/types";
 
 type IconName = "arrow" | "menu" | "close" | "court" | "cup" | "bag" | "clock" | "pin" | "instagram";
@@ -107,7 +108,7 @@ export default function Home() {
       <header className="absolute inset-x-0 top-0 z-40 border-b border-white/15 text-white">
         <div className="mx-auto flex h-[84px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
           <button onClick={() => scrollTo("home")} className="flex items-center gap-3" aria-label="Champions Club home">
-            <div className="grid h-10 w-10 place-items-center rounded-full border border-[#dfff45]/80 font-display text-[17px] font-bold italic text-[#dfff45]">CC</div>
+            <ClubLogo size={42} />
             <div className="text-left"><p className="font-display text-[19px] font-bold uppercase leading-none tracking-wide">Champions</p><p className="mt-1 text-[8px] font-semibold uppercase tracking-[.34em] text-white/55">The club</p></div>
           </button>
           <nav className="hidden items-center gap-8 lg:flex">

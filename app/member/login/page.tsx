@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
+import ClubLogo from "@/components/ClubLogo";
 
 // Member sign-in: the email on the member's record and their
 // password (the first one is their phone number, set by the desk).
@@ -25,8 +26,10 @@ export default function MemberLogin() {
 
   return (
     <main className="wrap page login-main" style={{ maxWidth: 440 }}>
-      <div className="page-head">
-        <span className="badge-mark">CC</span>
+      <div className="page-head" style={{ textAlign: "center" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <ClubLogo size={52} variant="light" />
+        </div>
         <h1 className="page-title">Member sign in</h1>
         <p className="sub">Your plan, bookings and orders in one place.</p>
       </div>

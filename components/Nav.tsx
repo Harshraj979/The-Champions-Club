@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { api } from "@/lib/api";
+import ClubLogo from "@/components/ClubLogo";
 import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
 
 const publicLinks = [
@@ -90,7 +91,7 @@ export default function Nav() {
     <header className="nav">
       <div className="nav-in">
         <Link className="brand" href="/" aria-label="The Champions Club, home">
-          <span className="brand-mark">CC</span>
+          <ClubLogo size={38} />
           <span className="brand-words"><b>Champions</b><small>The club</small></span>
         </Link>
         <nav className="nav-links" aria-label="Club">

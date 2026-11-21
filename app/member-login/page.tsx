@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
+import ClubLogo from "@/components/ClubLogo";
 
 export default function MemberAuth() {
   const [tab, setTab] = useState<"login" | "signup">("login");
@@ -66,6 +67,9 @@ export default function MemberAuth() {
 
   return (
     <main className="mx-auto max-w-[500px] px-5 py-12 sm:py-20">
+      <div className="mb-4">
+        <ClubLogo size={46} variant="light" />
+      </div>
       <div className="mb-3 flex items-center gap-3">
         <span className="h-px w-8 bg-[#163021]" />
         <span className="text-[10px] font-bold uppercase tracking-[.25em] text-[#163021]">

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
+import ClubLogo from "@/components/ClubLogo";
 
 type RoleOption = {
   id: "OWNER" | "FRONT_DESK" | "BAR_OWNER" | "BAR" | "SHOP_OWNER" | "SHOP";
@@ -69,7 +70,9 @@ export default function Login() {
   return (
     <main className="wrap page login-main" style={{ maxWidth: 460 }}>
       <div className="page-head" style={{ textAlign: "center" }}>
-        <span className="badge-mark" style={{ margin: "0 auto 16px" }}>CC</span>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <ClubLogo size={52} variant="light" />
+        </div>
         <h1 className="page-title">Sign in</h1>
         <p className="sub">Staff & owner access via secure role PIN.</p>
       </div>
