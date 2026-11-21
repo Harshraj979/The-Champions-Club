@@ -28,6 +28,7 @@ export type MemberDTO = {
   id: number;
   name: string;
   phone: string;
+  email: string | null;
   plan: string;
   planCode: string;
   state: MemberState;

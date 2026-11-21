@@ -32,6 +32,7 @@ export const trialInput = bookingInput.extend({
 export const memberInput = z.object({
   name: z.string().trim().min(1, "The member needs a name").max(80),
   phone: z.string().trim().max(20).optional().default(""),
+  email: z.string().trim().email("That email does not look right").max(120).optional(),
   planCode: z.string().min(1),
 });
 

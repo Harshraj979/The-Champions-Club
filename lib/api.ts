@@ -62,7 +62,7 @@ export const api = {
   bookings: (date?: string) => call<BookingDTO[]>(`/bookings${date ? `?date=${date}` : ""}`),
   cancelBooking: (id: number) => post<BookingDTO>(`/bookings/${id}/cancel`),
   members: (q?: string) => call<MemberDTO[]>(`/members${q ? `?q=${encodeURIComponent(q)}` : ""}`),
-  createMember: (input: { name: string; phone?: string; planCode: string }) =>
+  createMember: (input: { name: string; phone?: string; email?: string; planCode: string }) =>
     post<MemberDTO>("/members", input),
   createOrder: (input: {
     items: { productId: number; qty: number }[];

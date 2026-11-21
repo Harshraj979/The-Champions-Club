@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { db } from "../db";
 import { badRequest, notFound } from "../errors";
 import { todayISO } from "../format";
@@ -7,6 +8,7 @@ type MemberRow = {
   id: number;
   name: string;
   phone: string;
+  email: string | null;
   expiresOn: Date;
   plan: { name: string; code: string };
 };
@@ -24,6 +26,7 @@ export const toMemberDTO = (m: MemberRow): MemberDTO => ({
   id: m.id,
   name: m.name,
   phone: m.phone,
+  email: m.email,
   plan: m.plan.name,
   planCode: m.plan.code,
   state: memberState(m.expiresOn),
@@ -45,13 +48,18 @@ export async function listMembers(q?: string): Promise<MemberDTO[]> {
   return rows.map(toMemberDTO);
 }
 
-export async function createMember(input: { name: string; phone: string; planCode: string }): Promise<MemberDTO> {
+export async function createMember(input: { name: string; phone: string; email?: string; planCode: string }): Promise<MemberDTO> {
   const plan = await db.plan.findUnique({ where: { code: input.planCode } });
   if (!plan) throw badRequest("Pick a plan that exists");
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+  // Portal access: with an email on file the member can sign in; the
+  // first password is their phone number, the desk tells them to
+  // change it later (no self-service reset in this version).
+  const email = input.email?.trim().toLowerCase() || null;
+  const passwordHash = email && input.phone ? await bcrypt.hash(input.phone, 10) : null;
   const row = await db.member.create({
-    data: { name: input.name, phone: input.phone, planId: plan.id, joinedOn: joined, expiresOn: expires },
+    data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
     include: { plan: true },
   });
   return toMemberDTO(row);
