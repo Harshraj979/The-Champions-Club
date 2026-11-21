@@ -1,0 +1,161 @@
+// The Champions Club data model. PostgreSQL is the source of truth;
+// the API and any future mobile app read and write through this schema.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum BookingType {
+  REGULAR
+  FRIDAY_SOCIAL
+  TRIAL
+}
+
+enum BookingState {
+  BOOKED
+  CANCELLED
+}
+
+enum Category {
+  GEAR
+  BAR
+}
+
+enum PayMethod {
+  CASH
+  CARD
+  UPI
+}
+
+model Plan {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  name         String
+  courtPrice   Int // rupees per hour on court
+  shopDiscount Int // percent
+  barDiscount  Int // percent
+  termDays     Int
+  members      Member[]
+}
+
+model Court {
+  id          Int       @id @default(autoincrement())
+  name        String
+  sport       String
+  walkinPrice Int // rupees per hour for non-members
+  bookings    Booking[]
+}
+
+model Member {
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String    @default("")
+  planId    Int
+  plan      Plan      @relation(fields: [planId], references: [id])
+  joinedOn  DateTime  @db.Date
+  expiresOn DateTime  @db.Date
+  bookings  Booking[]
+  orders    Order[]
+  createdAt DateTime  @default(now())
+
+  @@index([name])
+}
+
+model Booking {
+  id        Int          @id @default(autoincrement())
+  courtId   Int
+  court     Court        @relation(fields: [courtId], references: [id])
+  memberId  Int?
+  member    Member?      @relation(fields: [memberId], references: [id])
+  who       String // name as booked: member name, walk-in or trial guest
+  phone     String       @default("")
+  date      DateTime     @db.Date
+  start     Int // minutes from midnight, on the 30-minute grid
+  type      BookingType  @default(REGULAR)
+  price     Int // rupees, set from the plan or the walk-in rate at booking time
+  state     BookingState @default(BOOKED)
+  createdAt DateTime     @default(now())
+
+  @@index([courtId, date])
+  @@index([date, who])
+}
+
+model Product {
+  id       Int         @id @default(autoincrement())
+  name     String
+  price    Int
+  stock    Int? // null for bar items, which are not stocked
+  lowAt    Int         @default(5)
+  category Category
+  items    OrderItem[]
+  tabItems TabItem[]
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  memberId  Int?
+  member    Member?     @relation(fields: [memberId], references: [id])
+  subtotal  Int
+  discount  Int         @default(0)
+  total     Int
+  payMethod PayMethod
+  createdAt DateTime    @default(now())
+  items     OrderItem[]
+
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int
+  price     Int // price at the time of sale
+
+  @@unique([orderId, productId])
+}
+
+model Tab {
+  id          Int       @id @default(autoincrement())
+  planCode    String    @default("walkin") // plan the discount came from, kept as a snapshot
+  discountPct Int       @default(0)
+  subtotal    Int
+  total       Int
+  payMethod   PayMethod
+  settledAt   DateTime  @default(now())
+  items       TabItem[]
+
+  @@index([settledAt])
+}
+
+model TabItem {
+  id        Int     @id @default(autoincrement())
+  tabId     Int
+  tab       Tab     @relation(fields: [tabId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int
+  price     Int
+
+  @@unique([tabId, productId])
+}
+
+model Staff {
+  id           Int    @id @default(autoincrement())
+  name         String
+  email        String @unique
+  passwordHash String
+  pinHash      String?
+  role         Role   @default(STAFF)
+}

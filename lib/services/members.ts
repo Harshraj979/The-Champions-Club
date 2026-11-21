@@ -1,0 +1,64 @@
+import { db } from "../db";
+import { badRequest, notFound } from "../errors";
+import { todayISO } from "../format";
+import type { MemberDTO, MemberState } from "../types";
+
+type MemberRow = {
+  id: number;
+  name: string;
+  phone: string;
+  expiresOn: Date;
+  plan: { name: string; code: string };
+};
+
+// Membership state is derived from the expiry date, never stored, so it
+// can never disagree with the dates.
+export const memberState = (expiresOn: Date, onISO: string = todayISO()): MemberState => {
+  const exp = expiresOn.toISOString().slice(0, 10);
+  if (exp < onISO) return "expired";
+  const soon = new Date(Date.parse(onISO) + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return exp <= soon ? "expiring" : "active";
+};
+
+export const toMemberDTO = (m: MemberRow): MemberDTO => ({
+  id: m.id,
+  name: m.name,
+  phone: m.phone,
+  plan: m.plan.name,
+  planCode: m.plan.code,
+  state: memberState(m.expiresOn),
+  expiresOn: m.expiresOn.toISOString().slice(0, 10),
+});
+
+export const findMemberByName = (name: string) =>
+  db.member.findFirst({
+    where: { name: { equals: name.trim(), mode: "insensitive" } },
+    include: { plan: true },
+  });
+
+export async function listMembers(q?: string): Promise<MemberDTO[]> {
+  const rows = await db.member.findMany({
+    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
+    include: { plan: true },
+    orderBy: { name: "asc" },
+  });
+  return rows.map(toMemberDTO);
+}
+
+export async function createMember(input: { name: string; phone: string; planCode: string }): Promise<MemberDTO> {
+  const plan = await db.plan.findUnique({ where: { code: input.planCode } });
+  if (!plan) throw badRequest("Pick a plan that exists");
+  const joined = new Date(`${todayISO()}T00:00:00.000Z`);
+  const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+  const row = await db.member.create({
+    data: { name: input.name, phone: input.phone, planId: plan.id, joinedOn: joined, expiresOn: expires },
+    include: { plan: true },
+  });
+  return toMemberDTO(row);
+}
+
+export async function getMember(id: number): Promise<MemberDTO> {
+  const row = await db.member.findUnique({ where: { id }, include: { plan: true } });
+  if (!row) throw notFound("No such member");
+  return toMemberDTO(row);
+}
