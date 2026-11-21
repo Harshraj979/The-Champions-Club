@@ -1,3 +1,17 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/* Design tokens for the utility classes used by the copied-in components
+   (Magic UI / React Bits patterns). No preflight: the club's own rules
+   below stay in charge of the base look. */
+@theme {
+  --color-volt: #c9e44c;
+  --color-ink: #101208;
+  --color-paper: #f2f2ec;
+  --font-display: "Anton", "Poppins", sans-serif;
+  --font-sans: "Poppins", system-ui, sans-serif;
+}
+
 /* Oil direction: scoreboard energy. Anton for anything that reads like a
    scoreboard or a headline, Poppins for the working text, volt as the one
    loud colour against black and white. Thick ink borders and hard offset
@@ -177,3 +191,12 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
   html { scroll-behavior: auto; }
   * { transition: none !important; animation: none !important; }
 }
+
+/* Marquee (Magic UI pattern): a track twice as wide as its content,
+   sliding one full copy left, forever. Pauses when you hover it. */
+.marquee { overflow: hidden; background: var(--volt); border-top: 3px solid var(--ink); border-bottom: 3px solid var(--ink); }
+.marquee-track { display: flex; width: max-content; animation: marquee 30s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+.marquee-set { display: flex; align-items: center; gap: 28px; padding: 10px 14px 10px 42px; font-family: var(--font-anton), sans-serif; text-transform: uppercase; letter-spacing: 0.05em; font-size: 17px; color: var(--ink); white-space: nowrap; }
+.marquee-dot { width: 9px; height: 9px; background: var(--ink); flex: none; }
+@keyframes marquee { to { transform: translateX(-50%); } }
