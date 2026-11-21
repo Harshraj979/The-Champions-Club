@@ -122,7 +122,7 @@ export async function createBooking(input: {
         where: {
           date: day,
           state: "BOOKED",
-          type: { not: "FRIDAY_SOCIAL" },
+          type: "REGULAR",
           who: { equals: input.name, mode: "insensitive" },
         },
       });
