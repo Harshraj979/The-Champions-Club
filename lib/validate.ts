@@ -68,6 +68,10 @@ export const orderInput = z.object({
 
 export const memberOrderInput = orderInput.pick({ items: true, payMethod: true, fulfilment: true, address: true, payOnline: true });
 
+export const renewInput = z.object({
+  payMethod: z.enum(["CASH", "CARD", "UPI", "ONLINE"]).optional().default("CASH"),
+});
+
 export const invoiceInput = z.object({
   billedTo: z.string().trim().min(2, "Who is this bill for?").max(80),
   detail: z.string().trim().max(200).optional().default(""),
