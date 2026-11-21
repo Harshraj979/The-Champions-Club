@@ -82,9 +82,13 @@ export async function createMember(input: { name: string; phone: string; email?:
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
   // Portal access: with an email on file the member can sign in; the
-  // first password is their phone number, the desk tells them to
-  // change it later (no self-service reset in this version).
-  const passwordHash = email && input.phone ? await bcrypt.hash(input.phone, 10) : null;
+  // first password is their phone number, or the email itself when
+  // there is no phone — never a null hash, or the member could never
+  // sign in at all. The desk tells them to change it later
+  // (no self-service reset in this version).
+  const passwordHash = email
+    ? await bcrypt.hash(input.phone.trim() ? input.phone : email, 10)
+    : null;
   const row = await db.member.create({
     data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
     include: { plan: true },
