@@ -15,6 +15,9 @@ export default function Login() {
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get("error") === "notstaff") setErr("That Google account is not a staff account.");
+    else if (q.get("error") === "gtoken") setErr("Google token exchange failed. Check client secret or try again.");
+    else if (q.get("error") === "gstate") setErr("Google session expired. Try signing in again.");
+    else if (q.get("error") === "ginfo" || q.get("error") === "gemail") setErr("Could not retrieve verified email from Google.");
     else if (q.get("error") === "google") setErr("Google sign-in did not work. Try again, or use your password.");
     const next = q.get("next");
     if (next) setGoogleHref(`/api/v1/auth/google?next=${encodeURIComponent(next)}`);
