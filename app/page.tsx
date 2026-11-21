@@ -4,6 +4,11 @@ import { api } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
+import Marquee from "@/components/Marquee";
+import BlurText from "@/components/BlurText";
+import Reveal from "@/components/Reveal";
+
+const ticker = ["Tennis", "Cricket", "Friday Social Play", "Gear Shop", "Bar & Café", "Open 6 AM to 10 PM", "First trial is free"];
 
 const hours = [
   { what: "Courts", when: "6 AM to 10 PM" },
@@ -30,7 +35,7 @@ export default function Home() {
         <div className="hero-shade" />
         <div className="hero-in">
           <div className="hero-text">
-            <h1>First serve at six. Last over by dusk.</h1>
+            <h1><BlurText text="First serve at six. Last over by dusk." /></h1>
             <p>Two tennis courts, a cricket pitch, a gear shop and a bar that knows your name. Booked in seconds, not WhatsApp threads.</p>
             <div className="hero-actions">
               <Link className="btn btn-paper" href="/trial">Book a free trial</Link>
@@ -45,7 +50,10 @@ export default function Home() {
         </div>
       </section>
 
+      <Marquee items={ticker} />
+
       <div className="wrap">
+        <Reveal>
         <section className="block">
           <div className="sec-head">
             <h2>On court today</h2>
@@ -76,7 +84,9 @@ export default function Home() {
           )}
           <p className="muted" style={{ marginTop: 12 }}>One hour a booking, a new slot every half hour. A court is never double-booked.</p>
         </section>
+        </Reveal>
 
+        <Reveal>
         <section className="block" id="plans">
           <div className="sec-head">
             <h2>Membership</h2>
@@ -106,7 +116,9 @@ export default function Home() {
           )}
           <p className="muted" style={{ marginTop: 12 }}>Your plan sets your prices everywhere at once: courts, shop and bar. Two court bookings a day at most, on every plan.</p>
         </section>
+        </Reveal>
 
+        <Reveal>
         <section className="block">
           <div className="sec-head">
             <h2>Courts</h2>
@@ -130,7 +142,9 @@ export default function Home() {
             </div>
           )}
         </section>
+        </Reveal>
 
+        <Reveal>
         <section className="block" style={{ paddingBottom: 16 }}>
           <div className="rows">
             <div className="row-item">
@@ -151,6 +165,7 @@ export default function Home() {
             </div>
           </div>
         </section>
+        </Reveal>
       </div>
     </main>
   );
