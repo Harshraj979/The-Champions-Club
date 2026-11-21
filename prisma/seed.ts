@@ -141,7 +141,7 @@ async function main() {
       { name: "Meera Joshi", email: "meera@champions.club", passwordHash: demoHash, role: "SHOP" },
       // The demo-login button and Google sign-in accounts.
       { name: "Club Owner", email: "owner@champions.club", passwordHash: await bcrypt.hash("champions", 10), role: "OWNER" },
-      { name: "Krishna", email: "krixhnnna@gmail.com", passwordHash: "$2b$10$MFmhdzW4QLmWPqFUOZRbP.PdYbcr6YzR6X0WEbXVTOKgboCGKqUTa", role: "OWNER" },
+      { name: "Krishna", email: "techbroyt@gmail.com", passwordHash: "$2b$10$MFmhdzW4QLmWPqFUOZRbP.PdYbcr6YzR6X0WEbXVTOKgboCGKqUTa", role: "OWNER" },
     ],
   });
 
