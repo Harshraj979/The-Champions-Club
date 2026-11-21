@@ -91,7 +91,8 @@ export type OrderDTO = {
   subtotal: number;
   discount: number;
   total: number;
-  payMethod: "CASH" | "CARD" | "UPI";
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE";
+  payState: "PENDING" | "PAID";
   fulfilment: "PICKUP" | "DELIVERY";
   address: string | null;
   createdAt: string;

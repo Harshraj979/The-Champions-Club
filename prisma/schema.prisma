@@ -50,6 +50,7 @@ enum PayMethod {
   CASH
   CARD
   UPI
+  ONLINE // Razorpay checkout (test mode)
 }
 
 model Plan {
@@ -132,6 +133,9 @@ model Order {
   payMethod PayMethod
   fulfilment String     @default("PICKUP") // PICKUP | DELIVERY
   address   String? // delivery address, set only for DELIVERY
+  payState  String      @default("PAID") // PENDING | PAID — online orders start PENDING
+  razorpayOrderId   String?
+  razorpayPaymentId String?
   createdAt DateTime    @default(now())
   items     OrderItem[]
 

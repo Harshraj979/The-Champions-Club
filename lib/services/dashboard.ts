@@ -18,7 +18,9 @@ async function sums(fromISO: string, toISO: string): Promise<MoneySplit> {
       _sum: { price: true },
     }),
     db.order.findMany({
-      where: { createdAt: { gte: istDayStart(fromISO), lt: istDayStart(addDaysISO(toISO, 1)) } },
+      // A pending online order is not money yet; it joins the takings
+      // when its payment confirms.
+      where: { createdAt: { gte: istDayStart(fromISO), lt: istDayStart(addDaysISO(toISO, 1)) }, payState: { not: "PENDING" } },
       select: { total: true },
     }),
     db.tab.findMany({

@@ -71,8 +71,12 @@ export const api = {
     payMethod: "CASH" | "CARD" | "UPI";
     fulfilment?: "PICKUP" | "DELIVERY";
     address?: string;
-  }) => post<OrderDTO>("/orders", input),
+    payOnline?: boolean;
+  }) => post<OrderDTO & { razorpayOrderId?: string }>("/orders", input),
   orders: () => call<OrderDTO[]>("/orders"),
+  payConfig: () => call<{ enabled: boolean; keyId: string | null }>("/payments/config"),
+  confirmPayment: (id: number, proof: { razorpayOrderId: string; paymentId: string; signature: string }) =>
+    post<OrderDTO>(`/orders/${id}/pay-confirm`, proof),
   tabs: () => call<TabDTO[]>("/tabs"),
   openTab: (input: { who: string; tableNo?: number }) => post<TabDTO>("/tabs", input),
   addTabItems: (id: number, items: { productId: number; qty: number }[]) =>
@@ -93,5 +97,5 @@ export const api = {
   memberLogout: () => post<{ ok: boolean }>("/member/logout"),
   memberMe: () => call<MemberHomeDTO>("/member/me"),
   memberBook: (input: { courtId: number; date: string; start: number }) => post<BookingDTO>("/member/bookings", input),
-  memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI"; fulfilment?: "PICKUP" | "DELIVERY"; address?: string }) => post<OrderDTO>("/member/orders", input),
+  memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI"; fulfilment?: "PICKUP" | "DELIVERY"; address?: string; payOnline?: boolean }) => post<OrderDTO & { razorpayOrderId?: string }>("/member/orders", input),
 };

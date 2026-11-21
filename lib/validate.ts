@@ -54,9 +54,16 @@ export const orderInput = z.object({
   payMethod: z.enum(["CASH", "CARD", "UPI"]),
   fulfilment: z.enum(["PICKUP", "DELIVERY"]).optional().default("PICKUP"),
   address: z.string().trim().max(300).optional(),
+  payOnline: z.boolean().optional().default(false),
 });
 
-export const memberOrderInput = orderInput.pick({ items: true, payMethod: true, fulfilment: true, address: true });
+export const memberOrderInput = orderInput.pick({ items: true, payMethod: true, fulfilment: true, address: true, payOnline: true });
+
+export const payConfirmInput = z.object({
+  razorpayOrderId: z.string().min(1).max(80),
+  paymentId: z.string().min(1).max(80),
+  signature: z.string().min(1).max(200),
+});
 
 export const tabOpenInput = z.object({
   who: z.string().trim().min(1, "The tab needs a name").max(80),
