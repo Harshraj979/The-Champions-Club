@@ -69,6 +69,8 @@ export const api = {
     name: string;
     phone: string;
     payMethod: "CASH" | "CARD" | "UPI";
+    fulfilment?: "PICKUP" | "DELIVERY";
+    address?: string;
   }) => post<OrderDTO>("/orders", input),
   orders: () => call<OrderDTO[]>("/orders"),
   tabs: () => call<TabDTO[]>("/tabs"),
@@ -91,5 +93,5 @@ export const api = {
   memberLogout: () => post<{ ok: boolean }>("/member/logout"),
   memberMe: () => call<MemberHomeDTO>("/member/me"),
   memberBook: (input: { courtId: number; date: string; start: number }) => post<BookingDTO>("/member/bookings", input),
-  memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI" }) => post<OrderDTO>("/member/orders", input),
+  memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI"; fulfilment?: "PICKUP" | "DELIVERY"; address?: string }) => post<OrderDTO>("/member/orders", input),
 };

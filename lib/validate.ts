@@ -52,9 +52,11 @@ export const orderInput = z.object({
   name: z.string().trim().min(1, "Your name is missing").max(80),
   phone: phone,
   payMethod: z.enum(["CASH", "CARD", "UPI"]),
+  fulfilment: z.enum(["PICKUP", "DELIVERY"]).optional().default("PICKUP"),
+  address: z.string().trim().max(300).optional(),
 });
 
-export const memberOrderInput = orderInput.pick({ items: true, payMethod: true });
+export const memberOrderInput = orderInput.pick({ items: true, payMethod: true, fulfilment: true, address: true });
 
 export const tabOpenInput = z.object({
   who: z.string().trim().min(1, "The tab needs a name").max(80),

@@ -92,6 +92,8 @@ export type OrderDTO = {
   discount: number;
   total: number;
   payMethod: "CASH" | "CARD" | "UPI";
+  fulfilment: "PICKUP" | "DELIVERY";
+  address: string | null;
   createdAt: string;
   items: { productId: number; name: string; qty: number; price: number }[];
 };

@@ -130,6 +130,8 @@ model Order {
   discount  Int         @default(0)
   total     Int
   payMethod PayMethod
+  fulfilment String     @default("PICKUP") // PICKUP | DELIVERY
+  address   String? // delivery address, set only for DELIVERY
   createdAt DateTime    @default(now())
   items     OrderItem[]
 

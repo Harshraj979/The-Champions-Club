@@ -48,6 +48,8 @@ export default function MemberActions() {
 
   const [cart, setCart] = useState<Record<number, number>>({});
   const [pay, setPay] = useState<"CASH" | "CARD" | "UPI">("UPI");
+  const [fulfilment, setFulfilment] = useState<"PICKUP" | "DELIVERY">("PICKUP");
+  const [address, setAddress] = useState("");
   const items = Object.entries(cart).filter(([, q]) => q > 0).map(([id, q]) => ({ productId: Number(id), qty: q }));
   const subtotal = items.reduce((s, i) => s + (products.data?.find((p) => p.id === i.productId)?.price ?? 0) * i.qty, 0);
   const [orderMsg, setOrderMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -57,8 +59,8 @@ export default function MemberActions() {
     setOrderBusy(true);
     setOrderMsg(null);
     try {
-      const o = await api.memberOrder({ items, payMethod: pay });
-      setOrderMsg({ ok: true, text: `Order placed — ${inr(o.total)}${o.discount ? `, you saved ${inr(o.discount)}` : ""}. Pick it up at the shop counter.` });
+      const o = await api.memberOrder({ items, payMethod: pay, fulfilment, address: fulfilment === "DELIVERY" ? address.trim() : undefined });
+      setOrderMsg({ ok: true, text: `Order placed — ${inr(o.total)}${o.discount ? `, you saved ${inr(o.discount)}` : ""}. ${fulfilment === "DELIVERY" ? "We will deliver it to your address." : "Pick it up at the shop counter."}` });
       setCart({});
       router.refresh();
     } catch (e) {
@@ -125,7 +127,20 @@ export default function MemberActions() {
           ))}
         </div>
         <div style={{ marginTop: 16 }}>
-          <label>Pay at pickup</label>
+          <label>Pickup or delivery</label>
+          <div className="seg" role="group" aria-label="Pickup or delivery">
+            <button aria-pressed={fulfilment === "PICKUP"} onClick={() => setFulfilment("PICKUP")}>Pickup</button>
+            <button aria-pressed={fulfilment === "DELIVERY"} onClick={() => setFulfilment("DELIVERY")}>Delivery</button>
+          </div>
+        </div>
+        {fulfilment === "DELIVERY" && (
+          <div style={{ marginTop: 14 }}>
+            <label htmlFor="mo-address">Delivery address</label>
+            <input id="mo-address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Flat, street, landmark" />
+          </div>
+        )}
+        <div style={{ marginTop: 16 }}>
+          <label>{fulfilment === "DELIVERY" ? "Paying by" : "Pay at pickup"}</label>
           <div className="seg" role="group" aria-label="Pay method">
             {(["CASH", "CARD", "UPI"] as const).map((m) => (
               <button key={m} aria-pressed={pay === m} onClick={() => setPay(m)}>{m === "UPI" ? "UPI" : m.charAt(0) + m.slice(1).toLowerCase()}</button>
@@ -133,7 +148,7 @@ export default function MemberActions() {
           </div>
         </div>
         {orderMsg && <div className={`notice ${orderMsg.ok ? "ok" : "err"}`} role="status" style={{ marginTop: 14 }}>{orderMsg.text}</div>}
-        <button className="btn btn-ink" style={{ marginTop: 16 }} disabled={orderBusy || items.length === 0} onClick={order}>
+        <button className="btn btn-ink" style={{ marginTop: 16 }} disabled={orderBusy || items.length === 0 || (fulfilment === "DELIVERY" && address.trim().length < 10)} onClick={order}>
           {orderBusy ? "Placing..." : items.length ? `Place order · ${inr(subtotal)} before discount` : "Place order"}
         </button>
         </div>

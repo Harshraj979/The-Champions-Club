@@ -29,7 +29,13 @@ export async function createOrder(input: {
   name: string;
   phone: string;
   payMethod: "CASH" | "CARD" | "UPI";
+  fulfilment?: "PICKUP" | "DELIVERY";
+  address?: string;
 }) {
+  const fulfilment = input.fulfilment ?? "PICKUP";
+  const address = fulfilment === "DELIVERY" ? (input.address ?? "").trim() : "";
+  if (fulfilment === "DELIVERY" && address.length < 10)
+    throw badRequest("Add the full delivery address");
   const member = await findMemberByName(input.name);
   const active = member && memberState(member.expiresOn) === "active";
   const discountPct = active ? member.plan.shopDiscount : 0;
@@ -55,6 +61,8 @@ export async function createOrder(input: {
         discount,
         total: subtotal - discount,
         payMethod: input.payMethod,
+        fulfilment,
+        address: address || null,
         items: {
           create: lines.map((l) => ({ productId: l.product.id, qty: l.qty, price: l.product.price })),
         },
@@ -77,6 +85,8 @@ type OrderRow = {
   discount: number;
   total: number;
   payMethod: "CASH" | "CARD" | "UPI";
+  fulfilment: string;
+  address: string | null;
   createdAt: Date;
   items: { productId: number; qty: number; price: number; product: { name: string } }[];
 };
@@ -89,6 +99,8 @@ export const toOrderDTO = (o: OrderRow): OrderDTO => ({
   discount: o.discount,
   total: o.total,
   payMethod: o.payMethod,
+  fulfilment: o.fulfilment === "DELIVERY" ? "DELIVERY" : "PICKUP",
+  address: o.address,
   createdAt: o.createdAt.toISOString(),
   items: o.items.map((i) => ({ productId: i.productId, name: i.product.name, qty: i.qty, price: i.price })),
 });
