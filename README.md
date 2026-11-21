@@ -41,4 +41,4 @@ public/       Images
 
 ## Status
 
-Built for the Odoo × LPU Hackathon. The frontend is complete and self-contained; backend integration comes next.
+Built at a 24-hour hackathon at LPU. The frontend is complete and self-contained; backend integration comes next.
