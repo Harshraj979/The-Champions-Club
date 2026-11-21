@@ -141,6 +141,14 @@ export const api = {
       }[];
     }>("/auth/staff-profiles"),
   staffPins: () => call<{ roles: RolePinDTO[]; staff: StaffMemberPinDTO[] }>("/staff/pins"),
+  addStaff: (input: {
+    name: string;
+    email: string;
+    role: "FRONT_DESK" | "BAR" | "SHOP" | "STAFF" | string;
+    hourlyRate?: number;
+    pin?: string;
+  }) => post<{ ok: boolean; message: string; staff: any }>("/staff", input),
+  removeStaff: (id: number) => call<{ ok: boolean; message: string }>(`/staff/${id}`, { method: "DELETE" }),
   updateStaffPin: (staffId: number, pin: string) =>
     post<{ ok: boolean; message: string }>("/staff/pins", { staffId, pin }),
   resetStaffPin: (staffId: number) =>

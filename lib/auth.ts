@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { db } from "./db";
-import { badRequest, forbidden, unauthorized } from "./errors";
+import { badRequest, conflict, forbidden, notFound, unauthorized } from "./errors";
 import { todayISO } from "./format";
 import { memberState } from "./services/members";
 import type { MemberSessionDTO, StaffDTO, StaffMemberPinDTO } from "./types";
@@ -374,6 +374,111 @@ export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
   }
 
   return results;
+}
+
+export async function createStaffMember(input: {
+  name?: string;
+  email?: string;
+  role?: string;
+  hourlyRate?: number;
+  pin?: string;
+  password?: string;
+}) {
+  const name = (input.name || "").trim();
+  const email = (input.email || "").trim().toLowerCase();
+  const role = (input.role || "FRONT_DESK").toUpperCase();
+  const hourlyRate = Math.max(50, Math.round(Number(input.hourlyRate) || 250));
+  const pin = (input.pin || "").trim();
+
+  if (!name || name.length < 2) {
+    throw badRequest("Full name is required (minimum 2 characters)");
+  }
+  if (!email || !email.includes("@")) {
+    throw badRequest("A valid work email is required");
+  }
+
+  const allowedRoles = ["FRONT_DESK", "BAR", "SHOP", "STAFF"];
+  if (!allowedRoles.includes(role)) {
+    throw badRequest(
+      "Invalid role. Permitted staff roles: Club Staff (FRONT_DESK), Bar & Cafeteria Staff (BAR), Pro Shop Staff (SHOP)",
+    );
+  }
+
+  const existing = await db.staff.findUnique({ where: { email } });
+  if (existing) {
+    throw conflict(`A staff profile with work email "${email}" already exists`);
+  }
+
+  const initialPassword = input.password || "Champions@123";
+  const passwordHash = await bcrypt.hash(initialPassword, 10);
+
+  let pinHash: string | null = null;
+  if (pin) {
+    if (!/^\d{4,6}$/.test(pin)) {
+      throw badRequest("PIN must be 4 to 6 numeric digits");
+    }
+    pinHash = await bcrypt.hash(pin, 10);
+  }
+
+  const created = await db.staff.create({
+    data: {
+      name,
+      email,
+      role: role as any,
+      hourlyRate,
+      passwordHash,
+      pinHash,
+    },
+  });
+
+  return {
+    ok: true,
+    staff: {
+      id: created.id,
+      name: created.name,
+      email: created.email,
+      role: created.role,
+      roleLabel: ROLE_LABELS[created.role] || created.role,
+      hourlyRate: created.hourlyRate,
+      defaultPin: DEFAULT_ROLE_PINS[created.role] || "2222",
+      hasCustomPin: Boolean(created.pinHash),
+    },
+    message: `Staff member ${created.name} added successfully!`,
+  };
+}
+
+export async function deleteStaffMember(staffId: number) {
+  const staff = await db.staff.findUnique({ where: { id: staffId } });
+  if (!staff) {
+    throw notFound("Staff profile not found");
+  }
+
+  if (staff.role === "OWNER") {
+    throw forbidden("Cannot delete the Club Owner / Proprietor account");
+  }
+
+  await db.$transaction(async (tx) => {
+    // 1. Remove assigned shifts
+    await tx.shift.deleteMany({ where: { staffId } });
+    // 2. Remove staff work logs
+    await tx.staffWorkLog.deleteMany({ where: { staffId } });
+    // 3. Remove leave records
+    await tx.leave.deleteMany({ where: { staffId } });
+    // 4. Decouple payroll history to keep financial audit records intact
+    await tx.payroll.updateMany({
+      where: { staffId },
+      data: { staffId: null },
+    });
+    // 5. Delete staff member
+    await tx.staff.delete({ where: { id: staffId } });
+  });
+
+  return {
+    ok: true,
+    staffId,
+    name: staff.name,
+    message: `Staff member ${staff.name} removed successfully`,
+  };
 }
 
 export async function updateRolePin(role: StaffDTO["role"], newPin: string) {

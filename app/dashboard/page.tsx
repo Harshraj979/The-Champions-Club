@@ -48,6 +48,23 @@ export default function Dashboard() {
     amount: 0,
   });
 
+  // Add Staff Modal State
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [newStaffForm, setNewStaffForm] = useState({
+    name: "",
+    email: "",
+    role: "FRONT_DESK",
+    hourlyRate: "250",
+    pin: "",
+  });
+  const [addStaffSubmitting, setAddStaffSubmitting] = useState(false);
+  const [addStaffError, setAddStaffError] = useState<string | null>(null);
+
+  // Delete Staff Confirmation Modal State
+  const [staffToDelete, setStaffToDelete] = useState<StaffMemberPinDTO | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [staffBannerMsg, setStaffBannerMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
   async function loadStaffData() {
     try {
       const res = await api.staffPins();
@@ -55,6 +72,68 @@ export default function Dashboard() {
       setStaffList(res.staff || []);
     } catch {
       // fallback
+    }
+  }
+
+  async function handleAddStaff(e: React.FormEvent) {
+    e.preventDefault();
+    setAddStaffError(null);
+    if (!newStaffForm.name.trim() || newStaffForm.name.trim().length < 2) {
+      setAddStaffError("Please provide a valid staff name (at least 2 letters)");
+      return;
+    }
+    if (!newStaffForm.email.trim() || !newStaffForm.email.includes("@")) {
+      setAddStaffError("Please enter a valid work email address");
+      return;
+    }
+    const rate = Number(newStaffForm.hourlyRate);
+    if (isNaN(rate) || rate < 50) {
+      setAddStaffError("Hourly wage rate must be at least ₹50/hr");
+      return;
+    }
+    if (newStaffForm.pin.trim() && !/^\d{4,6}$/.test(newStaffForm.pin.trim())) {
+      setAddStaffError("Security PIN must be 4 to 6 numeric digits (or left blank for role default)");
+      return;
+    }
+
+    setAddStaffSubmitting(true);
+    try {
+      const res = await api.addStaff({
+        name: newStaffForm.name.trim(),
+        email: newStaffForm.email.trim(),
+        role: newStaffForm.role,
+        hourlyRate: rate,
+        pin: newStaffForm.pin.trim() || undefined,
+      });
+      setShowAddStaffModal(false);
+      setNewStaffForm({
+        name: "",
+        email: "",
+        role: "FRONT_DESK",
+        hourlyRate: "250",
+        pin: "",
+      });
+      setStaffBannerMsg({ text: res.message || `Added ${newStaffForm.name} to team roster!`, ok: true });
+      await loadStaffData();
+    } catch (err: any) {
+      setAddStaffError(err.message || "Failed to add staff member");
+    } finally {
+      setAddStaffSubmitting(false);
+    }
+  }
+
+  async function handleConfirmDeleteStaff() {
+    if (!staffToDelete) return;
+    setDeleteSubmitting(true);
+    try {
+      const res = await api.removeStaff(staffToDelete.id);
+      setStaffBannerMsg({ text: res.message || `Removed ${staffToDelete.name}`, ok: true });
+      setStaffToDelete(null);
+      await loadStaffData();
+    } catch (err: any) {
+      setStaffBannerMsg({ text: err.message || "Failed to remove staff member", ok: false });
+    } finally {
+      setDeleteSubmitting(false);
     }
   }
 
@@ -607,7 +686,47 @@ export default function Dashboard() {
                   Owner controls: Configure personal security PINs for each staff member by name, track their worked hours, and pay their salary directly via Demo Razorpay.
                 </p>
               </div>
+              <button
+                type="button"
+                className="btn btn-ink"
+                onClick={() => {
+                  setAddStaffError(null);
+                  setShowAddStaffModal(true);
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  background: "#163021",
+                  color: "#dfff45",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                }}
+              >
+                <span style={{ fontSize: 16 }}>➕</span>
+                <span>Add Staff Member</span>
+              </button>
             </div>
+
+            {/* Notification / Toast Banner */}
+            {staffBannerMsg && (
+              <div
+                className={`notice ${staffBannerMsg.ok ? "ok" : "err"}`}
+                style={{ margin: "14px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}
+              >
+                <span>{staffBannerMsg.text}</span>
+                <button
+                  type="button"
+                  onClick={() => setStaffBannerMsg(null)}
+                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, lineHeight: 1 }}
+                >
+                  ✕
+                </button>
+              </div>
+            )}
 
             {/* Role Filter and Summary Row */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
@@ -692,20 +811,45 @@ export default function Dashboard() {
                             </div>
                           </div>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                            <span
-                              style={{
-                                fontSize: 10,
-                                fontWeight: 700,
-                                padding: "2px 8px",
-                                borderRadius: 999,
-                                background: s.hasCustomPin ? "#dcfce7" : "#f1f5f9",
-                                color: s.hasCustomPin ? "#166534" : "#475569",
-                                border: s.hasCustomPin ? "1px solid #86efac" : "1px solid #cbd5e1",
-                                textTransform: "uppercase",
-                              }}
-                            >
-                              {s.hasCustomPin ? "CUSTOM PIN" : `DEFAULT (${s.defaultPin})`}
-                            </span>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  background: s.hasCustomPin ? "#dcfce7" : "#f1f5f9",
+                                  color: s.hasCustomPin ? "#166534" : "#475569",
+                                  border: s.hasCustomPin ? "1px solid #86efac" : "1px solid #cbd5e1",
+                                  textTransform: "uppercase",
+                                }}
+                              >
+                                {s.hasCustomPin ? "CUSTOM PIN" : `DEFAULT (${s.defaultPin})`}
+                              </span>
+                              {s.role !== "OWNER" && (
+                                <button
+                                  type="button"
+                                  title={`Remove ${s.name} from staff roster`}
+                                  onClick={() => setStaffToDelete(s)}
+                                  style={{
+                                    border: "1px solid #fee2e2",
+                                    background: "#fef2f2",
+                                    color: "#dc2626",
+                                    borderRadius: 6,
+                                    padding: "2px 6px",
+                                    fontSize: 11,
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                    fontWeight: 600,
+                                  }}
+                                >
+                                  <span>🗑️</span>
+                                  <span>Remove</span>
+                                </button>
+                              )}
+                            </div>
                             <span
                               style={{
                                 fontSize: 10,
@@ -966,6 +1110,280 @@ export default function Dashboard() {
               onClose={() => setSalaryModal((prev) => ({ ...prev, isOpen: false }))}
               onSuccess={(details) => executeSalaryPayout(details.paymentId)}
             />
+          )}
+
+          {/* Add Staff Modal */}
+          {showAddStaffModal && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                background: "rgba(11, 26, 48, 0.65)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !addStaffSubmitting) setShowAddStaffModal(false);
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 480,
+                  background: "#ffffff",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+                  display: "flex",
+                  flexDirection: "column",
+                }}
+              >
+                <div
+                  style={{
+                    background: "linear-gradient(135deg, #163021 0%, #0b1a30 100%)",
+                    color: "#ffffff",
+                    padding: "20px 24px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#dfff45" }}>
+                      ➕ Add New Staff Member
+                    </h3>
+                    <p style={{ margin: "4px 0 0", fontSize: 12, color: "rgba(255,255,255,0.8)" }}>
+                      Create a club employee profile with role, wage rate, and security PIN
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={addStaffSubmitting}
+                    onClick={() => setShowAddStaffModal(false)}
+                    style={{
+                      background: "rgba(255,255,255,0.1)",
+                      border: "none",
+                      color: "#fff",
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      fontSize: 16,
+                      cursor: "pointer",
+                      display: "grid",
+                      placeItems: "center",
+                    }}
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddStaff} style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
+                  {addStaffError && (
+                    <div className="notice err" style={{ margin: 0, padding: "8px 12px", fontSize: 13 }}>
+                      {addStaffError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "#163021", marginBottom: 6 }}>
+                      Staff Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Rahul Sharma"
+                      value={newStaffForm.name}
+                      onChange={(e) => setNewStaffForm((prev) => ({ ...prev, name: e.target.value }))}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14 }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "#163021", marginBottom: 6 }}>
+                      Work Email *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="e.g. rahul@champions.club"
+                      value={newStaffForm.email}
+                      onChange={(e) => setNewStaffForm((prev) => ({ ...prev, email: e.target.value }))}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14 }}
+                    />
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "#163021", marginBottom: 6 }}>
+                        Department Role *
+                      </label>
+                      <select
+                        value={newStaffForm.role}
+                        onChange={(e) => setNewStaffForm((prev) => ({ ...prev, role: e.target.value }))}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, background: "#fff" }}
+                      >
+                        <option value="FRONT_DESK">📋 Club Staff (Front Desk)</option>
+                        <option value="BAR">🍸 Bar &amp; Cafeteria Staff</option>
+                        <option value="SHOP">🛍️ Pro Shop Staff</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "#163021", marginBottom: 6 }}>
+                        Hourly Wage (₹/hr) *
+                      </label>
+                      <input
+                        type="number"
+                        min="50"
+                        step="10"
+                        required
+                        value={newStaffForm.hourlyRate}
+                        onChange={(e) => setNewStaffForm((prev) => ({ ...prev, hourlyRate: e.target.value }))}
+                        style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <label style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", color: "#163021" }}>
+                        Initial Security PIN (Optional)
+                      </label>
+                      <span style={{ fontSize: 11, color: "#64748b" }}>
+                        Default: {newStaffForm.role === "BAR" ? "3333" : newStaffForm.role === "SHOP" ? "4444" : "2222"}
+                      </span>
+                    </div>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={6}
+                      placeholder="Leave blank for default, or 4-6 digits"
+                      value={newStaffForm.pin}
+                      onChange={(e) => setNewStaffForm((prev) => ({ ...prev, pin: e.target.value.replace(/\D/g, "") }))}
+                      style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 14, letterSpacing: 2 }}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8, paddingTop: 16, borderTop: "1px solid #f1f5f9" }}>
+                    <button
+                      type="button"
+                      className="btn btn-quiet"
+                      disabled={addStaffSubmitting}
+                      onClick={() => setShowAddStaffModal(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-ink"
+                      disabled={addStaffSubmitting}
+                      style={{ background: "#163021", color: "#dfff45", fontWeight: 700 }}
+                    >
+                      {addStaffSubmitting ? "Creating Staff..." : "➕ Add Staff Member"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Delete Staff Confirmation Modal */}
+          {staffToDelete && (
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                zIndex: 9999,
+                background: "rgba(11, 26, 48, 0.65)",
+                backdropFilter: "blur(6px)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 16,
+              }}
+              onClick={(e) => {
+                if (e.target === e.currentTarget && !deleteSubmitting) setStaffToDelete(null);
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 440,
+                  background: "#ffffff",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
+                  padding: 24,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                  <div
+                    style={{
+                      width: 44,
+                      height: 44,
+                      borderRadius: 12,
+                      background: "#fee2e2",
+                      color: "#b91c1c",
+                      display: "grid",
+                      placeItems: "center",
+                      fontSize: 22,
+                    }}
+                  >
+                    🗑️
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#163021" }}>
+                      Remove Staff Member
+                    </h3>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                      Terminate employee access and roster assignment
+                    </p>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.5, margin: "14px 0" }}>
+                  Are you sure you want to remove <strong>{staffToDelete.name}</strong> ({staffToDelete.roleLabel})?
+                </p>
+
+                <div style={{ background: "#f8fafc", borderRadius: 10, padding: "10px 14px", fontSize: 12, color: "#475569", marginBottom: 18 }}>
+                  <div style={{ marginBottom: 4 }}>• Assigned shifts, shift work logs, and leave requests will be removed.</div>
+                  <div>• Past payroll payout history is retained for financial audit and tax compliance.</div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet"
+                    disabled={deleteSubmitting}
+                    onClick={() => setStaffToDelete(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleteSubmitting}
+                    onClick={handleConfirmDeleteStaff}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 10,
+                      background: "#dc2626",
+                      color: "#ffffff",
+                      border: "none",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: deleteSubmitting ? "not-allowed" : "pointer",
+                      opacity: deleteSubmitting ? 0.6 : 1,
+                    }}
+                  >
+                    {deleteSubmitting ? "Removing..." : "Yes, Remove Staff"}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </>
       )}
