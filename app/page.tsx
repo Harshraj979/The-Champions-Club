@@ -51,6 +51,7 @@ export default function Home() {
             <Link href="/courts" className="text-xs font-semibold text-white/75 transition hover:text-white">Courts</Link>
             <Link href="/shop" className="text-xs font-semibold text-white/75 transition hover:text-white">Shop</Link>
             <Link href="/bar" className="text-xs font-semibold text-white/75 transition hover:text-white">Bar &amp; Café</Link>
+            <Link href="/trial" className="text-xs font-semibold text-white/75 transition hover:text-white">Book a trial</Link>
             <Link href="/#membership" className="text-xs font-semibold text-white/75 transition hover:text-white">Membership</Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -61,8 +62,8 @@ export default function Home() {
         </div>
         {menuOpen && (
           <div className="border-t border-white/10 bg-[#132b1d] px-5 py-6 lg:hidden">
-            {[["Courts", "/courts"], ["Shop", "/shop"], ["Bar & Café", "/bar"], ["Membership", "/#membership"]].map(([item, href]) => <Link key={item} href={href} onClick={() => setMenuOpen(false)} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">{item}</Link>)}
-            <Link href="/trial" onClick={() => setMenuOpen(false)} className="mt-6 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Join the club</Link>
+            {[["Courts", "/courts"], ["Shop", "/shop"], ["Bar & Café", "/bar"], ["Book a trial", "/trial"], ["Membership", "/#membership"]].map(([item, href]) => <Link key={item} href={href} onClick={() => setMenuOpen(false)} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">{item}</Link>)}
+            <Link href="/trial" onClick={() => setMenuOpen(false)} className="mt-6 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Book a trial</Link>
             <Link href="/login" onClick={() => setMenuOpen(false)} className="mt-3 block w-full rounded-full bg-white py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Sign in</Link>
           </div>
         )}
@@ -79,8 +80,9 @@ export default function Home() {
               <h1 className="font-display text-[64px] font-bold uppercase leading-[.84] tracking-[-.035em] sm:text-[86px] lg:text-[118px]">Play hard.<br /><span className="text-[#dfff45]">Stay longer.</span></h1>
               <p className="mt-8 max-w-lg text-sm leading-7 text-white/70 sm:text-base">More than a place to play. Champions is your home court, your local, and your community—all under one roof.</p>
               <div className="mt-9 flex flex-wrap gap-3">
-                <Link href="/#membership" className="group flex items-center gap-5 rounded-full bg-[#dfff45] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white">Explore membership <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
-                <Link href="/courts" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Discover the club</Link>
+                <Link href="/trial" className="group flex items-center gap-5 rounded-full bg-[#dfff45] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white">Book a trial <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
+                <Link href="/courts" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Courts</Link>
+                <Link href="/#membership" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Membership</Link>
               </div>
               <p className="mt-5 text-xs text-white/55">Working at the club? <Link href="/login" className="font-semibold text-white underline underline-offset-4 transition hover:text-[#dfff45]">Staff sign-in</Link></p>
             </div>
@@ -161,8 +163,17 @@ export default function Home() {
 
       <footer className="bg-[#10251a] px-5 py-10 text-white sm:px-8">
         <div className="mx-auto flex max-w-[1280px] flex-col justify-between gap-8 border-b border-white/10 pb-10 md:flex-row md:items-center">
-          <div className="font-display text-3xl font-bold uppercase">Champions <span className="text-[#dfff45]">Club.</span></div>
-          <div className="flex flex-wrap gap-7 text-xs text-white/55"><button onClick={() => scrollTo("club")}>About</button><button onClick={() => scrollTo("membership")}>Membership</button><button onClick={() => setNotice("Events calendar coming soon")}>Events</button><button onClick={() => setNotice("Contact details copied")}>Contact</button><Icon name="instagram" className="h-4 w-4 text-white" /></div>
+          <Link href="/" className="font-display text-3xl font-bold uppercase">Champions <span className="text-[#dfff45]">Club.</span></Link>
+          <div className="flex flex-wrap gap-7 text-xs text-white/55">
+            <Link href="/courts" className="transition hover:text-white">Courts</Link>
+            <Link href="/shop" className="transition hover:text-white">Shop</Link>
+            <Link href="/bar" className="transition hover:text-white">Bar &amp; Café</Link>
+            <Link href="/trial" className="transition hover:text-white">Book a trial</Link>
+            <Link href="/#membership" className="transition hover:text-white">Membership</Link>
+            <button onClick={() => setNotice("Events calendar coming soon")}>Events</button>
+            <button onClick={() => setNotice("Contact details: frontdesk@champions.club")}>Contact</button>
+            <Icon name="instagram" className="h-4 w-4 text-white" />
+          </div>
         </div>
         <div className="mx-auto mt-7 flex max-w-[1280px] flex-col justify-between gap-3 text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row"><span>© 2025 Champions Club</span><span>Play · Eat · Belong</span></div>
       </footer>
