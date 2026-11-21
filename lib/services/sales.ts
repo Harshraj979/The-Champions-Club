@@ -162,6 +162,11 @@ export async function listTabs(): Promise<TabDTO[]> {
 }
 
 export async function openTab(input: { who: string; tableNo?: number }): Promise<TabDTO> {
+  if (input.tableNo !== undefined) {
+    if (input.tableNo < 1 || input.tableNo > 8) throw badRequest("Tables run T1 to T8");
+    const busy = await db.tab.findFirst({ where: { tableNo: input.tableNo, status: "OPEN" } });
+    if (busy) throw conflict(`Table ${input.tableNo} already has an open tab (${busy.who})`);
+  }
   const member = await findMemberByName(input.who);
   const tab = await db.tab.create({
     data: {

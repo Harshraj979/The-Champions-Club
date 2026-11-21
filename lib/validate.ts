@@ -60,7 +60,7 @@ export const memberOrderInput = orderInput.pick({ items: true, payMethod: true, 
 
 export const tabOpenInput = z.object({
   who: z.string().trim().min(1, "The tab needs a name").max(80),
-  tableNo: z.number().int().min(1).max(99).optional(),
+  tableNo: z.number().int().min(1).max(8).optional(),
 });
 
 export const tabItemsInput = z.object({ items: itemsInput });
