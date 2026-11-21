@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Poppins } from "next/font/google";
 import Link from "next/link";
-import Nav from "./Nav";
+import Nav from "@/components/Nav";
 import "./globals.css";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-poppins" });

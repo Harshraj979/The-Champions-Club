@@ -17,14 +17,13 @@ One system for a sports club: courts, gear shop and bar, replacing WhatsApp thre
 | --- | --- |
 | Website | Next.js 15, React 19, TypeScript |
 | Styling | One CSS file, no framework, no component library |
-| Data | `web/lib/data.ts` for club data, `web/lib/store.ts` for session state (browser localStorage) |
+| Data | `lib/data.ts` for club data, `lib/store.ts` for session state (browser localStorage) |
 
 React only for now. A backend will be connected later; `lib/data.ts` is the shape its responses will take.
 
 ## Run it
 
 ```bash
-cd web
 npm install
 npm run dev   # http://localhost:3000
 ```
@@ -32,10 +31,12 @@ npm run dev   # http://localhost:3000
 ## Layout
 
 ```
-web/app/    Pages: home, courts, trial, shop, bar, dashboard, bookings, members
-web/app/Nav.tsx, layout.tsx, globals.css   Shell and the design system
-web/lib/data.ts    Plans, courts, products, members, today's bookings
-web/lib/store.ts   Shared session state: bookings, members, shop and bar takings
+app/          Pages: home, courts, trial, shop, bar, dashboard, bookings, members
+app/layout.tsx, app/globals.css   Shell and the design system
+components/   Shared pieces (Nav)
+lib/data.ts   Plans, courts, products, members, today's bookings
+lib/store.ts  Shared session state: bookings, members, shop and bar takings
+public/       Images
 ```
 
 ## Status
