@@ -168,7 +168,7 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .ledger-wrap { overflow-x: auto; }
 /* inner pages: footer rests at the bottom even on short pages */
 .shell { display: flex; flex-direction: column; min-height: 100dvh; }
-.shell > main { flex: 1 0 auto; }
+.shell > main { flex: 1 0 auto; width: 100%; }
 .staff-chip { display: inline-flex; align-items: center; gap: 8px; padding: 7px 13px; border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 999px; font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; }
 .staff-chip .chip-role { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--volt); }
 .mobile-chip { padding: 10px 0; color: rgba(255, 255, 255, 0.8); font-size: 14px; }
@@ -205,6 +205,12 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .product-card .p-name { font-weight: 600; font-size: 16px; }
 .product-card .p-price { font-family: var(--font-display), sans-serif; font-size: 30px; font-weight: 700; margin-top: 6px; line-height: 1; }
 .product-card .p-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; }
+.product-card.picked { border-color: var(--volt-dark); box-shadow: 0 0 0 1px var(--volt-dark), var(--shadow); }
+.product-card.out .p-name, .product-card.out .p-price { opacity: 0.5; }
+.stock-line { font-size: 13px; font-weight: 600; color: var(--good); display: flex; align-items: center; gap: 7px; }
+.stock-line::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+.stock-line.low { color: var(--warn); }
+.stock-line.out { color: var(--bad); }
 
 @media (max-width: 860px) {
   .nav-links, .nav-end .btn, .staff-chip { display: none; }

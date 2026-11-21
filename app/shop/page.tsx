@@ -85,9 +85,9 @@ export default function Shop() {
         <>
           <div className="shop-grid">
             {gear.map((p) => (
-              <div className="product-card" key={p.id}>
+              <div className={`product-card${p.stock === 0 ? " out" : ""}${(cart[p.id] ?? 0) > 0 ? " picked" : ""}`} key={p.id}>
                 <p className="p-name">{p.name}</p>
-                <p className="muted">
+                <p className={`stock-line${p.stock === 0 ? " out" : p.stock !== null && p.stock <= p.lowAt ? " low" : ""}`}>
                   {p.stock === 0 ? "Out of stock" : p.stock !== null && p.stock <= p.lowAt ? `Only ${p.stock} left` : `${p.stock} in stock`}
                 </p>
                 <p className="p-price">{inr(p.price)}</p>
@@ -103,19 +103,20 @@ export default function Shop() {
             ))}
           </div>
 
-          <div className="field-row" style={{ marginTop: 24, maxWidth: 640 }}>
+          <div className="panel panel-main" style={{ marginTop: 24 }}>
+          <div className="field-row" style={{ maxWidth: 640 }}>
             <div>
               <label htmlFor="s-name">Your name</label>
               <input id="s-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: use your registered name" />
-              {name.trim().length >= 3 && !lookup.loading && (
-                <p className="muted" style={{ marginTop: 6 }} role="status">
-                  {member
-                    ? member.state === "active"
-                      ? `${member.name}, ${member.plan} plan, ${member.shopDiscount}% off in the shop.`
-                      : `${member.name}, ${member.plan} plan, ${member.state}. Discounts pause while the plan is not active.`
-                    : "No member with that name. Walk-in prices apply."}
+              {name.trim().length >= 3 && !lookup.loading && member ? (
+                <p className={`member-strip${member.state === "active" ? "" : " warn"}`} role="status">
+                  {member.state === "active"
+                    ? `${member.name}, ${member.plan} plan, ${member.shopDiscount}% off in the shop.`
+                    : `${member.name}, ${member.plan} plan, ${member.state}. Discounts pause while the plan is not active.`}
                 </p>
-              )}
+              ) : name.trim().length >= 3 && !lookup.loading ? (
+                <p className="muted" style={{ marginTop: 6 }} role="status">No member with that name. Walk-in prices apply.</p>
+              ) : null}
             </div>
             <div>
               <label htmlFor="s-phone">Phone (for pickup)</label>
@@ -132,6 +133,7 @@ export default function Shop() {
           </div>
 
           {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
+          </div>
 
           {staffOrders && staffOrders.length > 0 && (
             <section className="block">
