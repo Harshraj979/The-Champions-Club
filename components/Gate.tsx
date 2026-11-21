@@ -13,12 +13,14 @@ export default function Gate({ required, children }: { required: Role; children:
         <div className="page-head">
           <h1 className="page-title">Access restricted</h1>
           <p className="sub">
-            This area requires <strong>{required}</strong> permissions. Your active role is <strong>{store.role}</strong>.
+            This area requires <strong>{required}</strong> permissions. Your current role is <strong>{store.role}</strong>.
           </p>
         </div>
         <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <Link className="btn btn-ink" href="/">Return home</Link>
-          <span className="muted">Switch your role in the navigation bar to test access.</span>
+          <Link className="btn btn-ink" href={`/login?from=${typeof window !== "undefined" ? window.location.pathname : "/"}`}>
+            Sign in with {required} account
+          </Link>
+          <Link className="text-link" href="/">Return home</Link>
         </div>
       </main>
     );
