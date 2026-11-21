@@ -234,21 +234,26 @@ export async function listTabs(): Promise<TabDTO[]> {
 }
 
 export async function openTab(input: { who: string; tableNo?: number }): Promise<TabDTO> {
-  if (input.tableNo !== undefined) {
-    if (input.tableNo < 1 || input.tableNo > 8) throw badRequest("Tables run T1 to T8");
-    const busy = await db.tab.findFirst({ where: { tableNo: input.tableNo, status: "OPEN" } });
-    if (busy) throw conflict(`Table ${input.tableNo} already has an open tab (${busy.who})`);
-  }
+  if (input.tableNo !== undefined && (input.tableNo < 1 || input.tableNo > 8))
+    throw badRequest("Tables run T1 to T8");
   const member = await findMemberByName(input.who);
-  const tab = await db.tab.create({
-    data: {
-      who: member?.name ?? input.who,
-      memberId: member?.id,
-      tableNo: input.tableNo,
-      status: "OPEN",
-      planCode: member?.plan.code ?? "walkin",
-    },
-    include: tabInclude,
+  // The occupied-table check and the create run in one transaction,
+  // so two requests racing for the same table cannot both open a tab.
+  const tab = await db.$transaction(async (tx) => {
+    if (input.tableNo !== undefined) {
+      const busy = await tx.tab.findFirst({ where: { tableNo: input.tableNo, status: "OPEN" } });
+      if (busy) throw conflict(`Table ${input.tableNo} already has an open tab (${busy.who})`);
+    }
+    return tx.tab.create({
+      data: {
+        who: member?.name ?? input.who,
+        memberId: member?.id,
+        tableNo: input.tableNo,
+        status: "OPEN",
+        planCode: member?.plan.code ?? "walkin",
+      },
+      include: tabInclude,
+    });
   });
   return toTabDTO(tab as TabRow);
 }
