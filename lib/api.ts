@@ -90,4 +90,6 @@ export const api = {
   memberLogin: (email: string, password: string) => post<{ member: MemberSessionDTO }>("/member/login", { email, password }),
   memberLogout: () => post<{ ok: boolean }>("/member/logout"),
   memberMe: () => call<MemberHomeDTO>("/member/me"),
+  memberBook: (input: { courtId: number; date: string; start: number }) => post<BookingDTO>("/member/bookings", input),
+  memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI" }) => post<OrderDTO>("/member/orders", input),
 };

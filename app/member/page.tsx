@@ -3,6 +3,7 @@ import { currentMember } from "@/lib/auth";
 import { memberHome } from "@/lib/services/members";
 import { fmtTime, inr } from "@/lib/format";
 import MemberBar from "@/components/MemberBar";
+import MemberActions from "@/components/MemberActions";
 
 // The member's own page: plan and expiry up top, then their bookings,
 // shop orders and bar tabs. Reads are server-rendered off the member
@@ -44,6 +45,8 @@ export default async function MemberHome() {
           </p>
         )}
       </section>
+
+      <MemberActions />
 
       <section style={{ marginTop: 30 }} aria-label="My bookings">
         <div className="sec-head"><h2>My bookings</h2></div>
