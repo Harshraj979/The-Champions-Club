@@ -90,6 +90,17 @@ export type PayrollDTO = {
   status: "PENDING" | "PAID";
 };
 
+export type StaffRosterDTO = { id: number; name: string; role: string };
+
+export type ShiftDTO = {
+  id: number;
+  staffId: number;
+  staffName: string;
+  role: string;
+  date: string;
+  part: "MORNING" | "EVENING";
+};
+
 export type ExpiringDTO = {
   id: number;
   name: string;

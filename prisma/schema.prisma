@@ -238,10 +238,23 @@ model TabItem {
 }
 
 model Staff {
-  id           Int    @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   name         String
-  email        String @unique
+  email        String  @unique
   passwordHash String
   pinHash      String?
-  role         Role   @default(STAFF)
+  role         Role    @default(STAFF)
+  shifts       Shift[]
+}
+
+// The rota: who works which part of which day. One row per assignment.
+model Shift {
+  id        Int      @id @default(autoincrement())
+  staffId   Int
+  staff     Staff    @relation(fields: [staffId], references: [id])
+  date      DateTime // the day (UTC date)
+  part      String // MORNING | EVENING
+  createdAt DateTime @default(now())
+
+  @@unique([staffId, date, part])
 }

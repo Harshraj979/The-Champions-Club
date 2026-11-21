@@ -81,6 +81,12 @@ export const payrollInput = z.object({
   tax: z.number().int().min(0).max(100000000).optional().default(0),
 });
 
+export const shiftInput = z.object({
+  staffId: z.number().int().positive(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  part: z.enum(["MORNING", "EVENING"]),
+});
+
 export const payConfirmInput = z.object({
   razorpayOrderId: z.string().min(1).max(80),
   paymentId: z.string().min(1).max(80),

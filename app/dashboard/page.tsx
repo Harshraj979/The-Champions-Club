@@ -137,6 +137,7 @@ export default function Dashboard() {
               <Link className="mini-link" href="/invoices">Invoices</Link>
               <Link className="mini-link" href="/expenses">Expenses</Link>
               <Link className="mini-link" href="/payroll">Payroll</Link>
+              <Link className="mini-link" href="/shifts">Staff rota</Link>
             </p>
           </section>
         </>
