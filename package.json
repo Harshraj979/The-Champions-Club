@@ -1,9 +1,12 @@
 {
   "name": "champions-club-web",
   "private": true,
+  "engines": {
+    "node": ">=18.18"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "postinstall": "prisma generate",
