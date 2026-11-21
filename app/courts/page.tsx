@@ -79,7 +79,7 @@ export default function Courts() {
       ) : courts.error ? (
         <ErrorBox message={courts.error} onRetry={courts.reload} />
       ) : (
-        <div className="panel">
+        <div className="panel panel-main">
           <div className="step">
             <div className="step-head">
               <span className="step-n">1</span>
@@ -140,7 +140,7 @@ export default function Courts() {
             </div>
             )}
             {member && (
-              <p className="muted" style={{ marginTop: 10 }} role="status">
+              <p className={`member-strip${member.state === "expired" ? " warn" : ""}`} role="status">
                 {member.state === "expired"
                   ? `${member.name}, ${member.plan} plan, expired. Bookings are paused until it is renewed.`
                   : `${member.name}, ${member.plan} plan, this court at ${inr(court?.sport === "Cricket" ? member.cricketPrice : member.tennisPrice)} an hour.`}
@@ -156,7 +156,7 @@ export default function Courts() {
               ) : (
                 <>
                   {court.name} at <span className="num">{fmtTime(slot)}</span> ·{" "}
-                  <span className="num s-total" style={{ fontSize: 16 }}>
+                  <span className="num s-price">
                     {price === 0 ? "Covered by your plan" : inr(price ?? 0)}
                   </span>
                 </>

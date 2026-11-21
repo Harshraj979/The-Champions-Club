@@ -136,9 +136,16 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .seg button { padding: 8px 18px; min-height: 40px; border-radius: 999px; font-weight: 600; font-size: 14px; color: var(--ink-2); display: inline-flex; align-items: baseline; justify-content: center; gap: 7px; transition: background-color 0.15s, color 0.15s; }
 .seg button + button { border-left: 0; }
 .seg button[aria-pressed="true"] { background: var(--pine); color: var(--volt); }
+.seg button:not([aria-pressed="true"]):hover { background: rgba(22, 48, 33, 0.07); }
+.panel-main { box-shadow: var(--shadow-lift); }
+.member-strip { margin-top: 12px; padding: 10px 14px; border-radius: 12px; background: var(--ok-bg); border: 1px solid #d7e6a8; font-size: 14px; color: var(--pine); display: flex; align-items: center; gap: 9px; max-width: 560px; }
+.member-strip::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+.member-strip.warn { background: #fdf6e3; border-color: #eee0b8; }
+.member-strip.warn::before { background: var(--warn); }
+.s-price { font-family: var(--font-display), sans-serif; font-size: 21px; font-weight: 700; color: var(--pine); }
 .seg .seg-price { opacity: 0.7; font-size: 0.92em; }
 .slots { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.slot { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 14px; font-size: 13.5px; min-height: 38px; font-weight: 500; transition: border-color 0.15s, background-color 0.15s, color 0.15s; }
+.slot { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 9px 16px; font-size: 13.5px; min-height: 40px; font-weight: 500; transition: border-color 0.15s, background-color 0.15s, color 0.15s; }
 .slot:hover { border-color: var(--pine); }
 .slot[aria-pressed="true"] { background: var(--pine); color: var(--volt); border-color: var(--pine); font-weight: 700; }
 .slot:disabled { opacity: 0.42; text-decoration: line-through; }
