@@ -173,6 +173,8 @@ export const api = {
     }
     return post<{ ok: boolean; member: MemberSessionDTO }>("/auth/member/login", input);
   },
+  googleDemoLogin: (data: { email: string; name?: string; planCode?: string }) =>
+    post<{ ok: boolean; member: MemberSessionDTO; token: string }>("/auth/google/demo", data),
   memberLogout: () => post<{ ok: boolean }>("/auth/member/logout"),
   memberMe: () => call<{ member: MemberSessionDTO | null }>("/auth/member/me"),
   memberHome: () => call<MemberHomeDTO>("/member/me"),

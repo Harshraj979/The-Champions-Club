@@ -19,6 +19,12 @@ export default function MemberAuth() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Google Auth state
+  const [googleModal, setGoogleModal] = useState(false);
+  const [customGoogleEmail, setCustomGoogleEmail] = useState("");
+  const [customGoogleName, setCustomGoogleName] = useState("");
+  const [googleHref, setGoogleHref] = useState("/api/v1/auth/google?type=member");
+
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     if (q.get("tab") === "signup") setTab("signup");
@@ -26,6 +32,17 @@ export default function MemberAuth() {
     if (p && ["gold", "silver", "junior", "none"].includes(p)) {
       setPlanCode(p);
     }
+    if (q.get("google_demo") === "1" || q.get("demo_google") === "1") {
+      setGoogleModal(true);
+    }
+    if (q.get("error") === "google") {
+      setErr("Google sign-in could not be completed. Try again or use your password.");
+    } else if (q.get("error") === "gtoken") {
+      setErr("Google authorization token exchange failed. Please try again.");
+    }
+
+    const next = q.get("next") ?? (q.get("tab") === "signup" ? "/courts" : "/member");
+    setGoogleHref(`/api/v1/auth/google?type=member&next=${encodeURIComponent(next)}&plan=${encodeURIComponent(p || "gold")}`);
   }, []);
 
   async function handleLogin(e?: React.FormEvent, customIdent?: string, customPass?: string) {
@@ -78,6 +95,23 @@ export default function MemberAuth() {
     }
   }
 
+  async function handleGoogleLogin(emailToUse: string, nameToUse: string) {
+    setErr("");
+    setBusy(true);
+    try {
+      await api.googleDemoLogin({
+        email: emailToUse,
+        name: nameToUse,
+        planCode: planCode !== "none" ? planCode : undefined,
+      });
+      const next = new URLSearchParams(window.location.search).get("next") ?? (tab === "signup" ? "/courts" : "/member");
+      window.location.href = next.startsWith("/") ? next : "/member";
+    } catch (ex) {
+      setErr(ex instanceof ApiClientError ? ex.message : "Google sign-in failed. Try again.");
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="mx-auto max-w-[500px] px-5 py-12 sm:py-20">
       <div className="mb-4">
@@ -116,6 +150,44 @@ export default function MemberAuth() {
           >
             Create Account
           </button>
+        </div>
+
+        {/* GOOGLE AUTH BUTTON */}
+        <div className="mb-5">
+          <a
+            href={googleHref}
+            className="flex w-full items-center justify-center gap-3 rounded-full border border-[#163021]/20 bg-white py-3.5 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-sm transition hover:bg-[#f7f6f0] hover:border-[#163021]/40"
+          >
+            <span className="flex h-5 w-5 items-center justify-center flex-none">
+              <svg width="18" height="18" viewBox="0 0 48 48">
+                <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z" />
+                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+                <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z" />
+              </svg>
+            </span>
+            <span>{tab === "login" ? "Continue with Google" : "Sign up with Google"}</span>
+          </a>
+
+          <div className="mt-2.5 flex items-center justify-between px-1 text-[11px] text-[#617065]">
+            <span>One tap Google Authentication</span>
+            <button
+              type="button"
+              onClick={() => setGoogleModal(true)}
+              className="font-bold text-[#163021] underline hover:text-[#2e7d32]"
+            >
+              ⚡ Instant Google Demo
+            </button>
+          </div>
+
+          <div className="relative my-5 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-[#163021]/10" />
+            </div>
+            <div className="relative bg-white px-3 text-[11px] font-semibold uppercase tracking-wider text-[#617065]">
+              Or continue with email
+            </div>
+          </div>
         </div>
 
         {tab === "login" ? (
@@ -337,9 +409,9 @@ export default function MemberAuth() {
                     </span>
                   </div>
                   <p className="mt-1 text-[11px] text-[#617065] leading-relaxed">
-                    {planCode === "gold" && "Includes 7-day advance booking, ₹300/hr tennis, ₹500/hr cricket, 2 free guest passes/month, and 20% off all café orders."}
-                    {planCode === "silver" && "Includes 5-day advance booking, ₹400/hr tennis, ₹650/hr cricket, 1 free guest pass/month, and 10% off all café orders."}
-                    {planCode === "junior" && "Subsidized youth tier with 50% discount on court slots (₹250/hr tennis, ₹400/hr cricket) plus monthly skills coaching clinics."}
+                    {planCode === "gold" && "Includes 7-day advance booking, max 4 slots/day, ₹300/hr tennis, ₹500/hr cricket, 2 free guest passes/month, and 20% off all café orders."}
+                    {planCode === "silver" && "Includes 5-day advance booking, max 2 slots/day, ₹400/hr tennis, ₹650/hr cricket, 1 free guest pass/month, and 10% off all café orders."}
+                    {planCode === "junior" && "Subsidized youth tier with max 1 slot/day, 50% discount on court slots (₹250/hr tennis, ₹400/hr cricket) plus monthly skills coaching clinics."}
                   </p>
                 </div>
               ) : (
@@ -441,6 +513,103 @@ export default function MemberAuth() {
           Staff sign-in here
         </Link>
       </div>
+
+      {/* GOOGLE ACCOUNT CHOOSER MODAL (Demo / Simulation) */}
+      {googleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="relative w-full max-w-[420px] rounded-3xl bg-white p-7 text-[#163021] shadow-2xl">
+            <button
+              type="button"
+              onClick={() => setGoogleModal(false)}
+              className="absolute right-5 top-5 rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3">
+              <svg width="24" height="24" viewBox="0 0 48 48">
+                <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.3 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.9z" />
+                <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3l5.7-5.7C34.3 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+                <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+                <path fill="#1976D2" d="M43.6 20.1H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.7l6.2 5.2C36.9 39.2 44 34 44 24c0-1.3-.1-2.6-.4-3.9z" />
+              </svg>
+              <div>
+                <h3 className="font-bold text-base">Sign in with Google</h3>
+                <p className="text-xs text-[#617065]">to continue to The Champions Club</p>
+              </div>
+            </div>
+
+            <div className="mt-6 space-y-2.5">
+              <p className="text-xs font-semibold text-[#163021]">Choose an account:</p>
+
+              <button
+                type="button"
+                onClick={() => handleGoogleLogin("tanish.sarkar@gmail.com", "Tanish Sarkar")}
+                disabled={busy}
+                className="flex w-full items-center justify-between rounded-2xl border border-gray-200 p-3.5 text-left transition hover:border-[#163021] hover:bg-[#f7f9f6]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#163021] text-sm font-bold text-white">
+                    T
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[#163021]">Tanish Sarkar</p>
+                    <p className="text-[11px] text-[#617065]">tanish.sarkar@gmail.com</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-[#2e7d32] uppercase">⚡ Instant</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleGoogleLogin("aarav.mehta@gmail.com", "Aarav Mehta")}
+                disabled={busy}
+                className="flex w-full items-center justify-between rounded-2xl border border-gray-200 p-3.5 text-left transition hover:border-[#163021] hover:bg-[#f7f9f6]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2e7d32] text-sm font-bold text-white">
+                    A
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-[#163021]">Aarav Mehta</p>
+                    <p className="text-[11px] text-[#617065]">aarav.mehta@gmail.com</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-[#2e7d32] uppercase">Gold Member</span>
+              </button>
+            </div>
+
+            <div className="mt-5 border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold text-[#163021] mb-2">Or enter any Google account:</p>
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  placeholder="Your Name (e.g. Priya Sharma)"
+                  value={customGoogleName}
+                  onChange={(e) => setCustomGoogleName(e.target.value)}
+                  className="w-full text-xs"
+                />
+                <input
+                  type="email"
+                  placeholder="name@gmail.com"
+                  value={customGoogleEmail}
+                  onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                  className="w-full text-xs"
+                />
+                <button
+                  type="button"
+                  disabled={busy || !customGoogleEmail.includes("@")}
+                  onClick={() => handleGoogleLogin(customGoogleEmail, customGoogleName || customGoogleEmail.split("@")[0])}
+                  className="w-full rounded-full bg-[#163021] py-3 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021] disabled:opacity-40"
+                >
+                  {busy ? "Signing in..." : "Continue with this account"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
