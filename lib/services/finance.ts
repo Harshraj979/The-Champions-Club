@@ -71,6 +71,7 @@ export async function createPayroll(input: { staffName: string; month: string; s
 export async function markPayrollPaid(id: number): Promise<PayrollDTO> {
   const row = await db.payroll.findUnique({ where: { id } });
   if (!row) throw notFound("No such payroll record");
+  if (row.status === "PAID") throw conflict("That payroll record is already paid");
   const r = await db.payroll.update({ where: { id }, data: { status: "PAID" } });
   return {
     id: r.id, staffName: r.staffName, month: r.month, salary: r.salary,
