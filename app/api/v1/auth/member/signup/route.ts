@@ -24,6 +24,10 @@ export async function POST(req: Request) {
       phone,
       password,
       planCode: body.planCode,
+      parentName: body.parentName,
+      parentPhone: body.parentPhone,
+      parentEmail: body.parentEmail,
+      dateOfBirth: body.dateOfBirth,
     });
     await setMemberSessionCookie(token);
     return NextResponse.json({ ok: true, member });

@@ -12,6 +12,10 @@ export default function MemberAuth() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [planCode, setPlanCode] = useState("gold");
+  const [parentName, setParentName] = useState("");
+  const [parentPhone, setParentPhone] = useState("");
+  const [parentEmail, setParentEmail] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +52,11 @@ export default function MemberAuth() {
     if (phone.replace(/\D/g, "").length < 10) return setErr("Please enter a 10-digit phone number.");
     if (password.length < 4) return setErr("Password should be at least 4 characters.");
 
+    if (planCode === "junior") {
+      if (!parentName.trim()) return setErr("Parent or guardian full name is required for Junior membership.");
+      if (parentPhone.replace(/\D/g, "").length < 10) return setErr("Parent or guardian 10-digit phone number is required.");
+    }
+
     setBusy(true);
     try {
       await api.memberSignup({
@@ -56,6 +65,10 @@ export default function MemberAuth() {
         phone: phone.trim(),
         password,
         planCode: planCode === "none" ? undefined : planCode,
+        parentName: planCode === "junior" ? parentName.trim() : undefined,
+        parentPhone: planCode === "junior" ? parentPhone.trim() : undefined,
+        parentEmail: planCode === "junior" && parentEmail.trim() ? parentEmail.trim() : undefined,
+        dateOfBirth: planCode === "junior" && dateOfBirth ? dateOfBirth : undefined,
       });
       const next = new URLSearchParams(window.location.search).get("next") ?? "/courts";
       window.location.href = next.startsWith("/") ? next : "/courts";
@@ -335,6 +348,69 @@ export default function MemberAuth() {
                 </div>
               )}
             </div>
+
+            {planCode === "junior" && (
+              <div className="rounded-2xl border-2 border-[#163021]/20 bg-[#f7f9f6] p-4 text-[#163021] space-y-3 animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🛡️</span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#163021]">Parent / Guardian Details (Minor Required)</p>
+                    <p className="text-[11px] text-[#617065]">Junior membership is reserved for minors under 18. Emergency contact and parental consent details are mandatory.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label htmlFor="reg-pname" className="text-[11px] font-semibold uppercase tracking-wider text-[#163021]">
+                      Parent/Guardian Full Name *
+                    </label>
+                    <input
+                      id="reg-pname"
+                      value={parentName}
+                      onChange={(e) => setParentName(e.target.value)}
+                      placeholder="e.g. Ramesh Patel"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="reg-pphone" className="text-[11px] font-semibold uppercase tracking-wider text-[#163021]">
+                      Parent Phone Number *
+                    </label>
+                    <input
+                      id="reg-pphone"
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                      placeholder="e.g. 9811223344"
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="reg-pemail" className="text-[11px] font-semibold uppercase tracking-wider text-[#163021]">
+                      Parent Email (Optional)
+                    </label>
+                    <input
+                      id="reg-pemail"
+                      type="email"
+                      value={parentEmail}
+                      onChange={(e) => setParentEmail(e.target.value)}
+                      placeholder="parent@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="reg-dob" className="text-[11px] font-semibold uppercase tracking-wider text-[#163021]">
+                      Junior Date of Birth
+                    </label>
+                    <input
+                      id="reg-dob"
+                      type="date"
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {err && <div className="notice err" role="alert">{err}</div>}
 

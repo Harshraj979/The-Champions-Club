@@ -12,7 +12,16 @@ const stateLabel = { active: "Active", expiring: "Expiring soon", expired: "Expi
 export default function Members() {
   const [q, setQ] = useState("");
   const [stateFilter, setStateFilter] = useState<"all" | "active" | "expiring" | "expired">("all");
-  const [form, setForm] = useState({ name: "", phone: "", email: "", planCode: "gold" });
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    planCode: "gold",
+    parentName: "",
+    parentPhone: "",
+    parentEmail: "",
+    dateOfBirth: "",
+  });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -44,6 +53,9 @@ export default function Members() {
     if (form.phone && form.phone.replace(/\D/g, "").length < 10) {
       return setMsg({ ok: false, text: "Phone number looks short. Provide at least 10 digits." });
     }
+    if (form.planCode === "junior" && !form.parentName.trim()) {
+      return setMsg({ ok: false, text: "Parent or guardian name is required for Junior membership (minor under 18)." });
+    }
     setBusy(true);
     setMsg(null);
     try {
@@ -52,6 +64,10 @@ export default function Members() {
         phone: form.phone.trim(),
         email: form.email.trim() || undefined,
         planCode: form.planCode,
+        parentName: form.planCode === "junior" ? form.parentName.trim() : undefined,
+        parentPhone: form.planCode === "junior" ? form.parentPhone.trim() : undefined,
+        parentEmail: form.planCode === "junior" && form.parentEmail.trim() ? form.parentEmail.trim() : undefined,
+        dateOfBirth: form.planCode === "junior" && form.dateOfBirth ? form.dateOfBirth : undefined,
       });
       const plan = plans.data?.find((p) => p.code === form.planCode);
       setMsg({
@@ -62,9 +78,9 @@ export default function Members() {
           m.email
             ? ` When logging in with ${m.email}, they will immediately see their active ${m.plan} plan on their portal dashboard.`
             : ""
-        }`,
+        }${m.parentName ? ` Parent/Guardian: ${m.parentName} (${m.parentPhone || "No phone"}).` : ""}`,
       });
-      setForm({ name: "", phone: "", email: "", planCode: "gold" });
+      setForm({ name: "", phone: "", email: "", planCode: "gold", parentName: "", parentPhone: "", parentEmail: "", dateOfBirth: "" });
       void members.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Availing membership failed. Try again." });
@@ -79,6 +95,10 @@ export default function Members() {
       phone: m.phone || "",
       email: m.email || "",
       planCode: m.planCode !== "none" ? m.planCode : "gold",
+      parentName: m.parentName || "",
+      parentPhone: m.parentPhone || "",
+      parentEmail: m.parentEmail || "",
+      dateOfBirth: m.dateOfBirth || "",
     });
     setMsg({
       ok: true,
@@ -139,8 +159,26 @@ export default function Members() {
             <tbody>
               {list.map((m) => (
                 <tr key={m.id} className={m.state === "expired" ? "row-off" : ""}>
-                  <td style={{ fontWeight: 500 }}>{m.name}</td>
-                  <td><strong>{m.plan}</strong></td>
+                  <td style={{ fontWeight: 500 }}>
+                    <div>{m.name}</div>
+                    {(m.planCode === "junior" || m.parentName) && (
+                      <div style={{ fontSize: "11px", color: "#617065", marginTop: "3px", lineHeight: "1.3" }}>
+                        <span style={{ color: "#163021", fontWeight: 600 }}>Guardian: </span>
+                        <span>{m.parentName || "Required"}</span>
+                        {m.parentPhone && <span style={{ marginLeft: 4, opacity: 0.75 }}>({m.parentPhone})</span>}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                      <strong>{m.plan}</strong>
+                      {m.planCode === "junior" && (
+                        <span style={{ fontSize: "9px", padding: "1px 6px", borderRadius: "999px", background: "#dfff45", color: "#163021", fontWeight: 700, letterSpacing: "0.05em" }}>
+                          MINOR
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="hide-m">{m.email || <span className="muted">—</span>}</td>
                   <td className="num hide-m">{m.phone}</td>
                   <td className="num hide-m">{m.expiresOn || <span className="muted">—</span>}</td>
@@ -196,6 +234,58 @@ export default function Members() {
               </select>
             </div>
           </div>
+
+          {form.planCode === "junior" && (
+            <div style={{ marginTop: 16, padding: "14px", borderRadius: "12px", background: "#f7f9f6", border: "1px solid rgba(22, 48, 33, 0.15)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                <span>🛡️</span>
+                <span style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#163021" }}>
+                  Parent / Guardian Details (Minor Under 18)
+                </span>
+              </div>
+              <div className="field-row">
+                <div>
+                  <label htmlFor="m-parent-name">Parent/Guardian Name *</label>
+                  <input
+                    id="m-parent-name"
+                    value={form.parentName}
+                    onChange={(e) => setForm({ ...form, parentName: e.target.value })}
+                    placeholder="e.g. Ramesh Patel"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="m-parent-phone">Parent Phone *</label>
+                  <input
+                    id="m-parent-phone"
+                    value={form.parentPhone}
+                    onChange={(e) => setForm({ ...form, parentPhone: e.target.value })}
+                    placeholder="e.g. 9811223344"
+                  />
+                </div>
+              </div>
+              <div className="field-row" style={{ marginTop: 12 }}>
+                <div>
+                  <label htmlFor="m-parent-email">Parent Email (Optional)</label>
+                  <input
+                    id="m-parent-email"
+                    type="email"
+                    value={form.parentEmail}
+                    onChange={(e) => setForm({ ...form, parentEmail: e.target.value })}
+                    placeholder="parent@example.com"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="m-dob">Minor Date of Birth</label>
+                  <input
+                    id="m-dob"
+                    type="date"
+                    value={form.dateOfBirth}
+                    onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <button

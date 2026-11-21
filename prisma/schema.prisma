@@ -87,6 +87,10 @@ model Member {
   plan         Plan?     @relation(fields: [planId], references: [id])
   joinedOn     DateTime? @db.Date
   expiresOn    DateTime? @db.Date
+  parentName   String?
+  parentPhone  String?
+  parentEmail  String?
+  dateOfBirth  DateTime? @db.Date
   bookings     Booking[]
   orders       Order[]
   tabs         Tab[]

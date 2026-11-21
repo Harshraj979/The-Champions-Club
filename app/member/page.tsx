@@ -44,6 +44,42 @@ export default async function MemberHome() {
               : "Your plan runs out soon — a quick word with the front desk keeps everything running."}
           </p>
         )}
+
+        {(m.planCode === "junior" || m.parentName) && (
+          <div style={{ marginTop: 16, padding: "16px", borderRadius: "16px", background: "#f7f9f6", border: "1px solid rgba(22, 48, 33, 0.12)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: "18px" }}>🛡️</span>
+                <span style={{ fontSize: "12px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#163021" }}>
+                  Parent / Guardian Details (Junior Minor Account)
+                </span>
+              </div>
+              <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", padding: "3px 10px", borderRadius: "999px", background: "#dfff45", color: "#163021" }}>
+                Junior Member
+              </span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px", marginTop: "14px" }}>
+              <div>
+                <span style={{ display: "block", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#617065" }}>Guardian Name</span>
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#163021" }}>{m.parentName || "—"}</span>
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#617065" }}>Guardian Contact</span>
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#163021" }}>{m.parentPhone || "—"}</span>
+              </div>
+              <div>
+                <span style={{ display: "block", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#617065" }}>Guardian Email</span>
+                <span style={{ fontSize: "13px", fontWeight: 600, color: "#163021" }}>{m.parentEmail || "—"}</span>
+              </div>
+              {m.dateOfBirth && (
+                <div>
+                  <span style={{ display: "block", fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "#617065" }}>Date of Birth</span>
+                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#163021" }}>{m.dateOfBirth}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       <MemberActions />

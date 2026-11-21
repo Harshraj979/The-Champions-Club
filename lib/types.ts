@@ -33,6 +33,10 @@ export type MemberDTO = {
   planCode: string;
   state: MemberState;
   expiresOn: string;
+  parentName?: string | null;
+  parentPhone?: string | null;
+  parentEmail?: string | null;
+  dateOfBirth?: string | null;
 };
 
 export type BookingDTO = {
@@ -180,6 +184,10 @@ export type MemberSessionDTO = {
   name: string;
   email: string | null;
   phone: string;
+  parentName?: string | null;
+  parentPhone?: string | null;
+  parentEmail?: string | null;
+  dateOfBirth?: string | null;
   plan: {
     code: string;
     name: string;

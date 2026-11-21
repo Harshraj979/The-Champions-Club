@@ -30,6 +30,10 @@ export const availPlanInput = z.object({
   name: z.string().trim().max(80).optional(),
   phone: z.string().trim().max(20).optional(),
   planCode: z.string().min(1),
+  parentName: z.string().trim().max(80).optional(),
+  parentPhone: z.string().trim().max(20).optional(),
+  parentEmail: z.string().trim().email().max(120).optional().or(z.literal("")),
+  dateOfBirth: z.string().optional(),
 });
 
 export const trialInput = bookingInput.extend({
@@ -49,6 +53,10 @@ export const memberInput = z.object({
   phone: z.string().trim().max(20).optional().default(""),
   email: z.string().trim().email("That email does not look right").max(120).optional(),
   planCode: z.string().min(1),
+  parentName: z.string().trim().max(80).optional(),
+  parentPhone: z.string().trim().max(20).optional(),
+  parentEmail: z.string().trim().email().max(120).optional().or(z.literal("")),
+  dateOfBirth: z.string().optional(),
 });
 
 export const itemsInput = z

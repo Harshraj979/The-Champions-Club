@@ -64,10 +64,26 @@ export const api = {
   cancelBooking: (id: number) => post<BookingDTO>(`/bookings/${id}/cancel`),
   members: (q?: string) => call<MemberDTO[]>(`/members${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   expiringMembers: () => call<ExpiringDTO[]>("/members/expiring"),
-  createMember: (input: { name: string; phone?: string; email?: string; planCode: string }) =>
-    post<MemberDTO>("/members", input),
-  availMembership: (input: { email: string; name?: string; phone?: string; planCode: string }) =>
-    post<MemberDTO>("/members/avail-plan", input),
+  createMember: (input: {
+    name: string;
+    phone?: string;
+    email?: string;
+    planCode: string;
+    parentName?: string;
+    parentPhone?: string;
+    parentEmail?: string;
+    dateOfBirth?: string;
+  }) => post<MemberDTO>("/members", input),
+  availMembership: (input: {
+    email: string;
+    name?: string;
+    phone?: string;
+    planCode: string;
+    parentName?: string;
+    parentPhone?: string;
+    parentEmail?: string;
+    dateOfBirth?: string;
+  }) => post<MemberDTO>("/members/avail-plan", input),
   createOrder: (input: {
     items: { productId: number; qty: number }[];
     name: string;
@@ -116,7 +132,17 @@ export const api = {
   resetRolePin: (role: string) => post<{ ok: boolean; message: string }>("/staff/pins", { role, reset: true }),
   logout: () => post<{ ok: boolean }>("/auth/logout"),
   me: () => call<{ staff: StaffDTO }>("/auth/me"),
-  memberSignup: (input: { name: string; email: string; phone: string; password: string; planCode?: string }) =>
+  memberSignup: (input: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+    planCode?: string;
+    parentName?: string;
+    parentPhone?: string;
+    parentEmail?: string;
+    dateOfBirth?: string;
+  }) =>
     post<{ ok: boolean; member: MemberSessionDTO }>("/auth/member/signup", input),
   memberLogin: (input: { identifier: string; password: string } | string, password?: string) => {
     if (typeof input === "string") {

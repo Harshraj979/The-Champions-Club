@@ -23,6 +23,8 @@ export default function Bookings() {
   const [custName, setCustName] = useState("");
   const [custEmail, setCustEmail] = useState("");
   const [custPhone, setCustPhone] = useState("");
+  const [custParentName, setCustParentName] = useState("");
+  const [custParentPhone, setCustParentPhone] = useState("");
   const [availPlan, setAvailPlan] = useState<string>("none");
 
   // Demo Razorpay Modal
@@ -71,6 +73,8 @@ export default function Bookings() {
           name: custName.trim() || undefined,
           phone: custPhone.trim() || undefined,
           planCode: availPlan,
+          parentName: availPlan === "junior" ? custParentName.trim() || undefined : undefined,
+          parentPhone: availPlan === "junior" ? custParentPhone.trim() || undefined : undefined,
         });
       }
 
@@ -209,7 +213,7 @@ export default function Bookings() {
               </div>
             </div>
 
-            <div className="field-row" style={{ alignItems: "flex-end" }}>
+            <div className="field-row">
               <div>
                 <label htmlFor="db-phone">Phone Number (Initial password for login)</label>
                 <input
@@ -220,13 +224,43 @@ export default function Bookings() {
                   placeholder="9811000001"
                 />
               </div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  className="btn btn-ink"
-                  onClick={() => executeDeskBooking(false)}
-                  disabled={busy || !custName.trim()}
-                >
+            </div>
+
+            {availPlan === "junior" && (
+              <div style={{ padding: "12px", borderRadius: "10px", background: "#f7f9f6", border: "1px solid rgba(22, 48, 33, 0.15)", marginBottom: "8px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#163021", marginBottom: "8px" }}>
+                  🛡️ Parent / Guardian Details (Minor Required)
+                </div>
+                <div className="field-row">
+                  <div>
+                    <label htmlFor="db-pname">Parent / Guardian Name *</label>
+                    <input
+                      id="db-pname"
+                      value={custParentName}
+                      onChange={(e) => setCustParentName(e.target.value)}
+                      placeholder="e.g. Meera Patel"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="db-pphone">Parent Phone Number *</label>
+                    <input
+                      id="db-pphone"
+                      value={custParentPhone}
+                      onChange={(e) => setCustParentPhone(e.target.value)}
+                      placeholder="e.g. 9811000003"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+              <button
+                type="button"
+                className="btn btn-ink"
+                onClick={() => executeDeskBooking(false)}
+                disabled={busy || !custName.trim()}
+              >
                   {busy ? "Booking..." : `Confirm Booking (${inr(previewPrice)} at desk)`}
                 </button>
                 <button

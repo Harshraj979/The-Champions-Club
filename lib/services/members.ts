@@ -13,6 +13,10 @@ type MemberRow = {
   email?: string | null;
   expiresOn: Date | null;
   plan: { name: string; code: string } | null;
+  parentName?: string | null;
+  parentPhone?: string | null;
+  parentEmail?: string | null;
+  dateOfBirth?: Date | null;
 };
 
 // The front desk's renewal chase list: plans ending within the next
@@ -50,6 +54,10 @@ export const toMemberDTO = (m: MemberRow): MemberDTO => ({
   planCode: m.plan ? m.plan.code : "none",
   state: (memberState(m.expiresOn) === "none" ? "expired" : memberState(m.expiresOn)) as MemberState,
   expiresOn: m.expiresOn ? m.expiresOn.toISOString().slice(0, 10) : "",
+  parentName: m.parentName ?? null,
+  parentPhone: m.parentPhone ?? null,
+  parentEmail: m.parentEmail ?? null,
+  dateOfBirth: m.dateOfBirth ? m.dateOfBirth.toISOString().slice(0, 10) : null,
 });
 
 export const findMemberByName = (name: string) =>
@@ -59,20 +67,39 @@ export const findMemberByName = (name: string) =>
   });
 
 export async function listMembers(q?: string): Promise<MemberDTO[]> {
+  const trimmed = q?.trim();
   const rows = await db.member.findMany({
-    where: q ? { name: { contains: q, mode: "insensitive" } } : undefined,
+    where: trimmed
+      ? {
+          OR: [
+            { name: { contains: trimmed, mode: "insensitive" } },
+            { email: { contains: trimmed, mode: "insensitive" } },
+            { phone: { contains: trimmed } },
+          ],
+        }
+      : undefined,
     include: { plan: true },
     orderBy: { name: "asc" },
   });
   return rows.map(toMemberDTO);
 }
 
-export async function createMember(input: { name: string; phone: string; email?: string; planCode: string }): Promise<MemberDTO> {
+export async function createMember(input: {
+  name: string;
+  phone: string;
+  email?: string;
+  planCode: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  dateOfBirth?: string;
+}): Promise<MemberDTO> {
   const plan = await db.plan.findUnique({ where: { code: input.planCode } });
   if (!plan) throw badRequest("Pick a plan that exists");
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
   const email = input.email?.trim().toLowerCase() || null;
+  const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
 
   if (email || input.phone) {
     const existing = await db.member.findFirst({
@@ -96,6 +123,10 @@ export async function createMember(input: { name: string; phone: string; email?:
           joinedOn: joined,
           expiresOn: expires,
           passwordHash,
+          parentName: input.parentName?.trim() || existing.parentName,
+          parentPhone: input.parentPhone?.trim() || existing.parentPhone,
+          parentEmail: input.parentEmail?.trim().toLowerCase() || existing.parentEmail,
+          dateOfBirth: dob || existing.dateOfBirth,
         },
         include: { plan: true },
       });
@@ -105,7 +136,19 @@ export async function createMember(input: { name: string; phone: string; email?:
 
   const passwordHash = email && input.phone ? await bcrypt.hash(input.phone, 10) : null;
   const row = await db.member.create({
-    data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
+    data: {
+      name: input.name,
+      phone: input.phone,
+      email,
+      passwordHash,
+      planId: plan.id,
+      joinedOn: joined,
+      expiresOn: expires,
+      parentName: input.parentName?.trim() || null,
+      parentPhone: input.parentPhone?.trim() || null,
+      parentEmail: input.parentEmail?.trim().toLowerCase() || null,
+      dateOfBirth: dob,
+    },
     include: { plan: true },
   });
   return toMemberDTO(row);
@@ -116,6 +159,10 @@ export async function availMembership(input: {
   name?: string;
   phone?: string;
   planCode: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  dateOfBirth?: string;
 }): Promise<MemberDTO> {
   const plan = await db.plan.findUnique({ where: { code: input.planCode } });
   if (!plan) throw badRequest("Pick a valid plan (gold, silver, or junior)");
@@ -123,6 +170,7 @@ export async function availMembership(input: {
   const cleanEmail = input.email.trim().toLowerCase();
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+  const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
 
   let member = await db.member.findFirst({
     where: {
@@ -148,6 +196,10 @@ export async function availMembership(input: {
         name: cleanName,
         phone: cleanPhone,
         passwordHash,
+        parentName: input.parentName?.trim() || member.parentName,
+        parentPhone: input.parentPhone?.trim() || member.parentPhone,
+        parentEmail: input.parentEmail?.trim().toLowerCase() || member.parentEmail,
+        dateOfBirth: dob || member.dateOfBirth,
       },
       include: { plan: true },
     });
@@ -165,6 +217,10 @@ export async function availMembership(input: {
         planId: plan.id,
         joinedOn: joined,
         expiresOn: expires,
+        parentName: input.parentName?.trim() || null,
+        parentPhone: input.parentPhone?.trim() || null,
+        parentEmail: input.parentEmail?.trim().toLowerCase() || null,
+        dateOfBirth: dob,
       },
       include: { plan: true },
     });

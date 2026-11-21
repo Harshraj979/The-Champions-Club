@@ -241,6 +241,10 @@ export const toMemberSessionDTO = (m: {
   email: string | null;
   phone: string;
   expiresOn: Date | null;
+  parentName?: string | null;
+  parentPhone?: string | null;
+  parentEmail?: string | null;
+  dateOfBirth?: Date | null;
   plan: {
     code: string;
     name: string;
@@ -256,6 +260,10 @@ export const toMemberSessionDTO = (m: {
     name: m.name,
     email: m.email,
     phone: m.phone,
+    parentName: m.parentName ?? null,
+    parentPhone: m.parentPhone ?? null,
+    parentEmail: m.parentEmail ?? null,
+    dateOfBirth: m.dateOfBirth ? m.dateOfBirth.toISOString().slice(0, 10) : null,
     plan: m.plan
       ? {
           code: m.plan.code,
@@ -386,6 +394,10 @@ export async function memberSignup(data: {
   phone: string;
   password: string;
   planCode?: string;
+  parentName?: string;
+  parentPhone?: string;
+  parentEmail?: string;
+  dateOfBirth?: string;
 }): Promise<{ member: MemberSessionDTO; token: string }> {
   const existing = await db.member.findFirst({
     where: {
@@ -411,6 +423,8 @@ export async function memberSignup(data: {
     }
   }
 
+  const dob = data.dateOfBirth ? new Date(`${data.dateOfBirth}T00:00:00.000Z`) : null;
+
   const newMember = await db.member.create({
     data: {
       name: data.name.trim(),
@@ -420,6 +434,10 @@ export async function memberSignup(data: {
       planId,
       joinedOn,
       expiresOn,
+      parentName: data.parentName?.trim() || null,
+      parentPhone: data.parentPhone?.trim() || null,
+      parentEmail: data.parentEmail?.trim().toLowerCase() || null,
+      dateOfBirth: dob,
     },
     include: { plan: true },
   });
