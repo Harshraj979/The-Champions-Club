@@ -7,7 +7,7 @@ import type { StaffDTO } from "./types";
 
 // Staff sign-in for the web today, the same token works as a Bearer token
 // for a future mobile app. Members have no login by product decision;
-// the front desk works under a staff account, and the till uses a PIN.
+// the front desk works under a staff account, under their own account.
 const COOKIE = "cc_session";
 const secret = new TextEncoder().encode(
   process.env.AUTH_SECRET ?? "dev-only-secret-change-me",
@@ -47,16 +47,6 @@ export async function login(email: string, password: string): Promise<{ staff: S
   return { staff: dto, token: await signToken(dto) };
 }
 
-export async function loginWithPin(pin: string): Promise<{ staff: StaffDTO; token: string }> {
-  const withPins = await db.staff.findMany({ where: { pinHash: { not: null } } });
-  for (const s of withPins) {
-    if (s.pinHash && (await bcrypt.compare(pin, s.pinHash))) {
-      const dto = toStaffDTO(s);
-      return { staff: dto, token: await signToken(dto) };
-    }
-  }
-  throw unauthorized("That PIN does not match");
-}
 
 export async function setSessionCookie(token: string) {
   const jar = await cookies();

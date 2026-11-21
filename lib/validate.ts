@@ -56,6 +56,3 @@ export const loginInput = z.object({
   password: z.string().min(1, "Password is missing"),
 });
 
-export const pinInput = z.object({
-  pin: z.string().regex(/^\d{4}$/, "PIN is 4 digits"),
-});
