@@ -1,228 +1,166 @@
 "use client";
-import Link from "next/link";
-import { api } from "@/lib/api";
-import { useApi } from "@/lib/use-api";
-import { allStarts, fmtTime, inr, todayISO } from "@/lib/format";
-import { Loading, ErrorBox } from "@/components/States";
-import Reveal from "@/components/Reveal";
 
-const starts = allStarts();
+// The landing page, implemented exactly from the user's Figma Make design
+// ("Sports Club Management System"). Only wiring differs: Member login goes
+// to the real staff sign-in. Everything else keeps the design's behaviour.
+import { useState } from "react";
+import Link from "next/link";
+
+type IconName = "arrow" | "menu" | "close" | "court" | "cup" | "bag" | "clock" | "pin" | "instagram";
+
+function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: string }) {
+  const paths: Record<IconName, React.ReactNode> = {
+    arrow: <><path d="M5 12h14M13 6l6 6-6 6" /></>,
+    menu: <><path d="M4 7h16M4 12h16M4 17h16" /></>,
+    close: <><path d="m6 6 12 12M18 6 6 18" /></>,
+    court: <><rect x="3" y="4" width="18" height="16" rx="1" /><path d="M12 4v16M3 12h18M8 4v4M16 16v4" /></>,
+    cup: <><path d="M5 4h14l-2 8a5 5 0 0 1-10 0L5 4ZM12 17v4M8 21h8" /></>,
+    bag: <><path d="M6 8h12l1 13H5L6 8Z" /><path d="M9 9V6a3 3 0 0 1 6 0v3" /></>,
+    clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    pin: <><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
+    instagram: <><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><path d="M17.5 6.5h.01" /></>,
+  };
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
+}
+
+const facilities = [
+  { number: "01", title: "Courts", description: "Six championship padel and tennis courts, thoughtfully designed for every level of play.", icon: "court" as IconName, meta: "6 premium courts" },
+  { number: "02", title: "Clubhouse", description: "A relaxed bar and kitchen serving all-day plates, considered drinks, and post-match rituals.", icon: "cup" as IconName, meta: "Open until late" },
+  { number: "03", title: "Pro shop", description: "Technical essentials, fresh club apparel, and expert advice—all right where you play.", icon: "bag" as IconName, meta: "Curated for players" },
+];
 
 export default function Home() {
-  const today = todayISO();
-  const plans = useApi(() => api.plans());
-  const courts = useApi(() => api.courts());
-  const products = useApi(() => api.products());
-  const schedule = useApi(() => api.schedule(today), [today]);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [notice, setNotice] = useState("");
 
-  const gear = products.data?.filter((p) => p.category === "GEAR") ?? [];
-  const bar = products.data?.filter((p) => p.category === "BAR") ?? [];
-  const sheet = schedule.data ?? [];
+  function scrollTo(id: string) {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setMenuOpen(false);
+  }
 
-  // first start today where this court is free for a full hour
-  const nextFree = (courtId: number) => {
-    const taken = sheet.filter((b) => b.courtId === courtId).map((b) => b.start);
-    return starts.find((t) => !taken.some((b) => Math.abs(b - t) < 60)) ?? null;
-  };
+  function requestAccess() {
+    scrollTo("membership");
+    setNotice("Membership enquiries are now open");
+    window.setTimeout(() => setNotice(""), 2800);
+  }
 
   return (
-    <main>
-      <section className="hero">
-        <div className="hero-in">
-          <div className="hero-text">
-            <h1>First serve at six. Last over by dusk.</h1>
-            <p>Two tennis courts, a cricket pitch, a gear shop and a bar that knows your name. Booked in seconds, not WhatsApp threads.</p>
-            <div className="hero-actions">
-              <Link className="btn btn-ink" href="/trial">Book a free trial</Link>
-              <Link className="btn btn-quiet" href="/courts">See court times</Link>
-            </div>
+    <div className="make-landing min-h-screen bg-[#f2f0e8] text-[#163021]">
+      <header className="absolute inset-x-0 top-0 z-40 border-b border-white/15 text-white">
+        <div className="mx-auto flex h-[84px] max-w-[1440px] items-center justify-between px-5 sm:px-8 lg:px-12">
+          <button onClick={() => scrollTo("home")} className="flex items-center gap-3" aria-label="Champions Club home">
+            <div className="grid h-10 w-10 place-items-center rounded-full border border-[#dfff45]/80 font-display text-[17px] font-bold italic text-[#dfff45]">CC</div>
+            <div className="text-left"><p className="font-display text-[19px] font-bold uppercase leading-none tracking-wide">Champions</p><p className="mt-1 text-[8px] font-semibold uppercase tracking-[.34em] text-white/55">The club</p></div>
+          </button>
+          <nav className="hidden items-center gap-8 lg:flex">
+            {["The club", "Play", "Eat & drink", "Membership"].map((item, index) => (
+              <button key={item} onClick={() => scrollTo(["club", "play", "clubhouse", "membership"][index])} className="text-xs font-semibold text-white/75 transition hover:text-white">{item}</button>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="hidden text-xs font-semibold text-white/75 hover:text-white sm:block">Member login</Link>
+            <button onClick={requestAccess} className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">Join the club</button>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 lg:hidden" aria-label="Toggle menu"><Icon name={menuOpen ? "close" : "menu"} /></button>
           </div>
         </div>
-        <div className="hero-photo">
+        {menuOpen && (
+          <div className="border-t border-white/10 bg-[#132b1d] px-5 py-6 lg:hidden">
+            {["The club", "Play", "Eat & drink", "Membership"].map((item, index) => <button key={item} onClick={() => scrollTo(["club", "play", "clubhouse", "membership"][index])} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">{item}</button>)}
+            <button onClick={requestAccess} className="mt-6 w-full rounded-full bg-[#dfff45] py-4 text-xs font-bold uppercase tracking-wider text-[#173020]">Join the club</button>
+          </div>
+        )}
+      </header>
+
+      <main>
+        <section id="home" className="relative flex min-h-[760px] items-end overflow-hidden bg-[#10251a] text-white lg:min-h-screen">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero.jpg" alt="The club ground, seen from above" width={2744} height={1568} fetchPriority="high" />
-        </div>
-        <div className="today-card">
-          {schedule.loading ? (
-            <div className="today-inner"><p className="today-note">Reading today's sheet...</p></div>
-          ) : schedule.error ? (
-            <div className="today-inner"><p className="today-note">The live sheet is not loading. <Link className="text-link" href="/courts">See court times</Link></p></div>
-          ) : (
-            <div className="today-inner">
+          <img src="/hero.jpg" alt="Padel player on court at Champions Club" className="absolute inset-0 h-full w-full object-cover object-[62%_center]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,28,17,.94)_0%,rgba(9,30,18,.74)_35%,rgba(9,29,18,.1)_70%),linear-gradient(0deg,rgba(7,23,14,.72)_0%,transparent_45%)]" />
+          <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-16 pt-36 sm:px-8 lg:px-12 lg:pb-20">
+            <div className="max-w-[720px]">
+              <div className="mb-7 flex items-center gap-3"><span className="h-px w-10 bg-[#dfff45]" /><span className="text-[10px] font-bold uppercase tracking-[.28em] text-[#dfff45]">Courts · Kitchen · Community</span></div>
+              <h1 className="font-display text-[64px] font-bold uppercase leading-[.84] tracking-[-.035em] sm:text-[86px] lg:text-[118px]">Play hard.<br /><span className="text-[#dfff45]">Stay longer.</span></h1>
+              <p className="mt-8 max-w-lg text-sm leading-7 text-white/70 sm:text-base">More than a place to play. Champions is your home court, your local, and your community—all under one roof.</p>
+              <div className="mt-9 flex flex-wrap gap-3">
+                <button onClick={requestAccess} className="group flex items-center gap-5 rounded-full bg-[#dfff45] px-6 py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white">Explore membership <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" /></button>
+                <button onClick={() => scrollTo("play")} className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Discover the club</button>
+              </div>
+            </div>
+            <div className="mt-16 flex flex-wrap gap-x-12 gap-y-5 border-t border-white/20 pt-6 text-[10px] uppercase tracking-[.18em] text-white/55 lg:absolute lg:bottom-20 lg:right-12 lg:mt-0 lg:w-[430px]">
+              <span className="flex items-center gap-2"><Icon name="pin" className="h-4 w-4 text-[#dfff45]" />Cityside, Amsterdam</span>
+              <span className="flex items-center gap-2"><Icon name="clock" className="h-4 w-4 text-[#dfff45]" />Open daily 07–00</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="club" className="overflow-hidden py-24 sm:py-32">
+          <div className="mx-auto max-w-[1280px] px-5 sm:px-8">
+            <div className="grid gap-12 lg:grid-cols-[.7fr_1.3fr] lg:gap-20">
+              <div><p className="eyebrow">A different kind of club</p><div className="mt-8 hidden h-28 w-px bg-[#b7c0b7] lg:block" /></div>
               <div>
-                <div className="today-head">
-                  <b>Today at the club</b>
-                  <span>Live from the booking sheet</span>
-                </div>
-                <div className="today-stats">
-                  <div>
-                    <p className="ts-v">{sheet.length}</p>
-                    <p className="ts-l">Bookings today</p>
-                  </div>
-                  <div>
-                    <p className="ts-v">{courts.data?.length ?? 3} <em>courts</em></p>
-                    <p className="ts-l">Tennis + cricket</p>
-                  </div>
-                  <div>
-                    <p className="ts-v">6 AM</p>
-                    <p className="ts-l">First slot, daily</p>
-                  </div>
-                </div>
+                <h2 className="font-display text-5xl font-bold uppercase leading-[.93] tracking-tight sm:text-7xl">Built around the game.<br /><span className="text-[#7c887e]">Made for everything after.</span></h2>
+                <p className="mt-8 max-w-2xl text-base leading-8 text-[#617065]">Come for a quick set. Stay for lunch, catch up over a drink, or meet the people who turn a match into a weekly ritual. Champions brings sport and hospitality together, without the old club rules.</p>
               </div>
-              {sheet.length > 0 ? (
-                <div className="today-rows">
-                  {sheet.slice(0, 3).map((b) => (
-                    <div className="today-row" key={b.id}>
-                      <span className="tr-t num">{fmtTime(b.start)}</span>
-                      <span className="tr-c">{b.court}</span>
-                      <span className="tr-w">{b.who}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="today-note">Nothing booked yet today. The first slot is 6 AM.</p>
-              )}
             </div>
-          )}
+          </div>
+        </section>
+
+        <section id="play" className="bg-[#173021] py-20 text-white sm:py-28">
+          <div className="mx-auto max-w-[1280px] px-5 sm:px-8">
+            <div className="mb-14 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+              <div><p className="eyebrow text-[#dfff45]">Everything in one place</p><h2 className="mt-4 font-display text-5xl font-bold uppercase sm:text-6xl">Your club, your way.</h2></div>
+              <p className="max-w-sm text-sm leading-6 text-white/50">Designed to move seamlessly from first serve to last orders.</p>
+            </div>
+            <div className="grid border-y border-white/15 md:grid-cols-3 md:divide-x md:divide-white/15">
+              {facilities.map((facility) => (
+                <article key={facility.title} className="group border-b border-white/15 py-8 last:border-b-0 md:border-b-0 md:px-7 md:first:pl-0 md:last:pr-0 lg:px-10">
+                  <div className="mb-16 flex items-start justify-between"><span className="text-[10px] font-bold tracking-[.2em] text-white/35">{facility.number}</span><div className="grid h-12 w-12 place-items-center rounded-full border border-white/20 text-[#dfff45] transition group-hover:border-[#dfff45] group-hover:bg-[#dfff45] group-hover:text-[#173021]"><Icon name={facility.icon} /></div></div>
+                  <h3 className="font-display text-4xl font-bold uppercase">{facility.title}</h3>
+                  <p className="mt-4 min-h-[72px] text-sm leading-6 text-white/55">{facility.description}</p>
+                  <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5"><span className="text-[10px] font-bold uppercase tracking-wider text-[#dfff45]">{facility.meta}</span><Icon name="arrow" className="h-4 w-4 text-white/30 transition group-hover:translate-x-1 group-hover:text-white" /></div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="clubhouse" className="grid min-h-[620px] lg:grid-cols-2">
+          <div className="clubhouse-art relative min-h-[420px] overflow-hidden">
+            <div className="absolute inset-0 bg-[linear-gradient(140deg,transparent_40%,rgba(9,30,18,.35))]" />
+            <div className="absolute bottom-7 left-7 rounded-full border border-white/30 bg-black/15 px-4 py-2 text-[9px] font-bold uppercase tracking-[.2em] text-white backdrop-blur">Open to everyone</div>
+          </div>
+          <div className="flex items-center bg-[#dfff45] px-7 py-20 sm:px-14 lg:px-20">
+            <div className="max-w-xl">
+              <p className="eyebrow">The clubhouse</p>
+              <h2 className="mt-5 font-display text-6xl font-bold uppercase leading-[.88] tracking-tight sm:text-7xl">Good games.<br />Better company.</h2>
+              <p className="mt-7 max-w-md text-sm leading-7 text-[#405143]">Our bar and kitchen is made for the full day—from the first flat white to the last round. Seasonal plates, cold drinks, and the best seat in the house for watching the action.</p>
+              <button onClick={() => setNotice("The clubhouse menu is coming soon")} className="mt-9 flex items-center gap-5 rounded-full bg-[#173021] px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#173021]">Meet at the bar <Icon name="arrow" className="h-4 w-4" /></button>
+            </div>
+          </div>
+        </section>
+
+        <section id="membership" className="bg-[#f2f0e8] py-24 sm:py-32">
+          <div className="mx-auto max-w-[1100px] px-5 text-center sm:px-8">
+            <p className="eyebrow">Memberships now open</p>
+            <h2 className="mx-auto mt-5 max-w-4xl font-display text-6xl font-bold uppercase leading-[.88] tracking-tight sm:text-8xl">Make Champions<br /><span className="text-[#7c887e]">your home court.</span></h2>
+            <p className="mx-auto mt-7 max-w-xl text-sm leading-7 text-[#68746b]">Priority booking, member rates, club events, and a community that always has room for one more.</p>
+            <div className="mx-auto mt-10 flex max-w-md rounded-full border border-[#173021]/15 bg-white p-1.5 shadow-sm">
+              <input aria-label="Email address" placeholder="Your email address" className="min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-[#849087]" />
+              <button onClick={() => setNotice("Thanks — we'll be in touch shortly")} className="rounded-full bg-[#173021] px-5 py-3 text-[10px] font-bold uppercase tracking-wider text-white hover:bg-[#294d36]">Request info</button>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="bg-[#10251a] px-5 py-10 text-white sm:px-8">
+        <div className="mx-auto flex max-w-[1280px] flex-col justify-between gap-8 border-b border-white/10 pb-10 md:flex-row md:items-center">
+          <div className="font-display text-3xl font-bold uppercase">Champions <span className="text-[#dfff45]">Club.</span></div>
+          <div className="flex flex-wrap gap-7 text-xs text-white/55"><button onClick={() => scrollTo("club")}>About</button><button onClick={() => scrollTo("membership")}>Membership</button><button onClick={() => setNotice("Events calendar coming soon")}>Events</button><button onClick={() => setNotice("Contact details copied")}>Contact</button><Icon name="instagram" className="h-4 w-4 text-white" /></div>
         </div>
-      </section>
+        <div className="mx-auto mt-7 flex max-w-[1280px] flex-col justify-between gap-3 text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row"><span>© 2025 Champions Club</span><span>Play · Eat · Belong</span></div>
+      </footer>
 
-      <div className="wrap">
-        <Reveal>
-          <section className="block">
-            <div className="sec-head">
-              <h2>On court today</h2>
-              <Link className="text-link" href="/courts">Book a court</Link>
-            </div>
-            {schedule.loading ? (
-              <Loading />
-            ) : schedule.error ? (
-              <ErrorBox message={schedule.error} onRetry={schedule.reload} />
-            ) : sheet.length === 0 ? (
-              <p className="muted">Nothing on court yet today. The first slot is 6 AM.</p>
-            ) : (
-              <div className="fixtures">
-                {sheet.map((b) => (
-                  <div className="fixture" key={b.id}>
-                    <span className="fx-t">{fmtTime(b.start)}</span>
-                    <span className="fx-c">{b.court}</span>
-                    <span className="fx-w">{b.who}</span>
-                    <span className="fx-p num">{b.price ? inr(b.price) : "Plan"}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="muted" style={{ marginTop: 12 }}>One hour a booking, a new slot every half hour. A court is never double-booked.</p>
-          </section>
-        </Reveal>
-
-        <Reveal>
-          <section className="block" id="plans">
-            <div className="sec-head">
-              <h2>Membership</h2>
-              <Link className="text-link" href="/trial">Start with a trial</Link>
-            </div>
-            {plans.loading ? (
-              <Loading rows={3} />
-            ) : plans.error ? (
-              <ErrorBox message={plans.error} onRetry={plans.reload} />
-            ) : (
-              <div className="plan-grid">
-                {plans.data!.map((p) => (
-                  <div key={p.code} className={`plan-card${p.code === "gold" ? " hot" : ""}`}>
-                    {p.code === "gold" && <span className="plan-tag">Most picked</span>}
-                    <p className="plan-name">{p.name}</p>
-                    <p className="plan-price">
-                      {p.courtPrice === 0 ? "Included" : <>{inr(p.courtPrice)}<small> / court hour</small></>}
-                    </p>
-                    <div className="plan-feats">
-                      <div><span>Shop discount</span><b>{p.shopDiscount}% off</b></div>
-                      <div><span>Bar discount</span><b>{p.barDiscount ? `${p.barDiscount}% off` : "Full price"}</b></div>
-                      <div><span>Term</span><b>{p.termDays} days</b></div>
-                    </div>
-                    <div className="plan-cta">
-                      <Link className="btn btn-ink" href="/trial">Start with a free trial</Link>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            <p className="muted" style={{ marginTop: 12 }}>Your plan sets your prices everywhere at once: courts, shop and bar. Two court bookings a day at most, on every plan.</p>
-          </section>
-        </Reveal>
-
-        <Reveal>
-          <section className="block">
-            <div className="sec-head">
-              <h2>Courts</h2>
-              <Link className="text-link" href="/courts">See free slots</Link>
-            </div>
-            {courts.loading ? (
-              <Loading rows={3} />
-            ) : courts.error ? (
-              <ErrorBox message={courts.error} onRetry={courts.reload} />
-            ) : (
-              <div className="court-grid">
-                {courts.data!.map((c) => {
-                  const free = schedule.data ? nextFree(c.id) : undefined;
-                  return (
-                    <div key={c.id} className="court-card">
-                      <p className="court-name">{c.name}</p>
-                      <p className="muted">{c.sport} · walk-in <span className="num">{inr(c.walkinPrice)}</span> an hour</p>
-                      <p className="court-next">
-                        {free === undefined ? "Reading today's sheet..." : free === null ? "Fully booked today." : <>Next free today: <b>{fmtTime(free)}</b></>}
-                      </p>
-                      <div className="court-cta">
-                        <Link className="btn btn-quiet" href="/courts">Book {c.name}</Link>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-        </Reveal>
-
-        <Reveal>
-          <section className="block" style={{ paddingBottom: 16 }}>
-            <div className="sec-head">
-              <h2>The club</h2>
-            </div>
-            <div className="bento">
-              <div className="tile wide dark">
-                <h3>Friday Social Play</h3>
-                <p className="t-big">Fridays, 7 PM</p>
-                <p>Shared courts, rotating players, no booking maths. The one session where the 2-a-day rule does not apply.</p>
-                <p className="t-link"><Link className="text-link" href="/courts">Get on court</Link></p>
-              </div>
-              <div className="tile">
-                <h3>Club shop</h3>
-                <p className="t-big">{gear.length} lines</p>
-                <p>{gear.length ? <>From {inr(Math.min(...gear.map((p) => p.price)))}. </> : ""}What is listed is what is in stock.</p>
-                <p className="t-link"><Link className="text-link" href="/shop">Shop</Link></p>
-              </div>
-              <div className="tile">
-                <h3>Bar &amp; Café</h3>
-                <p className="t-big">11 AM to 11 PM</p>
-                <p>{bar.length ? bar.map((p) => p.name.toLowerCase()).join(", ") : "Cold coffee, beer, sandwiches."}. Member plans take their discount at the till.</p>
-                <p className="t-link"><Link className="text-link" href="/bar">Bar &amp; Café</Link></p>
-              </div>
-              <div className="tile wide volt">
-                <h3>Never played here?</h3>
-                <p className="t-big">First session is free</p>
-                <p>One hour on court, rackets and balls on us. Book it in under a minute, no card, no calls.</p>
-                <p className="t-link"><Link className="text-link" href="/trial">Book a free trial</Link></p>
-              </div>
-              <div className="tile wide">
-                <h3>Visit</h3>
-                <p>Courts 6 AM to 10 PM · Shop 8 AM to 9 PM · Bar &amp; Café 11 AM to 11 PM, every day.</p>
-                <p>Front desk: +91 98765 43210</p>
-                <p className="t-link"><Link className="text-link" href="/courts">See court times</Link></p>
-              </div>
-            </div>
-          </section>
-        </Reveal>
-      </div>
-    </main>
+      {notice && <div className="make-toast fixed bottom-5 right-5 z-50 rounded-full bg-white px-5 py-3 text-xs font-bold text-[#173021] shadow-2xl">{notice}</div>}
+    </div>
   );
 }
