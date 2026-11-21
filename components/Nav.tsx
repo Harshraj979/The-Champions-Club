@@ -1,46 +1,62 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+<<<<<<< HEAD
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
 import { Role, ROLES } from "@/lib/rbac";
+=======
+import { usePathname } from "next/navigation";
+import { api } from "@/lib/api";
+import type { StaffDTO } from "@/lib/types";
+>>>>>>> 7509cadebf15daa1026aa672220ccc99f6d7cfda
 
-const linksByRole: Record<Role, { href: string; label: string }[]> = {
-  customer: [
-    { href: "/courts", label: "Courts" },
-    { href: "/#plans", label: "Membership" },
-    { href: "/shop", label: "Shop" },
-  ],
-  employee: [
-    { href: "/courts", label: "Courts" },
-    { href: "/shop", label: "Shop" },
-    { href: "/bar", label: "Bar & Café" },
-    { href: "/bookings", label: "Bookings" },
-    { href: "/members", label: "Members" },
-  ],
-  owner: [
-    { href: "/courts", label: "Courts" },
-    { href: "/shop", label: "Shop" },
-    { href: "/bar", label: "Bar & Café" },
-    { href: "/bookings", label: "Bookings" },
-    { href: "/members", label: "Members" },
-    { href: "/dashboard", label: "Dashboard" },
-  ],
-};
+const publicLinks = [
+  { href: "/courts", label: "Courts" },
+  { href: "/#plans", label: "Membership" },
+  { href: "/shop", label: "Shop" },
+  { href: "/bar", label: "Bar & Café" },
+];
+const staffLinks = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/bookings", label: "Bookings" },
+  { href: "/members", label: "Members" },
+];
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [staff, setStaff] = useState<StaffDTO | null>(null);
   const path = usePathname();
+<<<<<<< HEAD
   const router = useRouter();
   const { store, setRoleWithDemoJwt, logout } = useStore();
   const links = linksByRole[store.role] ?? linksByRole.customer;
+=======
+>>>>>>> 7509cadebf15daa1026aa672220ccc99f6d7cfda
 
-  useEffect(() => { setOpen(false); }, [path]);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    setOpen(false);
+  }, [path]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  useEffect(() => {
+    api.me()
+      .then((r) => setStaff(r.staff))
+      .catch(() => setStaff(null));
+  }, [path]);
+
+  async function signOut() {
+    await api.logout().catch(() => {});
+    setStaff(null);
+    window.location.href = "/";
+  }
+
+  const links = staff ? [...publicLinks, ...staffLinks] : publicLinks;
 
   async function handleRoleSelect(role: Role) {
     await setRoleWithDemoJwt(role);
@@ -63,6 +79,7 @@ export default function Nav() {
           ))}
         </nav>
         <div className="nav-end">
+<<<<<<< HEAD
           <select
             className="role-select"
             aria-label="Active role"
@@ -96,7 +113,17 @@ export default function Nav() {
           )}
           {store.role === "customer" && (
             <Link className="btn btn-ink" href="/trial">Free trial</Link>
+=======
+          {staff ? (
+            <>
+              <span className="staff-name">{staff.name}</span>
+              <button className="btn btn-quiet" onClick={signOut}>Sign out</button>
+            </>
+          ) : (
+            <Link className="btn btn-quiet" href="/login">Staff sign-in</Link>
+>>>>>>> 7509cadebf15daa1026aa672220ccc99f6d7cfda
           )}
+          <Link className="btn btn-ink" href="/trial">Book a free trial</Link>
           <button className="menu-btn" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? "✕" : "☰"}
           </button>
@@ -104,9 +131,21 @@ export default function Nav() {
       </div>
       {open && (
         <nav className="nav-mobile" aria-label="Club">
+<<<<<<< HEAD
           {links.map((l) => <Link key={l.href} href={l.href}>{l.label}</Link>)}
           <Link href="/login">Sign in / Switch account</Link>
           {store.role === "customer" && <Link href="/trial">Book a free trial</Link>}
+=======
+          {links.map((l) => (
+            <Link key={l.href} href={l.href}>{l.label}</Link>
+          ))}
+          <Link href="/trial">Book a free trial</Link>
+          {staff ? (
+            <button className="mobile-signout" onClick={signOut}>Sign out ({staff.name})</button>
+          ) : (
+            <Link href="/login">Staff sign-in</Link>
+          )}
+>>>>>>> 7509cadebf15daa1026aa672220ccc99f6d7cfda
         </nav>
       )}
     </header>

@@ -1,0 +1,16 @@
+# Local PostgreSQL for development. The app reads DATABASE_URL from .env;
+# this compose file provides a database that matches the example .env.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: club
+      POSTGRES_PASSWORD: club
+      POSTGRES_DB: champions_club
+    ports:
+      - "5432:5432"
+    volumes:
+      - club-db:/var/lib/postgresql/data
+
+volumes:
+  club-db:
