@@ -75,7 +75,7 @@ export async function listMembers(q?: string): Promise<MemberDTO[]> {
 }
 
 export async function createMember(
-  input: { name: string; phone: string; email?: string; planCode: string },
+  input: { name: string; phone: string; email?: string; planCode: string; dateOfBirth?: string },
   // Lets a caller run the creation inside its own transaction
   // (enquiry conversion), so member + enquiry update are atomic.
   client: Prisma.TransactionClient | typeof db = db,
@@ -93,6 +93,17 @@ export async function createMember(
     where: { name: { equals: input.name.trim(), mode: "insensitive" }, phone: input.phone.trim() },
   });
   if (samePerson) throw conflict("A member with that name and phone already exists");
+  // Junior is under-18 only: the desk page checks this too, but the
+  // server is the one that has to mean it, and the DOB is stored.
+  const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
+  if (input.planCode === "junior") {
+    if (!dob) throw badRequest("Junior is for under-18s — a date of birth is required");
+    const joinedMs = Date.parse(todayISO());
+    let age = new Date(joinedMs).getUTCFullYear() - dob.getUTCFullYear();
+    const mth = new Date(joinedMs).getUTCMonth() - dob.getUTCMonth();
+    if (mth < 0 || (mth === 0 && new Date(joinedMs).getUTCDate() < dob.getUTCDate())) age -= 1;
+    if (age >= 18) throw badRequest("Junior is for under-18s — this member is 18 or older");
+  }
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
   // Portal access: with an email on file the member can sign in; the
@@ -104,7 +115,7 @@ export async function createMember(
     ? await bcrypt.hash(input.phone.trim() ? input.phone : email, 10)
     : null;
   const row = await client.member.create({
-    data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires },
+    data: { name: input.name, phone: input.phone, email, passwordHash, planId: plan.id, joinedOn: joined, expiresOn: expires, dateOfBirth: dob },
     include: { plan: true },
   });
   return toMemberDTO(row);
