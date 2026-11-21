@@ -295,22 +295,26 @@ export default function Courts() {
 
                 <div className="grid sm:grid-cols-3 gap-3 mt-4">
                   {[
-                    { code: "gold", name: "Gold Tier", tennis: "₹300/hr", cricket: "₹500/hr", discount: "15% shop · 20% bar", color: "border-[#dfff45] bg-[#163021] text-white" },
-                    { code: "silver", name: "Silver Tier", tennis: "₹400/hr", cricket: "₹650/hr", discount: "10% shop · 10% bar", color: "border-[#163021]/20 bg-white text-[#163021]" },
-                    { code: "junior", name: "Junior Tier", tennis: "₹250/hr", cricket: "₹400/hr", discount: "5% shop · Under 18", color: "border-[#163021]/20 bg-white text-[#163021]" },
+                    { code: "gold", name: "Gold Tier", price: "₹1,500/mo", profit: "+₹2,100 net profit", tennis: "₹300/hr", cricket: "₹500/hr", discount: "15% shop · 20% bar" },
+                    { code: "silver", name: "Silver Tier", price: "₹1,000/mo", profit: "+₹650 net profit", tennis: "₹400/hr", cricket: "₹650/hr", discount: "10% shop · 10% bar" },
+                    { code: "junior", name: "Junior Tier", price: "₹600/mo", profit: "+₹1,900 net profit", tennis: "₹250/hr", cricket: "₹400/hr", discount: "5% shop · Under 18" },
                   ].map((p) => (
                     <div key={p.code} className="rounded-xl border p-4 flex flex-col justify-between border-[#163021]/15 bg-white shadow-sm">
                       <div>
-                        <p className="font-display text-xl font-bold uppercase text-[#163021]">{p.name}</p>
-                        <p className="text-xs font-semibold text-[#163021] mt-1">Tennis {p.tennis} · Cricket {p.cricket}</p>
+                        <div className="flex items-center justify-between">
+                          <p className="font-display text-xl font-bold uppercase text-[#163021]">{p.name}</p>
+                          <span className="text-xs font-bold text-[#163021] bg-[#163021]/10 px-2 py-0.5 rounded-full">{p.price}</span>
+                        </div>
+                        <p className="text-xs font-semibold text-[#163021] mt-1.5">Tennis {p.tennis} · Cricket {p.cricket}</p>
                         <p className="text-[11px] text-[#617065] mt-1">{p.discount}</p>
+                        <p className="text-[10px] font-bold text-[#2e7d32] mt-1.5">📊 {p.profit}</p>
                       </div>
                       <button
                         onClick={() => handleBuyPlan(p.code)}
                         disabled={buyingPlan}
                         className="mt-4 w-full rounded-full bg-[#dfff45] py-2.5 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#163021] hover:text-white transition disabled:opacity-40"
                       >
-                        {buyingPlan ? "Activating..." : `Activate ${p.name.split(" ")[0]}`}
+                        {buyingPlan ? "Activating..." : `Activate ${p.name.split(" ")[0]} (${p.price})`}
                       </button>
                     </div>
                   ))}

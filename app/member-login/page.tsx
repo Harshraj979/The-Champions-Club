@@ -219,33 +219,114 @@ export default function MemberAuth() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
-                Choose Membership Tier
-              </label>
-              <div className="grid grid-cols-2 gap-2 mt-1">
-                {[
-                  { code: "gold", name: "Gold Plan", perk: "₹300/hr tennis" },
-                  { code: "silver", name: "Silver Plan", perk: "₹400/hr tennis" },
-                  { code: "junior", name: "Junior Plan", perk: "Under 18" },
-                  { code: "none", name: "Decide Later", perk: "No plan initially" },
-                ].map((p) => (
-                  <button
-                    key={p.code}
-                    type="button"
-                    onClick={() => setPlanCode(p.code)}
-                    className={`rounded-2xl border p-3 text-left transition ${
-                      planCode === p.code
-                        ? "border-[#163021] bg-[#163021] text-white"
-                        : "border-[#163021]/15 bg-white text-[#163021] hover:border-[#163021]"
-                    }`}
-                  >
-                    <p className="font-bold text-xs uppercase">{p.name}</p>
-                    <p className={`text-[10px] mt-0.5 ${planCode === p.code ? "text-[#dfff45]" : "text-[#617065]"}`}>
-                      {p.perk}
-                    </p>
-                  </button>
-                ))}
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
+                  Choose Membership Tier
+                </label>
+                <span className="text-[10px] uppercase font-bold text-[#617065]">
+                  1-Month Rates &amp; Profits
+                </span>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+                {[
+                  {
+                    code: "gold",
+                    name: "Gold Plan",
+                    price: "₹1,500/mo",
+                    tag: "Most Popular",
+                    rates: "Tennis ₹300/hr · Cricket ₹500/hr",
+                    profit: "Net Profit: +₹2,100/mo",
+                    highlight: "Save ₹3,600/mo with 2 free guest passes + 20% café discount",
+                  },
+                  {
+                    code: "silver",
+                    name: "Silver Plan",
+                    price: "₹1,000/mo",
+                    tag: "Regular Player",
+                    rates: "Tennis ₹400/hr · Cricket ₹650/hr",
+                    profit: "Net Profit: +₹650/mo",
+                    highlight: "Save ₹1,650/mo with 1 free guest pass + 10% café discount",
+                  },
+                  {
+                    code: "junior",
+                    name: "Junior Plan",
+                    price: "₹600/mo",
+                    tag: "Youth & Students",
+                    rates: "Tennis ₹250/hr (50% Off) · Cricket ₹400/hr",
+                    profit: "Net Profit: +₹1,900/mo",
+                    highlight: "Save ₹2,500/mo with monthly youth coaching clinic",
+                  },
+                  {
+                    code: "none",
+                    name: "Decide Later",
+                    price: "Free",
+                    tag: "Pay as you go",
+                    rates: "Walk-in baseline rates (₹500/hr)",
+                    profit: "No monthly commitment",
+                    highlight: "Browse courts and schedules first, activate any plan later",
+                  },
+                ].map((p) => {
+                  const isSelected = planCode === p.code;
+                  return (
+                    <button
+                      key={p.code}
+                      type="button"
+                      onClick={() => setPlanCode(p.code)}
+                      className={`relative rounded-2xl border p-3.5 text-left transition ${
+                        isSelected
+                          ? "border-[#163021] bg-[#163021] text-white shadow-md ring-1 ring-[#163021]"
+                          : "border-[#163021]/15 bg-white text-[#163021] hover:border-[#163021]/40 hover:bg-[#fcfbf7]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-xs uppercase tracking-wide">{p.name}</p>
+                        <span
+                          className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
+                            isSelected ? "bg-[#dfff45] text-[#163021]" : "bg-[#163021]/10 text-[#163021]"
+                          }`}
+                        >
+                          {p.price}
+                        </span>
+                      </div>
+                      <p className={`text-[11px] font-semibold mt-1.5 ${isSelected ? "text-[#dfff45]" : "text-[#163021]"}`}>
+                        {p.rates}
+                      </p>
+                      <div className="mt-1 flex items-center justify-between text-[10px]">
+                        <span className={isSelected ? "text-white/80 font-medium" : "text-[#2e7d32] font-semibold"}>
+                          {p.profit}
+                        </span>
+                        <span className={isSelected ? "text-white/50" : "text-[#849087]"}>
+                          {p.tag}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dynamic Selected Tier Summary Box */}
+              {planCode !== "none" ? (
+                <div className="mt-3 rounded-2xl bg-[#dfff45]/15 border border-[#163021]/15 p-3.5 text-xs text-[#163021]">
+                  <div className="flex items-center justify-between font-bold">
+                    <span>
+                      ✨ Selected: {planCode === "gold" ? "Gold Tier (₹1,500/mo)" : planCode === "silver" ? "Silver Tier (₹1,000/mo)" : "Junior Tier (₹600/mo)"}
+                    </span>
+                    <span className="text-[#2e7d32] uppercase font-bold text-[10px] tracking-wider">
+                      {planCode === "gold" ? "Net Profit +₹2,100" : planCode === "silver" ? "Net Profit +₹650" : "Net Profit +₹1,900"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-[#617065] leading-relaxed">
+                    {planCode === "gold" && "Includes 7-day advance booking, ₹300/hr tennis, ₹500/hr cricket, 2 free guest passes/month, and 20% off all café orders."}
+                    {planCode === "silver" && "Includes 5-day advance booking, ₹400/hr tennis, ₹650/hr cricket, 1 free guest pass/month, and 10% off all café orders."}
+                    {planCode === "junior" && "Subsidized youth tier with 50% discount on court slots (₹250/hr tennis, ₹400/hr cricket) plus monthly skills coaching clinics."}
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-3 rounded-2xl bg-[#f7f6f0] border border-[#163021]/10 p-3 text-xs text-[#617065]">
+                  <span className="font-semibold text-[#163021]">Decide Later (Free):</span> Sign up now to browse live availability. You can activate any membership tier whenever you are ready to book courts.
+                </div>
+              )}
             </div>
 
             {err && <div className="notice err" role="alert">{err}</div>}
@@ -256,7 +337,15 @@ export default function MemberAuth() {
                 className="w-full rounded-full bg-[#dfff45] py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-[#163021] hover:text-white disabled:opacity-40"
                 disabled={busy}
               >
-                {busy ? "Creating account..." : "Join Champions Club"}
+                {busy
+                  ? "Creating account..."
+                  : planCode === "gold"
+                  ? "Join Gold & Create Account (₹1,500/mo)"
+                  : planCode === "silver"
+                  ? "Join Silver & Create Account (₹1,000/mo)"
+                  : planCode === "junior"
+                  ? "Join Junior & Create Account (₹600/mo)"
+                  : "Create Free Member Account"}
               </button>
             </div>
           </form>
