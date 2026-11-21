@@ -9,10 +9,14 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
+<<<<<<< HEAD
+    "test": "node --experimental-strip-types test/better-auth-resend.test.mjs"
+=======
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio"
+>>>>>>> 0e1cb56d75c2e2a4584b2e7f61144820b5b671c9
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.1",
