@@ -15,7 +15,11 @@ const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 async function sums(fromISO: string, toISO: string): Promise<MoneySplit> {
   const [courtAgg, orders, tabs] = await Promise.all([
     db.booking.aggregate({
-      where: { date: { gte: day(fromISO), lte: day(toISO) }, state: "BOOKED" },
+      // One IST day window for every source: courts by date within
+      // [from, to+1), exactly like the orders/tabs windows below.
+      // (lte day(to) silently dropped a booking whose date carried
+      // a time after UTC midnight on the last day.)
+      where: { date: { gte: day(fromISO), lt: day(addDaysISO(toISO, 1)) }, state: "BOOKED" },
       _sum: { price: true },
     }),
     db.order.findMany({
