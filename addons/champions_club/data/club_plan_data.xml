@@ -20,10 +20,4 @@
         <field name="validity_days">365</field>
     </record>
 
-    <record id="pricelist_walkin" model="product.pricelist">
-        <field name="name">Walk-in</field>
-    </record>
-    <record id="pricelist_member" model="product.pricelist">
-        <field name="name">Member</field>
-    </record>
 </odoo>

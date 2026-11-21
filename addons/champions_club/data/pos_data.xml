@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="pay_cash" model="pos.payment.method">
+        <field name="name">Cash</field>
+    </record>
+    <record id="pay_card" model="pos.payment.method">
+        <field name="name">Card</field>
+    </record>
+    <record id="pay_upi" model="pos.payment.method">
+        <field name="name">UPI</field>
+    </record>
+
+    <!-- Two counters, one system. A tab is just an order left open
+         in the session until the member settles it. -->
+    <record id="pos_shop" model="pos.config">
+        <field name="name">Club Shop</field>
+        <field name="payment_method_ids" eval="[(6, 0, [ref('champions_club.pay_cash'), ref('champions_club.pay_card'), ref('champions_club.pay_upi')])]"/>
+        <field name="pricelist_id" ref="pricelist_walkin"/>
+        <field name="available_pricelist_ids" eval="[(6, 0, [ref('champions_club.pricelist_walkin'), ref('champions_club.pricelist_gold'), ref('champions_club.pricelist_silver'), ref('champions_club.pricelist_junior')])]"/>
+    </record>
+    <record id="pos_bar" model="pos.config">
+        <field name="name">Bar and Cafe</field>
+        <field name="payment_method_ids" eval="[(6, 0, [ref('champions_club.pay_cash'), ref('champions_club.pay_card'), ref('champions_club.pay_upi')])]"/>
+        <field name="pricelist_id" ref="pricelist_walkin"/>
+        <field name="available_pricelist_ids" eval="[(6, 0, [ref('champions_club.pricelist_walkin'), ref('champions_club.pricelist_gold'), ref('champions_club.pricelist_silver'), ref('champions_club.pricelist_junior')])]"/>
+    </record>
+</odoo>
