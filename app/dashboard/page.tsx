@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
+import NumberTicker from "@/components/NumberTicker";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
 const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI" } as const;
@@ -39,7 +40,7 @@ export default function Dashboard() {
             {figures.map((f) => (
               <div className={`figure${f.total ? " total" : ""}`} key={f.label}>
                 <p className="f-label">{f.label}</p>
-                <p className="f-value num">{inr(f.value)}</p>
+                <p className="f-value num"><NumberTicker value={f.value} /></p>
               </div>
             ))}
           </div>

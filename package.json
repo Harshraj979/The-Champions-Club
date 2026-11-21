@@ -12,15 +12,35 @@
     "test": "node --experimental-strip-types test/rbac.test.mjs && node --experimental-strip-types test/jwt.test.mjs"
   },
   "dependencies": {
+<<<<<<< HEAD
     "better-auth": "^1.7.27",
+=======
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^18.0.10",
+    "framer-motion": "^14.14.0",
+    "jose": "^6.2.18",
+    "lucide-react": "^1.77.0",
+>>>>>>> 95a616eacadc39854072854f8a0ebfffbab25d3c
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^6.39.0"
   },
   "devDependencies": {
+<<<<<<< HEAD
+=======
+    "@tailwindcss/postcss": "^4.3.5",
+    "@types/bcryptjs": "^2.4.6",
+>>>>>>> 95a616eacadc39854072854f8a0ebfffbab25d3c
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
+<<<<<<< HEAD
+=======
+    "tailwindcss": "^4.3.5",
+    "tsx": "^4.23.15",
+>>>>>>> 95a616eacadc39854072854f8a0ebfffbab25d3c
     "typescript": "^5.6.0"
   }
 }

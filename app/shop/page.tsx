@@ -70,20 +70,21 @@ export default function Shop() {
         <Empty>The shelf is empty right now. New stock lands at the front desk first.</Empty>
       ) : (
         <>
-          <div className="rows">
+          <div className="shop-grid">
             {gear.map((p) => (
-              <div className="row-item" key={p.id}>
-                <div className="row-main">
-                  <p className="row-name">{p.name}</p>
-                  <p className="muted">
-                    {p.stock === 0 ? "Out of stock" : p.stock !== null && p.stock <= p.lowAt ? `Only ${p.stock} left` : `${p.stock} in stock`}
-                  </p>
-                </div>
-                <span className="num" style={{ fontSize: 15 }}>{inr(p.price)}</span>
-                <div className="stepper">
-                  <button aria-label={`One less ${p.name}`} onClick={() => set(p.id, (cart[p.id] ?? 0) - 1, p.stock ?? 0)}>−</button>
-                  <b className="num">{cart[p.id] ?? 0}</b>
-                  <button aria-label={`One more ${p.name}`} disabled={p.stock === 0} onClick={() => set(p.id, (cart[p.id] ?? 0) + 1, p.stock ?? 0)}>+</button>
+              <div className="product-card" key={p.id}>
+                <p className="p-name">{p.name}</p>
+                <p className="muted">
+                  {p.stock === 0 ? "Out of stock" : p.stock !== null && p.stock <= p.lowAt ? `Only ${p.stock} left` : `${p.stock} in stock`}
+                </p>
+                <p className="p-price">{inr(p.price)}</p>
+                <div className="p-foot">
+                  <span className="muted">{(cart[p.id] ?? 0) > 0 ? <><span className="num">{inr((cart[p.id] ?? 0) * p.price)}</span> in your order</> : "Pick a quantity"}</span>
+                  <div className="stepper">
+                    <button aria-label={`One less ${p.name}`} onClick={() => set(p.id, (cart[p.id] ?? 0) - 1, p.stock ?? 0)}>−</button>
+                    <b className="num">{cart[p.id] ?? 0}</b>
+                    <button aria-label={`One more ${p.name}`} disabled={p.stock === 0} onClick={() => set(p.id, (cart[p.id] ?? 0) + 1, p.stock ?? 0)}>+</button>
+                  </div>
                 </div>
               </div>
             ))}

@@ -66,11 +66,12 @@ export default function Courts() {
       ) : courts.error ? (
         <ErrorBox message={courts.error} onRetry={courts.reload} />
       ) : (
-        <>
+        <div className="panel">
           <div className="seg" role="group" aria-label="Court">
             {courts.data!.map((c) => (
               <button key={c.id} aria-pressed={courtId === c.id} onClick={() => setCourtId(c.id)}>
-                {c.name} · <span className="num">{inr(c.walkinPrice)}</span>
+                <span>{c.name}</span>
+                <span className="num seg-price">{inr(c.walkinPrice)}</span>
               </button>
             ))}
           </div>
@@ -126,7 +127,7 @@ export default function Courts() {
               {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
             </button>
           </div>
-        </>
+        </div>
       )}
 
       <p className="muted" style={{ marginTop: 28, maxWidth: 640 }}>
