@@ -331,6 +331,10 @@ export default function Home() {
                       <span className="font-bold text-white">7 Days in Advance</span>
                     </div>
                     <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
+                      <span className="text-white/80">⏱️ Daily Court Limit</span>
+                      <span className="font-bold text-[#dfff45]">Up to 4 Slots (4 hrs / day)</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
                       <span className="text-white/80">🎟️ Free Guest Passes</span>
                       <span className="font-bold text-[#dfff45]">2 Passes / Month</span>
                     </div>
@@ -414,6 +418,10 @@ export default function Home() {
                       <span className="font-bold text-[#163021]">5 Days in Advance</span>
                     </div>
                     <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">⏱️ Daily Court Limit</span>
+                      <span className="font-bold text-[#163021]">Up to 2 Slots (2 hrs / day)</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
                       <span className="text-[#617065]">🎟️ Free Guest Passes</span>
                       <span className="font-bold text-[#163021]">1 Pass / Month</span>
                     </div>
@@ -495,6 +503,10 @@ export default function Home() {
                     <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
                       <span className="text-[#617065]">📅 Booking Window</span>
                       <span className="font-bold text-[#163021]">3 Days in Advance</span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
+                      <span className="text-[#617065]">⏱️ Daily Court Limit</span>
+                      <span className="font-bold text-[#2e7d32]">1 Slot (1 hr / day)</span>
                     </div>
                     <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
                       <span className="text-[#617065]">⏰ Afternoon Priority</span>

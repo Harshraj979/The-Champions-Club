@@ -950,33 +950,33 @@ async function runAllTests() {
     record("TC060", "Court Booking", "Invalid date format string rejected with 400", false, e.message);
   }
 
-  // TC061: Maximum 2 bookings per person per day enforced
+  // TC061: Tier-based daily limit (Silver: 2 bookings/day max) enforced
   try {
-    // 2nd booking for Test Gold User on futureDate1
+    // 2nd booking for Test Silver User on futureDate1 (already has 1 from TC047)
     await request("/api/v1/bookings", {
       method: "POST",
-      headers: { Cookie: goldUserCookie },
+      headers: { Cookie: silverUserCookie },
       body: JSON.stringify({
-        courtId: 1,
+        courtId: 2,
         date: futureDate1,
         start: 600,
-        name: "Test Gold User",
+        name: "Test Silver User",
         type: "REGULAR",
       }),
     });
-    // Attempt 3rd booking for same person on same day
+    // Attempt 3rd booking for Test Silver User on same day (rejected with 409)
     const r3 = await request("/api/v1/bookings", {
       method: "POST",
-      headers: { Cookie: goldUserCookie },
+      headers: { Cookie: silverUserCookie },
       body: JSON.stringify({
-        courtId: 1,
+        courtId: 2,
         date: futureDate1,
         start: 720,
-        name: "Test Gold User",
+        name: "Test Silver User",
         type: "REGULAR",
       }),
     });
-    const ok = r3.status === 409 && (r3.json?.error?.toLowerCase().includes("two bookings") || r3.json?.error?.includes("2 bookings"));
+    const ok = r3.status === 409 && (r3.json?.error?.toLowerCase().includes("two bookings") || r3.json?.error?.includes("2 bookings") || r3.json?.error?.includes("2 slots"));
     record("TC061", "Court Booking", "Daily limit of 2 bookings per person enforced (3rd rejected with 409)", ok, `Status ${r3.status}, Error: ${r3.json?.error}`);
   } catch (e: any) {
     record("TC061", "Court Booking", "Daily limit of 2 bookings per person enforced", false, e.message);

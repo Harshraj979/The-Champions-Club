@@ -273,7 +273,9 @@ export default function Courts() {
             <div className="step-head">
               <span className="step-n">2</span>
               <h3>Date and time</h3>
-              <span className="step-hint">60-minute slots; crossed-out slots are already taken</span>
+              <span className="step-hint">
+                60-minute slots (Gold: max 4 hrs · Silver: max 2 hrs · Junior: max 1 hr daily); crossed-out slots are taken
+              </span>
             </div>
             <div style={{ maxWidth: 300 }}>
               <label htmlFor="date">Date</label>
@@ -492,8 +494,8 @@ export default function Courts() {
         </div>
       )}
 
-      <p className="muted" style={{ marginTop: 28, maxWidth: 640 }}>
-        The rules are the same for everyone: one hour a booking, two bookings a day at most, and an expired plan pauses booking until it is renewed. Friday Social Play is the one exception, shared courts from 7 PM.
+      <p className="muted" style={{ marginTop: 28, maxWidth: 680 }}>
+        Court guidelines: Every slot is 60 minutes (1 hour) — booking 6:00 PM covers until 7:00 PM, and 6:30 PM covers until 7:30 PM. Daily tier allowances: <strong>Gold</strong> allows up to <strong>4 slots (4 hrs/day)</strong>, <strong>Silver</strong> allows up to <strong>2 slots (2 hrs/day)</strong>, and <strong>Junior</strong> allows up to <strong>1 slot (1 hr/day)</strong>. Friday Social Play is open shared play from 7 PM.
       </p>
 
       <DemoRazorpayModal

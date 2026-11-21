@@ -42,6 +42,14 @@ export const toBookingDTO = (b: BookingRow): BookingDTO => ({
   state: b.state,
 });
 
+export function getMaxDailySlotsForPlan(planCode?: string | null): number {
+  const code = planCode?.toLowerCase();
+  if (code === "gold") return 4; // Gold: max 4 slots = 4 hours
+  if (code === "silver") return 2; // Silver: max 2 slots = 2 hours
+  if (code === "junior") return 1; // Junior: max 1 slot = 1 hour
+  return 2;
+}
+
 const overlaps = (aStart: number, bStart: number) =>
   aStart < bStart + BOOKING_LEN && bStart < aStart + BOOKING_LEN;
 
@@ -196,6 +204,8 @@ export async function createBooking(input: {
       throw conflict("That court is already booked at that time");
 
     if (input.type === "REGULAR") {
+      const planCode = member?.plan?.code?.toLowerCase();
+      const maxSlots = getMaxDailySlotsForPlan(planCode);
       const mine = await tx.booking.count({
         where: {
           date: day,
@@ -204,7 +214,16 @@ export async function createBooking(input: {
           who: { equals: member?.name ?? input.name, mode: "insensitive" },
         },
       });
-      if (mine >= 2) throw conflict("Two bookings a day is the limit, on every plan");
+      if (mine >= maxSlots) {
+        const tierName = member?.plan?.name || "Standard";
+        if (maxSlots === 1) {
+          throw conflict(`${tierName} tier allows a maximum of 1 slot (1 hour) per day. 1 booking a day is the limit.`);
+        } else if (maxSlots === 2) {
+          throw conflict(`${tierName} tier allows a maximum of 2 slots (2 hours) per day. Two bookings a day is the limit.`);
+        } else {
+          throw conflict(`${tierName} tier allows a maximum of ${maxSlots} slots (${maxSlots} hours) per day. ${maxSlots} bookings a day is the limit.`);
+        }
+      }
     }
 
     return tx.booking.create({
