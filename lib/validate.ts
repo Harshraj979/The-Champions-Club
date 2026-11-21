@@ -108,7 +108,15 @@ export const tabSettleInput = z.object({
 
 export const enquiryInput = z.object({
   name: z.string().trim().min(2, "Your name is missing").max(80),
-  contact: z.string().trim().min(3, "Add a phone number or email").max(80),
+  contact: z
+    .string()
+    .trim()
+    .min(3, "Add a phone number or email")
+    .max(80)
+    .refine(
+      (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) || s.replace(/\D/g, "").length >= 10,
+      "Add a valid email or a 10-digit phone number",
+    ),
   interest: z.enum(["Membership", "Free trial", "Courts", "Shop", "Other"]),
   message: z.string().trim().max(500).optional().default(""),
 });
