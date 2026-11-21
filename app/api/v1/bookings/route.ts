@@ -4,13 +4,14 @@ import { parse, bookingInput } from "@/lib/validate";
 import { createBooking, listBookings } from "@/lib/services/bookings";
 import { unauthorized, forbidden } from "@/lib/errors";
 
-// The booking list is a front-desk view. Trials are public (the website's
+// The booking list is a staff view — bar and shop staff read it too. Trials are public (the website's
 // free-trial offer); regular bookings can be made by front-desk/owners or
 // directly by signed-in club members with an active plan.
 export const GET = (req: Request) =>
   handle(async () => {
-    await requireRole(req, "OWNER", "FRONT_DESK", "STAFF");
-    return listBookings(new URL(req.url).searchParams.get("date") ?? undefined);
+    await requireRole(req, "OWNER", "FRONT_DESK", "STAFF", "BAR", "SHOP");
+    const params = new URL(req.url).searchParams;
+    return listBookings(params.get("date") ?? undefined, params.get("state") ?? undefined);
   });
 
 export const POST = (req: Request) =>

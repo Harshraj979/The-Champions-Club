@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import ClubLogo from "@/components/ClubLogo";
 import type { StaffMemberPinDTO } from "@/lib/types";
@@ -27,15 +28,28 @@ export default function Login() {
   const [staffList, setStaffList] = useState<StaffMemberPinDTO[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
 
+  // Only a same-site relative path is a safe place to land after
+  // sign-in: it must start with "/" but not "//" (protocol-relative)
+  // and must not contain "://".
+  const safeNext = (n: string | null) =>
+    n && n.startsWith("/") && !n.startsWith("//") && !n.includes("://") ? n : null;
+
   useEffect(() => {
     api.staffProfiles().then((res) => {
       setStaffList(res.staff as any || []);
     }).catch(() => {});
+
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("error") === "notstaff") setErr("That Google account is not a club account.");
+    else if (q.get("error") === "gtoken") setErr("Google token exchange failed. Check client secret or try again.");
+    else if (q.get("error") === "gstate") setErr("Google session expired. Try signing in again.");
+    else if (q.get("error") === "ginfo" || q.get("error") === "gemail") setErr("Could not retrieve verified email from Google.");
+    else if (q.get("error") === "google") setErr("Google sign-in did not work. Try again, or use your PIN.");
   }, []);
 
   function getRedirectUrl(role: string) {
-    const next = new URLSearchParams(window.location.search).get("next");
-    if (next && next.startsWith("/")) return next;
+    const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+    if (next) return next;
     if (role === "OWNER") return "/dashboard";
     if (role === "BAR" || role === "BAR_STAFF") return "/bar";
     if (role === "SHOP" || role === "SHOP_STAFF") return "/shop";
@@ -289,7 +303,7 @@ export default function Login() {
       </div>
 
       <p className="member-link" style={{ textAlign: "center", marginTop: 20 }}>
-        A club member? <a href="/member/login">Member sign in</a>
+        A club member? <Link href="/member/login">Member sign in</Link>
       </p>
     </main>
   );

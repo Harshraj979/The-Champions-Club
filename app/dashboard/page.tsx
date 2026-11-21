@@ -160,6 +160,33 @@ export default function Dashboard() {
       ]
     : [];
 
+  // Download the numbers on screen as a CSV file (client-side, no endpoint).
+  function exportCsv() {
+    if (!d || !split) return;
+    const lines: string[][] = [];
+    lines.push(["The Champions Club — dashboard", `Period: ${period}`, `Date: ${today}`]);
+    lines.push([]);
+    lines.push(["Figures", "Amount (Rs)"]);
+    lines.push(["Courts", String(split.courts)]);
+    lines.push(["Shop", String(split.shop)]);
+    lines.push(["Bar", String(split.bar)]);
+    lines.push(["Total", String(split.total)]);
+    lines.push([]);
+    lines.push(["Taken today by method", "Amount (Rs)"]);
+    d.byMethod.forEach((m) => lines.push([methodLabel[m.method], String(m.amount)]));
+    lines.push([]);
+    lines.push(["Low stock", "Stock left"]);
+    d.lowStock.forEach((p) => lines.push([p.name, String(p.stock)]));
+    const csv = lines.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `champions-dashboard-${today}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="wrap page">
       <div className="page-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
@@ -256,10 +283,13 @@ export default function Dashboard() {
               </div>
 
               {/* Period selector */}
-              <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
-                {periods.map((p) => (
-                  <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
-                ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                <div className="seg" role="group" aria-label="Period">
+                  {periods.map((p) => (
+                    <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
+                  ))}
+                </div>
+                <button className="btn btn-quiet" onClick={exportCsv}>Export CSV</button>
               </div>
 
               {/* Revenue Figures */}
@@ -342,10 +372,13 @@ export default function Dashboard() {
               </div>
 
               {/* Period selector */}
-              <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
-                {periods.map((p) => (
-                  <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
-                ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                <div className="seg" role="group" aria-label="Period">
+                  {periods.map((p) => (
+                    <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
+                  ))}
+                </div>
+                <button className="btn btn-quiet" onClick={exportCsv}>Export CSV</button>
               </div>
 
               {/* Revenue Figures */}
@@ -397,10 +430,13 @@ export default function Dashboard() {
           {/* VIEW: CLUB OVERVIEW */}
           {viewTab === "overview" && (
             <>
-              <div className="seg" role="group" aria-label="Period" style={{ marginBottom: 18 }}>
-                {periods.map((p) => (
-                  <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
-                ))}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
+                <div className="seg" role="group" aria-label="Period">
+                  {periods.map((p) => (
+                    <button key={p.code} aria-pressed={period === p.code} onClick={() => setPeriod(p.code)}>{p.label}</button>
+                  ))}
+                </div>
+                <button className="btn btn-quiet" onClick={exportCsv}>Export CSV</button>
               </div>
 
               <div className="figures">

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
-import { allStarts, fmtTime, inr, istMinutesNow, todayISO } from "@/lib/format";
+import { addDaysISO, allStarts, fmtTime, inr, istMinutesNow, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
 import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
@@ -12,7 +12,8 @@ const starts = allStarts();
 
 export default function Courts() {
   const today = todayISO();
-  const [courtId, setCourtId] = useState(1);
+  const [courtId, setCourtId] = useState<number | null>(null);
+  const [social, setSocial] = useState(false);
   const [date, setDate] = useState(today);
   const [slot, setSlot] = useState<number | null>(null);
   const [name, setName] = useState("");
@@ -24,7 +25,7 @@ export default function Courts() {
   const [buyingPlan, setBuyingPlan] = useState(false);
 
   const courts = useApi(() => api.courts());
-  const avail = useApi(() => api.availability(courtId, date), [courtId, date]);
+  const avail = useApi(() => (courtId === null ? Promise.resolve({ taken: [] }) : api.availability(courtId, date)), [courtId, date]);
   const [staff, setStaff] = useState<StaffDTO | null>(null);
   const [member, setMember] = useState<MemberSessionDTO | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -49,6 +50,15 @@ export default function Courts() {
   useEffect(() => {
     refreshAuth();
   }, []);
+
+  // Default to the first court that actually loaded, not a hard-coded id.
+  useEffect(() => {
+    if (courtId === null && courts.data && courts.data.length > 0) setCourtId(courts.data[0].id);
+  }, [courts.data, courtId]);
+
+  // Friday Social Play: many members share one court on Fridays.
+  const isFriday = new Date(`${date}T00:00:00.000Z`).getUTCDay() === 5;
+  const todays = useApi(() => api.bookings(date), [date]);
 
   const court = courts.data?.find((c) => c.id === courtId);
   const isStaff = !!staff && (staff.role === "OWNER" || staff.role === "FRONT_DESK" || staff.role === "STAFF");
@@ -76,6 +86,7 @@ export default function Courts() {
 
   useEffect(() => {
     setSlot(null);
+    setSocial(false);
   }, [courtId, date]);
 
   const [razorpayModal, setRazorpayModal] = useState<{
@@ -95,45 +106,60 @@ export default function Courts() {
 
   async function book(paidOnline = false) {
     const bookerName = member?.name ?? name.trim();
-    if (slot === null || !bookerName || !court) return;
+    if (slot === null || !bookerName || !court || courtId === null) return;
     setBusy(true);
     setMsg(null);
     try {
-      if (isStaff && staffAvailPlan !== "none" && email.trim()) {
-        await api.availMembership({
-          email: email.trim(),
-          name: name.trim() || undefined,
-          phone: phone.trim() || undefined,
-          planCode: staffAvailPlan,
+      if (social) {
+        const res = await fetch("/api/v1/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ courtId, date, start: slot, name: bookerName, type: "FRIDAY_SOCIAL" }),
+        });
+        const data = (await res.json().catch(() => null)) as { error?: string; price?: number } | null;
+        if (!res.ok) throw new Error(data?.error ?? "Booking failed. Try again.");
+        setMsg({
+          ok: true,
+          text: `Friday Social Play booked. ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)} — shared court, does not count toward daily limit${data?.price ? `, ${inr(data.price)} at the desk` : ", covered by your plan"}.`,
+        });
+      } else {
+        if (isStaff && staffAvailPlan !== "none" && email.trim()) {
+          await api.availMembership({
+            email: email.trim(),
+            name: name.trim() || undefined,
+            phone: phone.trim() || undefined,
+            planCode: staffAvailPlan,
+          });
+        }
+        const b = await api.createBooking({
+          courtId,
+          date,
+          start: slot,
+          name: bookerName,
+          email: isStaff ? (email.trim() || undefined) : undefined,
+          phone: member?.phone ?? (phone.trim() || undefined),
+          type: "REGULAR",
+        });
+        setMsg({
+          ok: true,
+          text: `Court booked! ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${
+            paidOnline
+              ? " · Paid online via Demo Razorpay"
+              : b.price
+              ? `, ${inr(b.price)} at the desk`
+              : ", covered by plan"
+          }.${
+            isStaff && email.trim()
+              ? ` Linked to ${email.trim()} — the customer can sign in with this email to view bookings & active membership.`
+              : ""
+          }`,
         });
       }
-      const b = await api.createBooking({
-        courtId,
-        date,
-        start: slot,
-        name: bookerName,
-        email: isStaff ? (email.trim() || undefined) : undefined,
-        phone: member?.phone ?? (phone.trim() || undefined),
-        type: "REGULAR",
-      });
-      setMsg({
-        ok: true,
-        text: `Court booked! ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${
-          paidOnline
-            ? " · Paid online via Demo Razorpay"
-            : b.price
-            ? `, ${inr(b.price)} at the desk`
-            : ", covered by plan"
-        }.${
-          isStaff && email.trim()
-            ? ` Linked to ${email.trim()} — the customer can sign in with this email to view bookings & active membership.`
-            : ""
-        }`,
-      });
       setSlot(null);
       void avail.reload();
+      void todays.reload();
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Booking failed. Try again." });
+      setMsg({ ok: false, text: e instanceof ApiClientError || e instanceof Error ? e.message : "Booking failed. Try again." });
       void avail.reload();
     } finally {
       setBusy(false);
@@ -279,8 +305,18 @@ export default function Courts() {
             </div>
             <div style={{ maxWidth: 300 }}>
               <label htmlFor="date">Date</label>
-              <input id="date" type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
+              <input id="date" type="date" value={date} min={today} max={addDaysISO(today, 30)} onChange={(e) => setDate(e.target.value)} />
             </div>
+            {isFriday && (
+              <div style={{ marginTop: 14 }}>
+                <button className="btn btn-quiet" aria-pressed={social} onClick={() => setSocial(!social)}>
+                  {social ? "Friday Social Play on — shared court" : "Friday Social Play — share the court"}
+                </button>
+                <p className="muted" style={{ marginTop: 6, maxWidth: 520 }}>
+                  Fridays only: many members share one court, and social play does not count toward the 2-a-day limit.
+                </p>
+              </div>
+            )}
             {avail.loading ? (
               <div style={{ marginTop: 12 }}><Loading rows={3} /></div>
             ) : avail.error ? (
@@ -288,7 +324,7 @@ export default function Courts() {
             ) : (
               <div className="slots" role="group" aria-label="Start times">
                 {starts.map((t) => (
-                  <button key={t} className={`slot num${date === today && t + 60 <= istMinutesNow() ? " past" : ""}`} disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
+                  <button key={t} className={`slot num${date === today && t <= istMinutesNow() ? " past" : ""}`} disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
                     {fmtTime(t)}
                   </button>
                 ))}
@@ -460,7 +496,7 @@ export default function Courts() {
                       disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
                       onClick={() => book(false)}
                     >
-                      {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book (${price ? `${inr(price)} at desk` : "Covered by plan"})`}
+                      {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : social ? `Book Social Play (${price ? `${inr(price)} at desk` : "Covered by plan"})` : `Book (${price ? `${inr(price)} at desk` : "Covered by plan"})`}
                     </button>
                     {price !== null && price > 0 && (
                       <button

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { badRequest } from "./errors";
+import { isISODate } from "./format";
 
 // Every API input is parsed here, in one place. Handlers never read raw
 // request bodies.
@@ -41,7 +42,9 @@ export const trialInput = bookingInput.extend({
   type: z.enum(["TRIAL"]).optional().default("TRIAL"),
 });
 
-export const memberBookingInput = bookingInput.pick({ courtId: true, date: true, start: true });
+export const memberBookingInput = bookingInput
+  .pick({ courtId: true, date: true, start: true })
+  .extend({ type: z.enum(["REGULAR", "FRIDAY_SOCIAL"]).optional().default("REGULAR") });
 
 export const memberLoginInput = z.object({
   email: z.string().trim().email("That email does not look right").max(120),
@@ -56,7 +59,10 @@ export const memberInput = z.object({
   parentName: z.string().trim().max(80).optional(),
   parentPhone: z.string().trim().max(20).optional(),
   parentEmail: z.string().trim().email().max(120).optional().or(z.literal("")),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z
+    .string()
+    .refine((d) => !d || isISODate(d), "That date of birth is not a real date")
+    .optional(),
 });
 
 export const itemsInput = z
@@ -122,7 +128,15 @@ export const tabSettleInput = z.object({
 
 export const enquiryInput = z.object({
   name: z.string().trim().min(2, "Your name is missing").max(80),
-  contact: z.string().trim().min(3, "Add a phone number or email").max(80),
+  contact: z
+    .string()
+    .trim()
+    .min(3, "Add a phone number or email")
+    .max(80)
+    .refine(
+      (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) || s.replace(/\D/g, "").length >= 10,
+      "Add a valid email or a 10-digit phone number",
+    ),
   interest: z.enum(["Membership", "Free trial", "Courts", "Shop", "Other"]),
   message: z.string().trim().max(500).optional().default(""),
 });

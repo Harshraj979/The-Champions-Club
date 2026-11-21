@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import crypto from "node:crypto";
-import { getGoogleRedirectUri } from "@/lib/auth";
+import { getGoogleRedirectUri, safeNextPath } from "@/lib/auth";
 
 // Google sign-in / sign-up initiation for members, users, and staff.
 // Needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the environment.
@@ -9,7 +9,8 @@ import { getGoogleRedirectUri } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get("type") || "member";
   const defaultNext = type === "staff" ? "/dashboard" : "/member";
-  const next = req.nextUrl.searchParams.get("next") ?? defaultNext;
+  const rawNext = req.nextUrl.searchParams.get("next") ?? defaultNext;
+  const next = safeNextPath(rawNext);
   const plan = req.nextUrl.searchParams.get("plan");
 
   const id = process.env.GOOGLE_CLIENT_ID?.trim();
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   const opts = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 600 };
 
   jar.set("cc_gtype", type, opts);
-  jar.set("cc_gnext", next.startsWith("/") ? next : defaultNext, opts);
+  jar.set("cc_gnext", next, opts);
   if (plan) jar.set("cc_gplan", plan, opts);
 
   // If real Google Client ID is configured, proceed with official Google OAuth flow

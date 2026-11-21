@@ -4,7 +4,7 @@ import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { Loading, ErrorBox, Empty } from "@/components/States";
 import DemoRazorpayModal from "@/components/DemoRazorpayModal";
-import { inr } from "@/lib/format";
+import { inr, todayISO } from "@/lib/format";
 import type { MemberDTO } from "@/lib/types";
 
 const stateLabel = { active: "Active", expiring: "Expiring soon", expired: "Expired" } as const;
@@ -40,7 +40,17 @@ export default function Members() {
 
   const members = useApi(() => api.members(q || undefined), [q]);
   const plans = useApi(() => api.plans());
-  const all = members.data ?? [];
+  const ql = q.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, "");
+  // The server search is name-only, so phone and email matching is done here.
+  const all = (members.data ?? []).filter(
+    (m) =>
+      !ql ||
+      m.name.toLowerCase().includes(ql) ||
+      (m.email ?? "").toLowerCase().includes(ql) ||
+      m.phone.includes(q.trim()) ||
+      (qDigits.length >= 3 && m.phone.replace(/\D/g, "").includes(qDigits)),
+  );
   const list = stateFilter === "all" ? all : all.filter((m) => m.state === stateFilter);
 
   const selectedPlanObj = plans.data?.find((p) => p.code === form.planCode);
@@ -53,8 +63,17 @@ export default function Members() {
     if (form.phone && form.phone.replace(/\D/g, "").length < 10) {
       return setMsg({ ok: false, text: "Phone number looks short. Provide at least 10 digits." });
     }
-    if (form.planCode === "junior" && !form.parentName.trim()) {
-      return setMsg({ ok: false, text: "Parent or guardian name is required for Junior membership (minor under 18)." });
+    if (form.planCode === "junior") {
+      if (!form.parentName.trim()) {
+        return setMsg({ ok: false, text: "Parent or guardian name is required for Junior membership (minor under 18)." });
+      }
+      if (form.dateOfBirth) {
+        const [by, bm, bd] = form.dateOfBirth.split("-").map(Number);
+        const now = new Date();
+        let age = now.getFullYear() - by;
+        if (now.getMonth() + 1 < bm || (now.getMonth() + 1 === bm && now.getDate() < bd)) age -= 1;
+        if (age >= 18) return setMsg({ ok: false, text: `Junior is for under-18s — this member is ${age}. Pick another plan.` });
+      }
     }
     setBusy(true);
     setMsg(null);
@@ -67,7 +86,7 @@ export default function Members() {
         parentName: form.planCode === "junior" ? form.parentName.trim() : undefined,
         parentPhone: form.planCode === "junior" ? form.parentPhone.trim() : undefined,
         parentEmail: form.planCode === "junior" && form.parentEmail.trim() ? form.parentEmail.trim() : undefined,
-        dateOfBirth: form.planCode === "junior" && form.dateOfBirth ? form.dateOfBirth : undefined,
+        dateOfBirth: form.dateOfBirth || undefined,
       });
       const plan = plans.data?.find((p) => p.code === form.planCode);
       setMsg({
@@ -118,7 +137,7 @@ export default function Members() {
       <div className="toolbar">
         <div style={{ width: 420, maxWidth: "100%" }}>
           <label htmlFor="m-search">Search members</label>
-          <input id="m-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name or email" />
+          <input id="m-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, phone or email" />
         </div>
         {!members.loading && !members.error && all.length > 0 && (
           <p className="count-line"><b>{list.length}</b> {list.length === 1 ? "member" : "members"}{q ? " found" : ""} · {all.filter((m) => m.state === "active").length} active</p>
@@ -227,14 +246,11 @@ export default function Members() {
               <label htmlFor="m-plan">Membership Plan</label>
               <select id="m-plan" value={form.planCode} onChange={(e) => setForm({ ...form, planCode: e.target.value })}>
                 {(plans.data ?? []).map((p) => (
-                  <option key={p.code} value={p.code}>
-                    {p.name} ({p.code === "gold" ? "₹1,500/mo" : p.code === "silver" ? "₹1,000/mo" : "₹600/mo"})
-                  </option>
+                  <option key={p.code} value={p.code}>{p.name} — ₹{p.tennisPrice} tennis / ₹{p.cricketPrice} cricket, {p.termDays} days</option>
                 ))}
               </select>
             </div>
           </div>
-
           {form.planCode === "junior" && (
             <div style={{ marginTop: 16, padding: "14px", borderRadius: "12px", background: "#f7f9f6", border: "1px solid rgba(22, 48, 33, 0.15)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
@@ -279,6 +295,7 @@ export default function Members() {
                   <input
                     id="m-dob"
                     type="date"
+                    max={todayISO()}
                     value={form.dateOfBirth}
                     onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
                   />

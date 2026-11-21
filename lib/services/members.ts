@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
+import type { Prisma } from "@prisma/client";
 import { db } from "../db";
-import { badRequest, notFound } from "../errors";
-import { todayISO } from "../format";
+import { badRequest, conflict, notFound } from "../errors";
+import { addDaysISO, todayISO } from "../format";
 import type { ExpiringDTO, MemberDTO, MemberHomeDTO, MemberState } from "../types";
 import { toBookingDTO } from "./bookings";
 import { toOrderDTO, toTabDTO } from "./sales";
@@ -22,17 +23,24 @@ type MemberRow = {
 // The front desk's renewal chase list: plans ending within the next
 // `withinDays` days (14 by default), soonest first, with days left.
 export async function expiringMembers(withinDays = 14): Promise<ExpiringDTO[]> {
-  const rows = await db.member.findMany({ include: { plan: true }, orderBy: { expiresOn: "asc" } });
+  // The date window is a DB filter, not a scan of every member in
+  // memory: expiry from today up to today + withinDays.
   const today = todayISO();
-  const out: ExpiringDTO[] = [];
-  for (const m of rows) {
-    if (!m.expiresOn || !m.plan) continue;
-    const exp = m.expiresOn.toISOString().slice(0, 10);
+  const rows = await db.member.findMany({
+    where: {
+      expiresOn: {
+        gte: new Date(`${today}T00:00:00.000Z`),
+        lt: new Date(`${addDaysISO(today, withinDays + 1)}T00:00:00.000Z`),
+      },
+    },
+    include: { plan: true },
+    orderBy: { expiresOn: "asc" },
+  });
+  return rows.map((m) => {
+    const exp = m.expiresOn ? m.expiresOn.toISOString().slice(0, 10) : "";
     const daysLeft = Math.round((Date.parse(exp) - Date.parse(today)) / 86400000);
-    if (daysLeft >= 0 && daysLeft <= withinDays)
-      out.push({ id: m.id, name: m.name, phone: m.phone, planName: m.plan.name, expiresOn: exp, daysLeft });
-  }
-  return out;
+    return { id: m.id, name: m.name, phone: m.phone, planName: m.plan?.name ?? "No plan", expiresOn: exp, daysLeft };
+  });
 }
 
 // Membership state is derived from the expiry date, never stored, so it
@@ -84,25 +92,39 @@ export async function listMembers(q?: string): Promise<MemberDTO[]> {
   return rows.map(toMemberDTO);
 }
 
-export async function createMember(input: {
-  name: string;
-  phone: string;
-  email?: string;
-  planCode: string;
-  parentName?: string;
-  parentPhone?: string;
-  parentEmail?: string;
-  dateOfBirth?: string;
-}): Promise<MemberDTO> {
-  const plan = await db.plan.findUnique({ where: { code: input.planCode } });
+export async function createMember(
+  input: {
+    name: string;
+    phone: string;
+    email?: string;
+    planCode: string;
+    parentName?: string;
+    parentPhone?: string;
+    parentEmail?: string;
+    dateOfBirth?: string;
+  },
+  client: Prisma.TransactionClient | typeof db = db,
+): Promise<MemberDTO> {
+  const plan = await client.plan.findUnique({ where: { code: input.planCode } });
   if (!plan) throw badRequest("Pick a plan that exists");
-  const joined = new Date(`${todayISO()}T00:00:00.000Z`);
-  const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
+
   const email = input.email?.trim().toLowerCase() || null;
   const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
+  if (input.planCode === "junior") {
+    if (dob) {
+      const joinedMs = Date.parse(todayISO());
+      let age = new Date(joinedMs).getUTCFullYear() - dob.getUTCFullYear();
+      const mth = new Date(joinedMs).getUTCMonth() - dob.getUTCMonth();
+      if (mth < 0 || (mth === 0 && new Date(joinedMs).getUTCDate() < dob.getUTCDate())) age -= 1;
+      if (age >= 18) throw badRequest("Junior is for under-18s — this member is 18 or older");
+    }
+  }
+
+  const joined = new Date(`${todayISO()}T00:00:00.000Z`);
+  const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
 
   if (email || input.phone) {
-    const existing = await db.member.findFirst({
+    const existing = await client.member.findFirst({
       where: {
         OR: [
           ...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
@@ -113,10 +135,10 @@ export async function createMember(input: {
     });
     if (existing) {
       const passwordHash = existing.passwordHash ?? (input.phone ? await bcrypt.hash(input.phone, 10) : null);
-      const updated = await db.member.update({
+      const updated = await client.member.update({
         where: { id: existing.id },
         data: {
-          name: input.name.trim(),
+          name: input.name.trim() || existing.name,
           phone: input.phone.trim() || existing.phone,
           email: email || existing.email,
           planId: plan.id,
@@ -134,8 +156,10 @@ export async function createMember(input: {
     }
   }
 
-  const passwordHash = email && input.phone ? await bcrypt.hash(input.phone, 10) : null;
-  const row = await db.member.create({
+  const passwordHash = email
+    ? await bcrypt.hash(input.phone.trim() ? input.phone : email, 10)
+    : null;
+  const row = await client.member.create({
     data: {
       name: input.name,
       phone: input.phone,
