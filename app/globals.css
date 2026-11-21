@@ -376,3 +376,11 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
   .shop-hero-in { padding-top: 56px; padding-bottom: 40px; }
   .shop-search { max-width: none; width: 100%; margin-left: 0; }
 }
+
+/* ---- Bar & Café: same hero system as the shop, warm café photo ---- */
+.bar-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+.bar-step { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; box-shadow: var(--shadow); }
+.bar-step .step-n { margin-bottom: 8px; }
+.bar-step b { display: block; font-family: var(--font-display), sans-serif; font-size: 17px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+.bar-step p { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+@media (max-width: 640px) { .bar-steps { grid-template-columns: 1fr; } }
