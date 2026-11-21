@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
-import { Poppins } from "next/font/google";
+import { Barlow_Condensed, DM_Sans } from "next/font/google";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import "./globals.css";
 
-const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-poppins" });
+const dm = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-dm" });
+const barlow = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700", "800"], style: ["normal", "italic"], variable: "--font-display" });
 export const metadata = { title: "The Champions Club", description: "Two tennis courts, a cricket pitch, a gear shop and a bar. One club, open 6 AM to 10 PM." };
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={`${dm.variable} ${barlow.variable}`}>
       <body>
         <Nav />
         {children}

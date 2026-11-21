@@ -49,7 +49,10 @@ export default function Nav() {
   return (
     <header className="nav">
       <div className="nav-in">
-        <Link className="brand" href="/">The Champions Club</Link>
+        <Link className="brand" href="/" aria-label="The Champions Club, home">
+          <span className="brand-mark">CC</span>
+          <span className="brand-words"><b>Champions</b><small>The club</small></span>
+        </Link>
         <nav className="nav-links" aria-label="Club">
           {links.map((l) => (
             <Link key={l.href} href={l.href} aria-current={path === l.href ? "page" : undefined}>{l.label}</Link>
