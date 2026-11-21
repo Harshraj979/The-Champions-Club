@@ -22,6 +22,7 @@ export default function Trial() {
   async function ask() {
     if (!f.name.trim()) return setQMsg("Add your name so we know who is asking.");
     if (f.phone.replace(/\D/g, "").length < 10 && !f.phone.includes("@")) return setQMsg("Add a phone number or email so we can reply.");
+    if (!q.message.trim()) return setQMsg("Please write your question first.");
     setQBusy(true);
     setQMsg("");
     try {
@@ -52,7 +53,7 @@ export default function Trial() {
   async function submit() {
     setErr("");
     if (!f.name.trim()) return setErr("Your name is missing.");
-    if (f.phone.replace(/\D/g, "").length < 10) return setErr("Add a phone number the desk can reach you on.");
+    if (f.phone.replace(/\D/g, "").length < 10) return setErr("Add a 10-digit phone number the desk can reach you on.");
     if (!freeSlots.includes(f.startTime)) return setErr("That time was just taken. Pick another slot.");
     setBusy(true);
     try {

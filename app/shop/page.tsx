@@ -94,9 +94,9 @@ export default function Shop() {
                 <div className="p-foot">
                   <span className="muted">{(cart[p.id] ?? 0) > 0 ? <><span className="num">{inr((cart[p.id] ?? 0) * p.price)}</span> in your order</> : "Pick a quantity"}</span>
                   <div className="stepper">
-                    <button aria-label={`One less ${p.name}`} onClick={() => set(p.id, (cart[p.id] ?? 0) - 1, p.stock ?? 0)}>−</button>
+                    <button aria-label={`One less ${p.name}`} disabled={!(cart[p.id] ?? 0)} onClick={() => set(p.id, (cart[p.id] ?? 0) - 1, p.stock ?? 0)}>−</button>
                     <b className="num">{cart[p.id] ?? 0}</b>
-                    <button aria-label={`One more ${p.name}`} disabled={p.stock === 0} onClick={() => set(p.id, (cart[p.id] ?? 0) + 1, p.stock ?? 0)}>+</button>
+                    <button aria-label={`One more ${p.name}`} disabled={p.stock === 0 || (cart[p.id] ?? 0) >= (p.stock ?? 0)} onClick={() => set(p.id, (cart[p.id] ?? 0) + 1, p.stock ?? 0)}>+</button>
                   </div>
                 </div>
               </div>
@@ -165,7 +165,11 @@ export default function Shop() {
               )}
             </p>
             <button className="btn btn-ink" disabled={!subtotal || !name.trim() || phone.replace(/\D/g, "").length < 10 || busy} onClick={order}>
-              {busy ? "Placing order..." : subtotal ? `Order for pickup, ${inr(total)}` : "Add something first"}
+              {busy ? "Placing order..."
+                : !subtotal ? "Add something first"
+                : !name.trim() ? "Enter your name"
+                : phone.replace(/\D/g, "").length < 10 ? "Enter 10-digit phone"
+                : `Order for pickup, ${inr(total)}`}
             </button>
           </div>
         </>

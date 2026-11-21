@@ -146,6 +146,11 @@ export default function Courts() {
                   : `${member.name}, ${member.plan} plan, this court at ${inr(court?.sport === "Cricket" ? member.cricketPrice : member.tennisPrice)} an hour.`}
               </p>
             )}
+            {name.trim().length >= 3 && !lookup.loading && !member && (
+              <p className="muted" style={{ marginTop: 8 }} role="status">
+                No member found under that name. Walk-in rate applies.
+              </p>
+            )}
 
             {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
 
@@ -163,7 +168,7 @@ export default function Courts() {
               )}
             </p>
               <button className="btn btn-ink" disabled={!canBook || slot === null || !name.trim() || busy} onClick={book}>
-                {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
+                {!canBook ? "Front desk only — sign in to book" : busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
               </button>
             </div>
           </div>

@@ -18,6 +18,7 @@ export default function Bookings() {
     setMsg("");
     try {
       await api.cancelBooking(id);
+      setMsg("Booking cancelled. The court slot is now free.");
       void bookings.reload();
     } catch (e) {
       setMsg(e instanceof ApiClientError ? e.message : "Cancelling failed. Try again.");
@@ -47,7 +48,7 @@ export default function Bookings() {
         )}
       </div>
 
-      {msg && <div className="notice err" role="alert">{msg}</div>}
+      {msg && <div className={`notice ${msg.includes("failed") ? "err" : "ok"}`} role="status">{msg}</div>}
       {bookings.loading ? (
         <Loading />
       ) : bookings.error ? (

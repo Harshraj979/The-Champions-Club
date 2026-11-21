@@ -43,12 +43,16 @@ export default function Chrome({ children }: { children: React.ReactNode }) {
             <Link href="/shop">Shop</Link>
             <Link href="/bar">Bar &amp; Café</Link>
           </nav>
-          {desk && (
+          {desk ? (
             <nav>
               {staff.role === "OWNER" && <Link href="/dashboard">Dashboard</Link>}
               <Link href="/bookings">Bookings</Link>
               <Link href="/members">Members</Link>
               <Link href="/enquiries">Enquiries</Link>
+            </nav>
+          ) : (
+            <nav>
+              <Link href="/login">Staff sign-in</Link>
             </nav>
           )}
         </div>
