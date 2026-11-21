@@ -114,11 +114,11 @@ export default function Home() {
             </div>
             <div className="grid border-y border-white/15 md:grid-cols-3 md:divide-x md:divide-white/15">
               {facilities.map((facility) => (
-                <Link href={facility.href} key={facility.title} className="group block border-b border-white/15 py-8 last:border-b-0 md:border-b-0 md:px-7 md:first:pl-0 md:last:pr-0 lg:px-10">
-                  <div className="mb-16 flex items-start justify-between"><span className="text-[10px] font-bold tracking-[.2em] text-white/35">{facility.number}</span><div className="grid h-12 w-12 place-items-center rounded-full border border-white/20 text-[#dfff45] transition group-hover:border-[#dfff45] group-hover:bg-[#dfff45] group-hover:text-[#173021]"><Icon name={facility.icon} /></div></div>
+                <Link href={facility.href} key={facility.title} className="group block border-b border-white/15 py-8 text-center last:border-b-0 md:border-b-0 md:px-7 md:first:pl-0 md:last:pr-0 lg:px-10">
+                  <div className="mb-14 flex flex-col items-center gap-5"><span className="text-[10px] font-bold tracking-[.2em] text-white/35">{facility.number}</span><div className="grid h-12 w-12 place-items-center rounded-full border border-white/20 text-[#dfff45] transition group-hover:border-[#dfff45] group-hover:bg-[#dfff45] group-hover:text-[#173021]"><Icon name={facility.icon} /></div></div>
                   <h3 className="font-display text-4xl font-bold uppercase">{facility.title}</h3>
                   <p className="mt-4 min-h-[72px] text-sm leading-6 text-white/55">{facility.description}</p>
-                  <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-5"><span className="text-[10px] font-bold uppercase tracking-wider text-[#dfff45]">{facility.meta}</span><Icon name="arrow" className="h-4 w-4 text-white/30 transition group-hover:translate-x-1 group-hover:text-white" /></div>
+                  <div className="mt-8 flex items-center justify-center gap-4 border-t border-white/10 pt-5"><span className="text-[10px] font-bold uppercase tracking-wider text-[#dfff45]">{facility.meta}</span><Icon name="arrow" className="h-4 w-4 text-white/30 transition group-hover:translate-x-1 group-hover:text-white" /></div>
                 </Link>
               ))}
             </div>
@@ -131,11 +131,11 @@ export default function Home() {
             <div className="absolute bottom-7 left-7 rounded-full border border-white/30 bg-black/15 px-4 py-2 text-[9px] font-bold uppercase tracking-[.2em] text-white backdrop-blur">Open to everyone</div>
           </div>
           <div className="flex items-center bg-[#dfff45] px-7 py-20 sm:px-14 lg:px-20">
-            <div className="max-w-xl">
+            <div className="mx-auto max-w-xl text-center">
               <p className="eyebrow">The clubhouse</p>
               <h2 className="mt-5 font-display text-6xl font-bold uppercase leading-[.88] tracking-tight sm:text-7xl">Good games.<br />Better company.</h2>
-              <p className="mt-7 max-w-md text-sm leading-7 text-[#405143]">Our bar and kitchen is made for the full day—from the first flat white to the last round. Seasonal plates, cold drinks, and the best seat in the house for watching the action.</p>
-              <Link href="/bar" className="mt-9 flex w-fit items-center gap-5 rounded-full bg-[#173021] px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#173021]">Meet at the bar <Icon name="arrow" className="h-4 w-4" /></Link>
+              <p className="mx-auto mt-7 max-w-md text-sm leading-7 text-[#405143]">Our bar and kitchen is made for the full day—from the first flat white to the last round. Seasonal plates, cold drinks, and the best seat in the house for watching the action.</p>
+              <Link href="/bar" className="mx-auto mt-9 flex w-fit items-center gap-5 rounded-full bg-[#173021] px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#173021]">Meet at the bar <Icon name="arrow" className="h-4 w-4" /></Link>
             </div>
           </div>
         </section>
