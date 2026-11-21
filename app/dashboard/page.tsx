@@ -6,7 +6,8 @@ import { useApi } from "@/lib/use-api";
 import { fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
 import NumberTicker from "@/components/NumberTicker";
-import type { RolePinDTO } from "@/lib/types";
+import DemoRazorpayModal from "@/components/DemoRazorpayModal";
+import type { RolePinDTO, StaffMemberPinDTO } from "@/lib/types";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
 const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Demo Razorpay" } as const;
@@ -23,47 +24,124 @@ export default function Dashboard() {
   const d = dash.data;
   const [period, setPeriod] = useState<(typeof periods)[number]["code"]>("today");
   const [pins, setPins] = useState<RolePinDTO[]>([]);
-  const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
-  const [pinMsg, setPinMsg] = useState<{ role: string; text: string; ok: boolean } | null>(null);
-  const [pinBusy, setPinBusy] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<StaffMemberPinDTO[]>([]);
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [pinInputs, setPinInputs] = useState<Record<number, string>>({});
+  const [rateInputs, setRateInputs] = useState<Record<number, string>>({});
+  const [editingRate, setEditingRate] = useState<Record<number, boolean>>({});
+  const [staffMsg, setStaffMsg] = useState<{ staffId: number; text: string; ok: boolean } | null>(null);
+  const [staffBusy, setStaffBusy] = useState<number | null>(null);
 
-  useEffect(() => {
-    api.staffPins().then((res) => setPins(res.roles)).catch(() => {});
-  }, []);
+  // Demo Razorpay Modal for Salary Payout
+  const [salaryModal, setSalaryModal] = useState<{
+    isOpen: boolean;
+    staff: StaffMemberPinDTO | null;
+    amount: number;
+  }>({
+    isOpen: false,
+    staff: null,
+    amount: 0,
+  });
 
-  async function handleSavePin(role: string) {
-    const val = (pinInputs[role] || "").trim();
-    if (!/^\d{4,6}$/.test(val)) {
-      setPinMsg({ role, text: "Enter 4 to 6 numeric digits", ok: false });
-      return;
-    }
-    setPinBusy(role);
-    setPinMsg(null);
+  async function loadStaffData() {
     try {
-      const res = await api.updateRolePin(role, val);
-      setPinMsg({ role, text: res.message || "PIN updated successfully!", ok: true });
-      setPinInputs((prev) => ({ ...prev, [role]: "" }));
-      const updated = await api.staffPins();
-      setPins(updated.roles);
-    } catch (err: any) {
-      setPinMsg({ role, text: err.message || "Failed to update PIN", ok: false });
-    } finally {
-      setPinBusy(null);
+      const res = await api.staffPins();
+      setPins(res.roles || []);
+      setStaffList(res.staff || []);
+    } catch {
+      // fallback
     }
   }
 
-  async function handleResetPin(role: string) {
-    setPinBusy(role);
-    setPinMsg(null);
+  useEffect(() => {
+    loadStaffData();
+  }, []);
+
+  async function handleSaveStaffPin(staffId: number) {
+    const val = (pinInputs[staffId] || "").trim();
+    if (!/^\d{4,6}$/.test(val)) {
+      setStaffMsg({ staffId, text: "Enter 4 to 6 numeric digits", ok: false });
+      return;
+    }
+    setStaffBusy(staffId);
+    setStaffMsg(null);
     try {
-      const res = await api.resetRolePin(role);
-      setPinMsg({ role, text: res.message || "PIN reset to default", ok: true });
-      const updated = await api.staffPins();
-      setPins(updated.roles);
+      const res = await api.updateStaffPin(staffId, val);
+      setStaffMsg({ staffId, text: res.message || "PIN updated successfully!", ok: true });
+      setPinInputs((prev) => ({ ...prev, [staffId]: "" }));
+      await loadStaffData();
     } catch (err: any) {
-      setPinMsg({ role, text: err.message || "Failed to reset PIN", ok: false });
+      setStaffMsg({ staffId, text: err.message || "Failed to update PIN", ok: false });
     } finally {
-      setPinBusy(null);
+      setStaffBusy(null);
+    }
+  }
+
+  async function handleResetStaffPin(staffId: number) {
+    setStaffBusy(staffId);
+    setStaffMsg(null);
+    try {
+      const res = await api.resetStaffPin(staffId);
+      setStaffMsg({ staffId, text: res.message || "PIN reset to default", ok: true });
+      await loadStaffData();
+    } catch (err: any) {
+      setStaffMsg({ staffId, text: err.message || "Failed to reset PIN", ok: false });
+    } finally {
+      setStaffBusy(null);
+    }
+  }
+
+  async function handleSaveRate(staffId: number) {
+    const val = Number(rateInputs[staffId]);
+    if (!val || val <= 0) {
+      setStaffMsg({ staffId, text: "Enter a valid positive hourly rate", ok: false });
+      return;
+    }
+    setStaffBusy(staffId);
+    try {
+      const res = await api.updateStaffRate(staffId, val);
+      setStaffMsg({ staffId, text: res.message || "Wage rate updated!", ok: true });
+      setEditingRate((prev) => ({ ...prev, [staffId]: false }));
+      await loadStaffData();
+    } catch (err: any) {
+      setStaffMsg({ staffId, text: err.message || "Failed to update rate", ok: false });
+    } finally {
+      setStaffBusy(null);
+    }
+  }
+
+  async function handleToggleClock(staffId: number) {
+    setStaffBusy(staffId);
+    try {
+      const res = await api.toggleStaffClock(staffId);
+      setStaffMsg({ staffId, text: res.message, ok: true });
+      await loadStaffData();
+    } catch (err: any) {
+      setStaffMsg({ staffId, text: err.message || "Failed to toggle shift", ok: false });
+    } finally {
+      setStaffBusy(null);
+    }
+  }
+
+  async function executeSalaryPayout(paymentRef?: string) {
+    if (!salaryModal.staff) return;
+    const staff = salaryModal.staff;
+    const amount = salaryModal.amount;
+    setStaffBusy(staff.id);
+    try {
+      const res = await api.payStaffSalary({
+        staffId: staff.id,
+        amount,
+        paymentRef,
+      });
+      setStaffMsg({ staffId: staff.id, text: `✓ Salary paid: ${res.message} (Ref: ${res.paymentRef})`, ok: true });
+      setSalaryModal({ isOpen: false, staff: null, amount: 0 });
+      await loadStaffData();
+      void dash.reload();
+    } catch (err: any) {
+      setStaffMsg({ staffId: staff.id, text: err.message || "Salary payout failed", ok: false });
+    } finally {
+      setStaffBusy(null);
     }
   }
 
@@ -197,109 +275,325 @@ export default function Dashboard() {
           </section>
 
           <section className="block">
-            <div className="sec-head">
+            <div className="sec-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
               <div>
-                <h2>Staff Role Access PINs</h2>
+                <h2>Staff Team, Security PINs &amp; Direct Salary Payout</h2>
                 <p className="sub" style={{ margin: "4px 0 0" }}>
-                  Owner controls: configure security PINs for staff and till terminals.
+                  Owner controls: Configure personal security PINs for each staff member by name, track their worked hours, and pay their salary directly via Demo Razorpay.
                 </p>
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-              {pins.map((p) => {
-                const isBusy = pinBusy === p.role;
-                const msg = pinMsg?.role === p.role ? pinMsg : null;
-                const roleIcons: Record<string, string> = {
-                  OWNER: "👑",
-                  FRONT_DESK: "📋",
-                  BAR_OWNER: "🍷",
-                  BAR: "🍸",
-                  SHOP_OWNER: "🏷️",
-                  SHOP: "🛍️",
-                };
-                return (
-                  <div key={p.role} className="panel" style={{ padding: 18, borderRadius: 14 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 22 }}>{roleIcons[p.role] || "🔑"}</span>
-                        <div>
-                          <strong style={{ fontSize: 16, display: "block" }}>{p.label}</strong>
-                          <span style={{ fontSize: 12, color: "#666" }}>Role: {p.role}</span>
+            {/* Role Filter and Summary Row */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
+              <div className="seg" role="group" aria-label="Filter staff by team role" style={{ margin: 0 }}>
+                {[
+                  { id: "ALL", label: "All Staff" },
+                  { id: "FRONT_DESK", label: "Club Staff" },
+                  { id: "BAR", label: "Bar & Café" },
+                  { id: "SHOP", label: "Pro Shop" },
+                  { id: "OWNER", label: "Management" },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    aria-pressed={roleFilter === f.id}
+                    onClick={() => setRoleFilter(f.id)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Summary Stats */}
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 12, fontWeight: 600, color: "var(--pine)" }}>
+                <span style={{ padding: "4px 10px", borderRadius: 999, background: "#f0f4f1", border: "1px solid rgba(22,48,33,0.12)" }}>
+                  👥 <b>{staffList.length}</b> Staff Profiles
+                </span>
+                <span style={{ padding: "4px 10px", borderRadius: 999, background: "#f0f4f1", border: "1px solid rgba(22,48,33,0.12)" }}>
+                  ⏱️ <b>{Math.round(staffList.reduce((acc, s) => acc + s.hoursWorked, 0) * 10) / 10} hrs</b> Logged
+                </span>
+                <span style={{ padding: "4px 10px", borderRadius: 999, background: "#dfff45", color: "#163021", border: "1px solid #c2eb24" }}>
+                  💰 <b>{inr(staffList.reduce((acc, s) => acc + s.salaryDue, 0))}</b> Due for Payout
+                </span>
+              </div>
+            </div>
+
+            {/* Staff Cards Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 18, marginTop: 18 }}>
+              {staffList
+                .filter((s) => {
+                  if (roleFilter === "FRONT_DESK") return s.role === "FRONT_DESK" || s.role === "STAFF";
+                  if (roleFilter === "BAR") return s.role === "BAR" || s.role === "BAR_OWNER" || s.role === "BAR_STAFF";
+                  if (roleFilter === "SHOP") return s.role === "SHOP" || s.role === "SHOP_OWNER" || s.role === "SHOP_STAFF";
+                  if (roleFilter === "OWNER") return s.role === "OWNER";
+                  return true;
+                })
+                .map((s) => {
+                  const isBusy = staffBusy === s.id;
+                  const msg = staffMsg?.staffId === s.id ? staffMsg : null;
+                  const isEditingThisRate = editingRate[s.id];
+                  const roleIcons: Record<string, string> = {
+                    OWNER: "👑",
+                    FRONT_DESK: "📋",
+                    BAR_OWNER: "🍷",
+                    BAR: "🍸",
+                    SHOP_OWNER: "🏷️",
+                    SHOP: "🛍️",
+                  };
+
+                  return (
+                    <div
+                      key={s.id}
+                      className="panel"
+                      style={{
+                        padding: 20,
+                        borderRadius: 16,
+                        border: "1px solid rgba(22, 48, 33, 0.14)",
+                        background: "#ffffff",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      {/* Top: Name, Role & Status Badges */}
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <span style={{ fontSize: 26 }}>{roleIcons[s.role] || "🔑"}</span>
+                            <div>
+                              <strong style={{ fontSize: 17, display: "block", color: "#163021" }}>{s.name}</strong>
+                              <span style={{ fontSize: 12, color: "#617065", fontWeight: 500 }}>
+                                {s.roleLabel} · {s.email}
+                              </span>
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "2px 8px",
+                                borderRadius: 999,
+                                background: s.hasCustomPin ? "#dcfce7" : "#f1f5f9",
+                                color: s.hasCustomPin ? "#166534" : "#475569",
+                                border: s.hasCustomPin ? "1px solid #86efac" : "1px solid #cbd5e1",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {s.hasCustomPin ? "CUSTOM PIN" : `DEFAULT (${s.defaultPin})`}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 700,
+                                padding: "2px 7px",
+                                borderRadius: 999,
+                                background: s.isOnShift ? "#dfff45" : "#f1f5f9",
+                                color: "#163021",
+                              }}
+                            >
+                              {s.isOnShift ? "🟢 On Shift" : "⚪ Off Shift"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* PIN Control on Behalf of this Staff Name */}
+                        <div style={{ marginTop: 16, padding: "12px 14px", borderRadius: 12, background: "#fbfbfa", border: "1px solid rgba(22,48,33,0.08)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#163021" }}>
+                              Set PIN for {s.name.split(" ")[0]}
+                            </label>
+                            {s.hasCustomPin && (
+                              <button
+                                type="button"
+                                className="text-link"
+                                disabled={isBusy}
+                                onClick={() => handleResetStaffPin(s.id)}
+                                style={{ fontSize: 10, textDecoration: "underline", color: "#b91c1c" }}
+                              >
+                                Reset to {s.defaultPin}
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              maxLength={6}
+                              placeholder="New 4-6 digit PIN"
+                              value={pinInputs[s.id] || ""}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, "");
+                                setPinInputs((prev) => ({ ...prev, [s.id]: val }));
+                              }}
+                              style={{
+                                flex: 1,
+                                minHeight: 34,
+                                padding: "4px 10px",
+                                fontSize: 14,
+                                letterSpacing: 2,
+                                borderRadius: 8,
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-ink"
+                              disabled={isBusy || !(pinInputs[s.id] && pinInputs[s.id].length >= 4)}
+                              onClick={() => handleSaveStaffPin(s.id)}
+                              style={{ minHeight: 34, padding: "4px 12px", fontSize: 12, whiteSpace: "nowrap" }}
+                            >
+                              {isBusy ? "Saving..." : "Save PIN"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Work & Wage Tracking ("how much the staff has worked") */}
+                        <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: "#f8faf8", border: "1px solid rgba(22,48,33,0.08)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#617065" }}>
+                              Work Hours Logged
+                            </span>
+                            <button
+                              type="button"
+                              className="text-link"
+                              disabled={isBusy}
+                              onClick={() => handleToggleClock(s.id)}
+                              style={{ fontSize: 11, fontWeight: 600 }}
+                            >
+                              {s.isOnShift ? "⏱️ Clock Out" : "⏱️ Clock In"}
+                            </button>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
+                            <div>
+                              <span style={{ fontSize: 20, fontWeight: 700, color: "#163021" }}>{s.hoursWorked}</span>
+                              <span style={{ fontSize: 12, color: "#617065", marginLeft: 4 }}>hours ({s.shiftsCount} shifts)</span>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              {!isEditingThisRate ? (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: "#163021" }}>₹{s.hourlyRate}/hr</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingRate((prev) => ({ ...prev, [s.id]: true }));
+                                      setRateInputs((prev) => ({ ...prev, [s.id]: String(s.hourlyRate) }));
+                                    }}
+                                    style={{ fontSize: 10, color: "#2563eb", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", padding: "0 2px" }}
+                                  >
+                                    Edit
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  <input
+                                    type="number"
+                                    value={rateInputs[s.id] || ""}
+                                    onChange={(e) => setRateInputs((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                                    style={{ width: 64, minHeight: 28, padding: "2px 6px", fontSize: 12, borderRadius: 6 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-ink"
+                                    onClick={() => handleSaveRate(s.id)}
+                                    style={{ minHeight: 28, padding: "2px 8px", fontSize: 11 }}
+                                  >
+                                    ✓
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          padding: "3px 8px",
-                          borderRadius: 999,
-                          background: p.hasCustomPin ? "#dcfce7" : "#f1f5f9",
-                          color: p.hasCustomPin ? "#166534" : "#475569",
-                          border: p.hasCustomPin ? "1px solid #86efac" : "1px solid #cbd5e1",
-                        }}
-                      >
-                        {p.hasCustomPin ? "CUSTOM PIN" : `DEFAULT (${p.defaultPin})`}
-                      </span>
-                    </div>
 
-                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      <input
-                        type="password"
-                        inputMode="numeric"
-                        maxLength={6}
-                        placeholder="New PIN (4-6 digits)"
-                        value={pinInputs[p.role] || ""}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setPinInputs((prev) => ({ ...prev, [p.role]: val }));
-                        }}
-                        style={{
-                          flex: 1,
-                          minHeight: 38,
-                          padding: "6px 12px",
-                          fontSize: 15,
-                          letterSpacing: 2,
-                        }}
-                      />
-                      <button
-                        type="button"
-                        className="btn btn-ink"
-                        disabled={isBusy || !(pinInputs[p.role] && pinInputs[p.role].length >= 4)}
-                        onClick={() => handleSavePin(p.role)}
-                        style={{ minHeight: 38, padding: "6px 14px", fontSize: 13, whiteSpace: "nowrap" }}
-                      >
-                        {isBusy ? "Saving..." : "Save PIN"}
-                      </button>
-                    </div>
+                      {/* Bottom: Direct Salary Payout ("pay his salary directly from this") */}
+                      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(22, 48, 33, 0.1)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#617065" }}>
+                            Salary Payout
+                          </span>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "#163021" }}>
+                            {inr(s.salaryDue)}
+                          </span>
+                        </div>
 
-                    {p.hasCustomPin && (
-                      <div style={{ marginTop: 8, textAlign: "right" }}>
-                        <button
-                          type="button"
-                          className="mini-link"
-                          disabled={isBusy}
-                          onClick={() => handleResetPin(p.role)}
-                          style={{ fontSize: 11, padding: "2px 8px", minHeight: 24, cursor: "pointer" }}
-                        >
-                          Reset to default ({p.defaultPin})
-                        </button>
+                        {s.payrollStatus === "PAID" ? (
+                          <div
+                            style={{
+                              padding: "8px 12px",
+                              borderRadius: 10,
+                              background: "#ecfdf5",
+                              border: "1px solid #a7f3d0",
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: "#065f46",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <span>✓ Salary Paid for Month</span>
+                            <span style={{ fontSize: 10, color: "#047857" }}>{s.lastPaidAt ? s.lastPaidAt.slice(0, 10) : "Recent"}</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="btn btn-ink"
+                            disabled={isBusy || s.salaryDue <= 0}
+                            onClick={() =>
+                              setSalaryModal({
+                                isOpen: true,
+                                staff: s,
+                                amount: s.salaryDue,
+                              })
+                            }
+                            style={{
+                              width: "100%",
+                              minHeight: 40,
+                              background: "#0b1a30",
+                              color: "#dfff45",
+                              border: "1px solid #3395ff",
+                              fontWeight: 700,
+                              fontSize: 13,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              gap: 8,
+                            }}
+                          >
+                            <span>💳 Pay Salary with Demo Razorpay</span>
+                            <span>({inr(s.salaryDue)})</span>
+                          </button>
+                        )}
+
+                        {msg && (
+                          <div
+                            className={`notice ${msg.ok ? "ok" : "err"}`}
+                            style={{ marginTop: 10, padding: "6px 10px", fontSize: 12 }}
+                          >
+                            {msg.text}
+                          </div>
+                        )}
                       </div>
-                    )}
-
-                    {msg && (
-                      <div
-                        className={`notice ${msg.ok ? "ok" : "err"}`}
-                        style={{ marginTop: 10, padding: "6px 10px", fontSize: 12 }}
-                      >
-                        {msg.text}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
             </div>
           </section>
+
+          {/* Salary Payout Demo Razorpay Modal */}
+          {salaryModal.staff && (
+            <DemoRazorpayModal
+              isOpen={salaryModal.isOpen}
+              amount={salaryModal.amount}
+              title={`Staff Salary Payout — ${salaryModal.staff.name}`}
+              description={`Payment for ${salaryModal.staff.hoursWorked} hrs worked as ${salaryModal.staff.roleLabel} (@ ₹${salaryModal.staff.hourlyRate}/hr)`}
+              customerName={salaryModal.staff.name}
+              onClose={() => setSalaryModal((prev) => ({ ...prev, isOpen: false }))}
+              onSuccess={(details) => executeSalaryPayout(details.paymentId)}
+            />
+          )}
         </>
       )}
     </main>

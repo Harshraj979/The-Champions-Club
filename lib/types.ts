@@ -179,6 +179,24 @@ export type RolePinDTO = {
   hasCustomPin: boolean;
 };
 
+export type StaffMemberPinDTO = {
+  id: number;
+  name: string;
+  email: string;
+  role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP" | "BAR_OWNER" | "BAR_STAFF" | "SHOP_OWNER" | "SHOP_STAFF";
+  roleLabel: string;
+  defaultPin: string;
+  hasCustomPin: boolean;
+  hourlyRate: number;
+  hoursWorked: number;
+  shiftsCount: number;
+  salaryDue: number;
+  isOnShift: boolean;
+  payrollStatus: "PENDING" | "PAID";
+  lastPaidAt: string | null;
+  lastPaymentRef: string | null;
+};
+
 export type MemberSessionDTO = {
   id: number;
   name: string;

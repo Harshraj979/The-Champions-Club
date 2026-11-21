@@ -1,4 +1,4 @@
-import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, ExpenseDTO, ExpiringDTO, InvoiceDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PayrollDTO, PlanDTO, ProductDTO, RolePinDTO, ShiftDTO, StaffDTO, StaffRosterDTO, TabDTO } from "./types";
+import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, ExpenseDTO, ExpiringDTO, InvoiceDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PayrollDTO, PlanDTO, ProductDTO, RolePinDTO, ShiftDTO, StaffDTO, StaffMemberPinDTO, StaffRosterDTO, TabDTO } from "./types";
 
 // The web app's one door to the API. Every page fetches through here, so
 // error handling and the base path live in exactly one place. A mobile
@@ -126,8 +126,31 @@ export const api = {
   barStats: (date?: string) => call<any>(`/bar/stats${date ? `?date=${date}` : ""}`),
   shopStats: (date?: string) => call<any>(`/shop/stats${date ? `?date=${date}` : ""}`),
   login: (email: string, password: string) => post<{ staff: StaffDTO }>("/auth/login", { email, password }),
-  pinLogin: (role: string, pin: string) => post<{ staff: StaffDTO; token: string }>("/auth/pin-login", { role, pin }),
-  staffPins: () => call<{ roles: RolePinDTO[] }>("/staff/pins"),
+  pinLogin: (role: string, pin: string, staffId?: number) =>
+    post<{ staff: StaffDTO; token: string }>("/auth/pin-login", { role, pin, staffId }),
+  staffProfiles: () =>
+    call<{
+      ok: boolean;
+      staff: {
+        id: number;
+        name: string;
+        role: string;
+        roleLabel: string;
+        hasCustomPin: boolean;
+        defaultPin: string;
+      }[];
+    }>("/auth/staff-profiles"),
+  staffPins: () => call<{ roles: RolePinDTO[]; staff: StaffMemberPinDTO[] }>("/staff/pins"),
+  updateStaffPin: (staffId: number, pin: string) =>
+    post<{ ok: boolean; message: string }>("/staff/pins", { staffId, pin }),
+  resetStaffPin: (staffId: number) =>
+    post<{ ok: boolean; message: string }>("/staff/pins", { staffId, reset: true }),
+  updateStaffRate: (staffId: number, hourlyRate: number) =>
+    post<{ ok: boolean; message: string }>("/staff/rate", { staffId, hourlyRate }),
+  payStaffSalary: (input: { staffId: number; amount: number; month?: string; paymentRef?: string }) =>
+    post<{ ok: boolean; message: string; paymentRef: string; paidAt: string }>("/staff/pay-salary", input),
+  toggleStaffClock: (staffId?: number) =>
+    post<{ ok: boolean; status: string; hours?: number; message: string }>("/staff/clock", { staffId }),
   updateRolePin: (role: string, pin: string) => post<{ ok: boolean; message: string }>("/staff/pins", { role, pin }),
   resetRolePin: (role: string) => post<{ ok: boolean; message: string }>("/staff/pins", { role, reset: true }),
   logout: () => post<{ ok: boolean }>("/auth/logout"),

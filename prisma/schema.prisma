@@ -204,14 +204,17 @@ model Expense {
 }
 
 model Payroll {
-  id        Int      @id @default(autoincrement())
-  staffName String
-  month     String // "2026-11"
-  salary    Int // rupees for the month
-  leaveDays Int      @default(0)
-  tax       Int      @default(0) // tax deducted, rupees
-  status    String   @default("PENDING") // PENDING | PAID
-  createdAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  staffName  String
+  staffId    Int?
+  month      String // "2026-11"
+  salary     Int // rupees for the month
+  leaveDays  Int       @default(0)
+  tax        Int       @default(0) // tax deducted, rupees
+  status     String    @default("PENDING") // PENDING | PAID
+  paymentRef String?
+  paidAt     DateTime?
+  createdAt  DateTime  @default(now())
 }
 
 model Enquiry {
@@ -246,13 +249,28 @@ model TabItem {
 }
 
 model Staff {
-  id           Int     @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
   name         String
-  email        String  @unique
+  email        String         @unique
   passwordHash String
   pinHash      String?
-  role         Role    @default(STAFF)
+  role         Role           @default(STAFF)
+  hourlyRate   Int            @default(250) // rupees per hour
   shifts       Shift[]
+  workLogs     StaffWorkLog[]
+}
+
+model StaffWorkLog {
+  id          Int       @id @default(autoincrement())
+  staffId     Int
+  staff       Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  clockIn     DateTime  @default(now())
+  clockOut    DateTime?
+  hoursWorked Float     @default(0)
+  note        String    @default("")
+  createdAt   DateTime  @default(now())
+
+  @@index([staffId])
 }
 
 // The rota: who works which part of which day. One row per assignment.

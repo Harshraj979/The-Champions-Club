@@ -5,7 +5,7 @@ import { db } from "./db";
 import { badRequest, forbidden, unauthorized } from "./errors";
 import { todayISO } from "./format";
 import { memberState } from "./services/members";
-import type { MemberSessionDTO, StaffDTO } from "./types";
+import type { MemberSessionDTO, StaffDTO, StaffMemberPinDTO } from "./types";
 
 // Staff sign-in for the web today, the same token works as a Bearer token
 // for a future mobile app. Members have their own separate portal login
@@ -76,46 +76,295 @@ export const ROLE_LABELS: Record<string, string> = {
   SHOP: "Pro Shop Staff",
 };
 
-export async function pinLogin(role: StaffDTO["role"], pin: string): Promise<{ staff: StaffDTO; token: string }> {
-  if (!role || !pin) {
-    throw badRequest("Role and PIN are required");
+export async function pinLogin(
+  role: StaffDTO["role"],
+  pin: string,
+  staffId?: number,
+): Promise<{ staff: StaffDTO; token: string }> {
+  if ((!role && !staffId) || !pin) {
+    throw badRequest("Role/Staff ID and PIN are required");
   }
   const cleanPin = pin.trim();
-  const staffMembers = await db.staff.findMany({
-    where: { role },
-    orderBy: { id: "asc" },
-  });
-  if (!staffMembers.length) {
-    throw unauthorized(`No staff profile configured for role ${role}`);
-  }
 
-  let matched = false;
-  let activeStaff = staffMembers[0];
+  let activeStaff: any = null;
 
-  for (const s of staffMembers) {
+  if (staffId) {
+    const s = await db.staff.findUnique({ where: { id: staffId } });
+    if (!s) throw unauthorized("No such staff profile");
     if (s.pinHash) {
       if (await bcrypt.compare(cleanPin, s.pinHash)) {
-        matched = true;
         activeStaff = s;
-        break;
       }
     } else {
-      const def = DEFAULT_ROLE_PINS[role];
+      const def = DEFAULT_ROLE_PINS[s.role];
       if (def && cleanPin === def) {
-        matched = true;
         activeStaff = s;
-        break;
+      }
+    }
+  } else {
+    const staffMembers = await db.staff.findMany({
+      where: { role },
+      orderBy: { id: "asc" },
+    });
+    if (!staffMembers.length) {
+      throw unauthorized(`No staff profile configured for role ${role}`);
+    }
+
+    for (const s of staffMembers) {
+      if (s.pinHash) {
+        if (await bcrypt.compare(cleanPin, s.pinHash)) {
+          activeStaff = s;
+          break;
+        }
+      } else {
+        const def = DEFAULT_ROLE_PINS[role];
+        if (def && cleanPin === def) {
+          activeStaff = s;
+          break;
+        }
       }
     }
   }
 
-  if (!matched) {
-    throw unauthorized(`Incorrect PIN for ${ROLE_LABELS[role] || role}`);
+  if (!activeStaff) {
+    throw unauthorized(`Incorrect PIN for ${staffId ? "selected staff member" : (ROLE_LABELS[role] || role)}`);
+  }
+
+  // Record shift work log if not currently open today
+  try {
+    const openLog = await db.staffWorkLog.findFirst({
+      where: { staffId: activeStaff.id, clockOut: null },
+      orderBy: { clockIn: "desc" },
+    });
+    if (!openLog) {
+      await db.staffWorkLog.create({
+        data: {
+          staffId: activeStaff.id,
+          clockIn: new Date(),
+          note: `Clocked in via PIN sign-in (${ROLE_LABELS[activeStaff.role] || activeStaff.role})`,
+        },
+      });
+    }
+  } catch {
+    // Non-fatal for authentication
   }
 
   const dto = toStaffDTO(activeStaff);
   const token = await signToken(dto);
   return { staff: dto, token };
+}
+
+export async function updateStaffPin(staffId: number, newPin: string) {
+  const staff = await db.staff.findUnique({ where: { id: staffId } });
+  if (!staff) throw badRequest("Staff member not found");
+  const cleanPin = newPin.trim();
+  if (!/^\d{4,6}$/.test(cleanPin)) {
+    throw badRequest("PIN must be 4 to 6 numeric digits");
+  }
+  const pinHash = await bcrypt.hash(cleanPin, 10);
+  await db.staff.update({
+    where: { id: staffId },
+    data: { pinHash },
+  });
+  return { ok: true, staffId, name: staff.name, message: `PIN updated successfully for ${staff.name}` };
+}
+
+export async function resetStaffPin(staffId: number) {
+  const staff = await db.staff.findUnique({ where: { id: staffId } });
+  if (!staff) throw badRequest("Staff member not found");
+  await db.staff.update({
+    where: { id: staffId },
+    data: { pinHash: null },
+  });
+  return { ok: true, staffId, name: staff.name, message: `PIN reset to default for ${staff.name}` };
+}
+
+export async function updateStaffHourlyRate(staffId: number, hourlyRate: number) {
+  const staff = await db.staff.findUnique({ where: { id: staffId } });
+  if (!staff) throw badRequest("Staff member not found");
+  const rate = Math.round(Number(hourlyRate));
+  if (!Number.isInteger(rate) || rate <= 0) {
+    throw badRequest("Hourly rate must be a positive integer in rupees");
+  }
+  await db.staff.update({
+    where: { id: staffId },
+    data: { hourlyRate: rate },
+  });
+  return { ok: true, staffId, name: staff.name, hourlyRate: rate, message: `Hourly rate updated to ₹${rate}/hr for ${staff.name}` };
+}
+
+export async function payStaffSalary(input: {
+  staffId: number;
+  amount: number;
+  month?: string;
+  paymentRef?: string;
+}) {
+  const staff = await db.staff.findUnique({ where: { id: input.staffId } });
+  if (!staff) throw badRequest("Staff member not found");
+  const month = input.month || todayISO().slice(0, 7);
+  const amount = Math.round(Number(input.amount));
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw badRequest("Salary payout amount must be a positive number in rupees");
+  }
+  const paymentRef = input.paymentRef || `SAL-RZP-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+  const existingPayroll = await db.payroll.findFirst({
+    where: {
+      OR: [{ staffId: staff.id }, { staffName: staff.name }],
+      month,
+    },
+  });
+
+  if (existingPayroll) {
+    await db.payroll.update({
+      where: { id: existingPayroll.id },
+      data: {
+        status: "PAID",
+        salary: amount,
+        paymentRef,
+        paidAt: new Date(),
+      },
+    });
+  } else {
+    await db.payroll.create({
+      data: {
+        staffName: staff.name,
+        staffId: staff.id,
+        month,
+        salary: amount,
+        leaveDays: 0,
+        tax: 0,
+        status: "PAID",
+        paymentRef,
+        paidAt: new Date(),
+      },
+    });
+  }
+
+  // Also record into club Expenses (category "Payroll") so financial statements sync!
+  await db.expense.create({
+    data: {
+      title: `Salary Payout - ${staff.name} (${month})`,
+      category: "Payroll",
+      amount,
+      spentOn: new Date(),
+      note: `Direct salary payment via Demo Razorpay · Ref: ${paymentRef}`,
+    },
+  });
+
+  return {
+    ok: true,
+    message: `Salary of ₹${amount} successfully paid to ${staff.name}`,
+    paymentRef,
+    paidAt: new Date().toISOString(),
+  };
+}
+
+export async function toggleStaffClock(staffId: number) {
+  const staff = await db.staff.findUnique({ where: { id: staffId } });
+  if (!staff) throw badRequest("Staff member not found");
+
+  const openLog = await db.staffWorkLog.findFirst({
+    where: { staffId, clockOut: null },
+    orderBy: { clockIn: "desc" },
+  });
+
+  const now = new Date();
+  if (openLog) {
+    const diffMs = now.getTime() - new Date(openLog.clockIn).getTime();
+    const hours = Math.max(0.1, Math.round((diffMs / (1000 * 60 * 60)) * 10) / 10);
+    await db.staffWorkLog.update({
+      where: { id: openLog.id },
+      data: {
+        clockOut: now,
+        hoursWorked: hours,
+      },
+    });
+    return { ok: true, status: "CLOCKED_OUT", hours, message: `Clocked out ${staff.name}. Logged ${hours} hrs.` };
+  } else {
+    await db.staffWorkLog.create({
+      data: {
+        staffId,
+        clockIn: now,
+        note: `Manual clock-in (${ROLE_LABELS[staff.role] || staff.role})`,
+      },
+    });
+    return { ok: true, status: "CLOCKED_IN", message: `Clocked in ${staff.name} at ${now.toLocaleTimeString("en-IN")}` };
+  }
+}
+
+export async function getStaffMemberStatuses(): Promise<StaffMemberPinDTO[]> {
+  const staffList = await db.staff.findMany({
+    orderBy: [{ role: "asc" }, { name: "asc" }],
+    include: {
+      shifts: true,
+      workLogs: true,
+    },
+  });
+
+  const month = todayISO().slice(0, 7);
+  const payrolls = await db.payroll.findMany({
+    where: { month },
+  });
+
+  const defaultHoursMap: Record<string, { hours: number; shifts: number; rate: number }> = {
+    "Neha Gupta": { hours: 42.5, shifts: 11, rate: 250 },
+    "Arjun Patel": { hours: 36.0, shifts: 9, rate: 200 },
+    "Meera Joshi": { hours: 32.0, shifts: 8, rate: 220 },
+    "Siddharth Verma": { hours: 48.0, shifts: 12, rate: 350 },
+    "Rajesh Kumar": { hours: 45.0, shifts: 11, rate: 350 },
+    "Vikram Rao": { hours: 50.0, shifts: 13, rate: 500 },
+    "Club Owner": { hours: 40.0, shifts: 10, rate: 500 },
+    "Krishna": { hours: 50.0, shifts: 13, rate: 500 },
+  };
+
+  const results: StaffMemberPinDTO[] = [];
+
+  for (const s of staffList) {
+    const def = defaultHoursMap[s.name] || { hours: 24, shifts: 6, rate: 250 };
+    const hourlyRate = s.hourlyRate || def.rate;
+
+    let loggedHours = 0;
+    let isOnShift = false;
+    for (const log of s.workLogs) {
+      if (log.clockOut) {
+        loggedHours += log.hoursWorked;
+      } else {
+        isOnShift = true;
+        const liveHrs = (Date.now() - new Date(log.clockIn).getTime()) / (1000 * 60 * 60);
+        loggedHours += Math.max(0.1, Math.round(liveHrs * 10) / 10);
+      }
+    }
+
+    const shiftsCount = s.shifts.length > 0 ? s.shifts.length : def.shifts;
+    const hoursWorked = loggedHours > 0 ? Math.round(loggedHours * 10) / 10 : def.hours;
+
+    const payRec = payrolls.find(
+      (p) => p.staffId === s.id || p.staffName.toLowerCase() === s.name.toLowerCase(),
+    );
+    const isPaid = payRec?.status === "PAID";
+    const salaryDue = isPaid ? 0 : Math.round(hoursWorked * hourlyRate);
+
+    results.push({
+      id: s.id,
+      name: s.name,
+      email: s.email,
+      role: s.role as any,
+      roleLabel: ROLE_LABELS[s.role] || s.role,
+      defaultPin: DEFAULT_ROLE_PINS[s.role] || "0000",
+      hasCustomPin: Boolean(s.pinHash),
+      hourlyRate,
+      hoursWorked,
+      shiftsCount,
+      salaryDue,
+      isOnShift,
+      payrollStatus: isPaid ? "PAID" : "PENDING",
+      lastPaidAt: payRec?.paidAt ? payRec.paidAt.toISOString() : null,
+      lastPaymentRef: payRec?.paymentRef || null,
+    });
+  }
+
+  return results;
 }
 
 export async function updateRolePin(role: StaffDTO["role"], newPin: string) {
