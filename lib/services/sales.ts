@@ -81,7 +81,7 @@ type OrderRow = {
   items: { productId: number; qty: number; price: number; product: { name: string } }[];
 };
 
-const toOrderDTO = (o: OrderRow): OrderDTO => ({
+export const toOrderDTO = (o: OrderRow): OrderDTO => ({
   id: o.id,
   name: o.name,
   phone: o.phone,
@@ -119,7 +119,7 @@ type TabRow = {
 
 const tabInclude = { items: { include: { product: true } } } as const;
 
-const toTabDTO = (t: TabRow): TabDTO => ({
+export const toTabDTO = (t: TabRow): TabDTO => ({
   id: t.id,
   who: t.who,
   tableNo: t.tableNo,

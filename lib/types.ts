@@ -96,6 +96,19 @@ export type OrderDTO = {
   items: { productId: number; name: string; qty: number; price: number }[];
 };
 
+export type MemberSessionDTO = {
+  id: number;
+  name: string;
+  email: string;
+};
+
+export type MemberHomeDTO = {
+  member: MemberDTO;
+  bookings: BookingDTO[];
+  orders: OrderDTO[];
+  tabs: TabDTO[];
+};
+
 export type StaffDTO = {
   id: number;
   name: string;

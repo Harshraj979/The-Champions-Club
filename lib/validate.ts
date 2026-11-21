@@ -29,6 +29,11 @@ export const trialInput = bookingInput.extend({
   type: z.enum(["TRIAL"]).optional().default("TRIAL"),
 });
 
+export const memberLoginInput = z.object({
+  email: z.string().trim().email("That email does not look right").max(120),
+  password: z.string().min(1, "Add your password").max(200),
+});
+
 export const memberInput = z.object({
   name: z.string().trim().min(1, "The member needs a name").max(80),
   phone: z.string().trim().max(20).optional().default(""),

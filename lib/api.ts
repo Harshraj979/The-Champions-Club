@@ -1,4 +1,4 @@
-import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, MemberDTO, OrderDTO, PlanDTO, ProductDTO, StaffDTO, TabDTO } from "./types";
+import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PlanDTO, ProductDTO, StaffDTO, TabDTO } from "./types";
 
 // The web app's one door to the API. Every page fetches through here, so
 // error handling and the base path live in exactly one place. A mobile
@@ -87,4 +87,7 @@ export const api = {
   login: (email: string, password: string) => post<{ staff: StaffDTO }>("/auth/login", { email, password }),
   logout: () => post<{ ok: boolean }>("/auth/logout"),
   me: () => call<{ staff: StaffDTO }>("/auth/me"),
+  memberLogin: (email: string, password: string) => post<{ member: MemberSessionDTO }>("/member/login", { email, password }),
+  memberLogout: () => post<{ ok: boolean }>("/member/logout"),
+  memberMe: () => call<MemberHomeDTO>("/member/me"),
 };

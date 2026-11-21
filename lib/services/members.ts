@@ -2,7 +2,9 @@ import bcrypt from "bcryptjs";
 import { db } from "../db";
 import { badRequest, notFound } from "../errors";
 import { todayISO } from "../format";
-import type { MemberDTO, MemberState } from "../types";
+import type { MemberDTO, MemberHomeDTO, MemberState } from "../types";
+import { toBookingDTO } from "./bookings";
+import { toOrderDTO, toTabDTO } from "./sales";
 
 type MemberRow = {
   id: number;
@@ -69,4 +71,37 @@ export async function getMember(id: number): Promise<MemberDTO> {
   const row = await db.member.findUnique({ where: { id }, include: { plan: true } });
   if (!row) throw notFound("No such member");
   return toMemberDTO(row);
+}
+
+// Everything the portal home shows: the member's plan, bookings,
+// shop orders and bar tabs, all read off their member record.
+export async function memberHome(id: number): Promise<MemberHomeDTO> {
+  const row = await db.member.findUnique({ where: { id }, include: { plan: true } });
+  if (!row) throw notFound("No such member");
+  const [bookings, orders, tabs] = await Promise.all([
+    db.booking.findMany({
+      where: { memberId: id },
+      include: { court: true },
+      orderBy: [{ date: "desc" }, { start: "asc" }],
+      take: 20,
+    }),
+    db.order.findMany({
+      where: { memberId: id },
+      include: { items: { include: { product: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    db.tab.findMany({
+      where: { memberId: id },
+      include: { items: { include: { product: true } } },
+      orderBy: { id: "desc" },
+      take: 10,
+    }),
+  ]);
+  return {
+    member: toMemberDTO(row),
+    bookings: bookings.map(toBookingDTO),
+    orders: orders.map(toOrderDTO),
+    tabs: tabs.map((t) => toTabDTO(t as Parameters<typeof toTabDTO>[0])),
+  };
 }
