@@ -50,7 +50,7 @@ export async function createEnquiry(input: {
 }
 
 export async function listEnquiries(): Promise<EnquiryDTO[]> {
-  const rows = await db.enquiry.findMany({ orderBy: [{ status: "asc" }, { createdAt: "desc" }] });
+  const rows = await db.enquiry.findMany({ orderBy: { createdAt: "desc" } });
   return rows.map(toDTO);
 }
 
