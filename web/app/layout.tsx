@@ -17,7 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           </div>
           <Link className="brand" href="/">The Champions Club</Link>
           <div className="right">
-            <Link href="/dashboard" className="muted" style={{ fontSize: 14 }}>Staff</Link>
+            <Link href="/dashboard" className="staff">Staff</Link>
             <Link href="/trial"><button className="pill black">Book Now</button></Link>
           </div>
         </nav>
