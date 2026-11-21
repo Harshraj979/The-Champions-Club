@@ -41,7 +41,7 @@ export default function Trial() {
   const avail = useApi(() => api.availability(f.courtId, f.date), [f.courtId, f.date]);
   const taken = avail.data?.taken ?? [];
   const freeSlots = starts.filter(
-    (t) => !taken.some((b) => Math.abs(b - t) < 60) && (f.date !== today || t > istMinutesNow()),
+    (t) => !taken.some((b) => Math.abs(b.start - t) < 60) && (f.date !== today || t > istMinutesNow()),
   );
   const court = courts.data?.find((c) => c.id === f.courtId);
 

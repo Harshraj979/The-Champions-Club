@@ -36,7 +36,7 @@ export const api = {
   products: (category?: "GEAR" | "BAR") =>
     call<ProductDTO[]>(`/products${category ? `?category=${category}` : ""}`),
   availability: (courtId: number, date: string) =>
-    call<{ taken: number[] }>(`/availability?courtId=${courtId}&date=${date}`),
+    call<{ taken: { start: number; type: "REGULAR" | "TRIAL" | "FRIDAY_SOCIAL" }[] }>(`/availability?courtId=${courtId}&date=${date}`),
   schedule: (date: string) => call<BookingDTO[]>(`/schedule?date=${date}`),
   lookupMember: (name: string) =>
     call<{

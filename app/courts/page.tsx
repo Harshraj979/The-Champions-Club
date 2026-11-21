@@ -37,7 +37,7 @@ export default function Courts() {
   const todays = useApi(() => api.bookings(date), [date]);
   const todaysCount =
     name.trim().length >= 3
-      ? (todays.data ?? []).filter((b) => b.date === date && b.state === "BOOKED" && b.who.toLowerCase() === name.trim().toLowerCase()).length
+      ? (todays.data ?? []).filter((b) => b.date === date && b.state === "BOOKED" && b.type === "REGULAR" && b.who.toLowerCase() === name.trim().toLowerCase()).length
       : 0;
   const [staff, setStaff] = useState<StaffDTO | null>(null);
   const [meKnown, setMeKnown] = useState(false);
@@ -48,10 +48,13 @@ export default function Courts() {
       .finally(() => setMeKnown(true));
   }, []);
   const canBook = !!staff && (staff.role === "OWNER" || staff.role === "FRONT_DESK" || staff.role === "STAFF");
-  // a booking runs a full hour, so it also blocks the starts either side of it
+  // a booking runs a full hour, so it also blocks the starts either side of
+  // it — except Friday Social bookings, which share the court: in social
+  // mode only non-social bookings block, matching the server rule.
   const taken = avail.data?.taken ?? [];
   const free = (t: number) =>
-    !taken.some((b) => Math.abs(b - t) < 60) && (date !== today || t > istMinutesNow());
+    !taken.some((b) => Math.abs(b.start - t) < 60 && (social || b.type !== "FRIDAY_SOCIAL")) &&
+    (date !== today || t > istMinutesNow());
   const price = slot === null || !court ? null : member ? (court.sport === "Cricket" ? member.cricketPrice : member.tennisPrice) : court.walkinPrice;
 
   useEffect(() => {
