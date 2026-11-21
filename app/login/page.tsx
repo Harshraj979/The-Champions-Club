@@ -24,9 +24,15 @@ export default function Login() {
     setErr("");
     setBusy(true);
     try {
-      await api.login(e, p);
-      const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard";
-      window.location.href = next.startsWith("/") ? next : "/dashboard";
+      const { staff } = await api.login(e, p);
+      const next = new URLSearchParams(window.location.search).get("next");
+      // Land each role on a page it can actually use; an explicit
+      // "next" from a guarded page always wins.
+      const home = staff.role === "OWNER" ? "/dashboard"
+        : staff.role === "BAR" ? "/bar"
+        : staff.role === "SHOP" ? "/shop"
+        : "/bookings";
+      window.location.href = next && next.startsWith("/") ? next : home;
     } catch (ex) {
       setErr(ex instanceof ApiClientError ? ex.message : "Sign-in failed. Try again.");
       setBusy(false);

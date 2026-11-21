@@ -43,5 +43,12 @@ export async function GET(req: NextRequest) {
   const staff = await db.staff.findUnique({ where: { email: String(info.email).toLowerCase() } });
   if (!staff) return back("/login?error=notstaff");
   await setSessionCookie(await tokenForStaff(staff));
-  return back(next);
+  // With no explicit destination, land each role on a page it can use
+  // (the dashboard itself is owner-only).
+  const home = next !== "/dashboard" ? next
+    : staff.role === "BAR" ? "/bar"
+    : staff.role === "SHOP" ? "/shop"
+    : staff.role === "OWNER" ? "/dashboard"
+    : "/bookings";
+  return back(home);
 }
