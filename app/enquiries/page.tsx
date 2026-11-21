@@ -88,6 +88,7 @@ export default function Enquiries() {
                     {e.status !== "CONVERTED" && (
                       <>
                         <select
+                          style={{ width: "auto", minWidth: 120 }}
                           aria-label={`Plan for ${e.name}`}
                           value={planFor[e.id] ?? plans.data?.[0]?.code ?? ""}
                           onChange={(ev) => setPlanFor((p) => ({ ...p, [e.id]: ev.target.value }))}
@@ -105,6 +106,7 @@ export default function Enquiries() {
                   </div>
                 </div>
                 <select
+                  style={{ width: "auto", minWidth: 140, flexShrink: 0 }}
                   aria-label={`Status for ${e.name}`}
                   value={e.status}
                   disabled={busyId === e.id}

@@ -61,7 +61,7 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {d!.byMethod.length > 0 && (
+          {period === "today" && d!.byMethod.length > 0 && (
             <p className="muted" style={{ marginTop: 14 }}>
               Taken today by{" "}
               {d!.byMethod.map((m, i) => (
