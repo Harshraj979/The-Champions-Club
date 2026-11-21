@@ -1,12 +1,12 @@
 "use client";
 import { useMemo, useState } from "react";
-import { courts, demoTaken, fmtTime, inr } from "@/lib/demo";
+import { courts, members, plans, takenSlots, todayBookings, todayISO, fmtTime, inr } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
-const today = new Date().toISOString().slice(0, 10);
-const allSlots = Array.from({ length: 31 }, (_, i) => 6 + i * 0.5); // 6:00 .. 21:00
+const allSlots = Array.from({ length: 31 }, (_, i) => 6 + i * 0.5); // 6:00 AM to 9:00 PM starts, one hour each
 
 export default function Courts() {
+  const today = todayISO();
   const [courtId, setCourtId] = useState(1);
   const [date, setDate] = useState(today);
   const [slot, setSlot] = useState<number | null>(null);
@@ -14,55 +14,83 @@ export default function Courts() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const { store, addBooking } = useStore();
   const court = courts.find((c) => c.id === courtId)!;
-  // taken = today's seed bookings + anything booked in this prototype, for this court and day
-  const busy = useMemo(() => [
-    ...(date === today ? (demoTaken[courtId] ?? []) : []),
-    ...store.bookings.filter((b) => b.courtId === courtId && b.date === date && b.state === "booked").map((b) => b.time),
-  ], [store.bookings, courtId, date]);
-  const free = (t: number) => !busy.some((b) => Math.abs(b - t) < 1);
-  const record = () => addBooking({ courtId, court: court.name, who: name.trim(), date, time: slot!, type: "regular", price: court.walkin_price });
 
-  async function book() {
+  const busy = useMemo(() => [
+    ...(date === today ? (takenSlots[courtId] ?? []) : []),
+    ...store.bookings.filter((b) => b.courtId === courtId && b.date === date && b.state === "booked").map((b) => b.time),
+  ], [store.bookings, courtId, date, today]);
+  const free = (t: number) => !busy.some((b) => Math.abs(b - t) < 1);
+
+  // the club's own rules, applied the same way for everyone
+  const member = members.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
+  const plan = member ? plans.find((p) => p.name === member.plan) : undefined;
+  const price = slot === null ? null : member ? (plan?.court ?? court.walkin) : court.walkin;
+  const mineToday = store.bookings.filter((b) => b.date === date && b.state === "booked" && b.who.toLowerCase() === name.trim().toLowerCase()).length
+    + (date === today ? todayBookings.filter((b) => b.who.toLowerCase() === name.trim().toLowerCase()).length : 0);
+
+  function book() {
     if (slot === null || !name.trim()) return;
-    const body = { courtId, date, startTime: slot, walkinName: name.trim() };
-    try {
-      const r = await fetch("/api/bookings/create", { method: "POST", body: JSON.stringify(body) });
-      const j = await r.json();
-      if (!r.ok) throw new Error(j.error ?? "Booking refused");
-      record();
-      setMsg({ ok: true, text: `Booked — ${court.name}, ${fmtTime(slot)}.` });
-    } catch {
-      // demo mode: enforce the same overlap rule locally, then book it
-      if (!free(slot)) return setMsg({ ok: false, text: "That court is already booked at that time. No double-booking, ever." });
-      record();
-      setMsg({ ok: true, text: `Booked (demo) — ${court.name}, ${fmtTime(slot)}, ${inr(court.walkin_price)} at the desk.` });
-    }
+    if (member?.state === "expired") return setMsg({ ok: false, text: `${member.name}'s plan has expired. The front desk can renew it in a minute.` });
+    if (mineToday >= 2) return setMsg({ ok: false, text: "Two bookings a day is the limit, on every plan." });
+    if (!free(slot)) return setMsg({ ok: false, text: "That court is already booked at that time." });
+    addBooking({ courtId, court: court.name, who: name.trim(), date, time: slot, type: "regular", price: price ?? court.walkin });
+    setMsg({ ok: true, text: `Booked. ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${price ? `, ${inr(price)} at the desk` : ", covered by your plan"}.` });
     setSlot(null);
   }
 
   return (
     <main className="wrap page">
-      <h2 className="title">Courts &amp; booking</h2>
-      <p className="sub">Pick a court and a day. Greyed slots are taken — a session covers the full hour.</p>
-      <div className="row">
-        <div><label>Court</label>
-          <select value={courtId} onChange={(e) => { setCourtId(Number(e.target.value)); setSlot(null); }}>
-            {courts.map((c) => <option key={c.id} value={c.id}>{c.name} — walk-in {inr(c.walkin_price)}/hr</option>)}
-          </select></div>
-        <div><label>Date</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <div><label>Your name (members: your registered name)</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Aarav Sharma" /></div>
+      <div className="page-head">
+        <h1 className="page-title">Courts</h1>
+        <p className="sub">Pick a court and a day. Crossed-out slots are taken, and a booking covers the full hour.</p>
       </div>
-      <div className="slots">
-        {allSlots.map((t) => (
-          <button key={t} disabled={!free(t)} onClick={() => setSlot(t)}
-            className={`slot ${slot === t ? "on" : ""} ${!free(t) ? "off" : ""}`}>{fmtTime(t)}</button>
+
+      <div className="seg" role="group" aria-label="Court">
+        {courts.map((c) => (
+          <button key={c.id} aria-pressed={courtId === c.id} onClick={() => { setCourtId(c.id); setSlot(null); }}>
+            {c.name} · <span className="num">{inr(c.walkin)}</span>
+          </button>
         ))}
       </div>
-      {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`}>{msg.text}</div>}
-      <button className="pill black" style={{ marginTop: 18 }} disabled={slot === null || !name.trim()} onClick={book}>
-        {slot === null ? "Pick a slot" : `Book ${court.name} at ${fmtTime(slot)}`}
-      </button>
+
+      <div className="field-row" style={{ marginTop: 20, maxWidth: 640 }}>
+        <div>
+          <label htmlFor="date">Date</label>
+          <input id="date" type="date" value={date} min={today} onChange={(e) => { setDate(e.target.value); setSlot(null); }} />
+        </div>
+        <div>
+          <label htmlFor="name">Your name</label>
+          <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: your registered name" />
+        </div>
+      </div>
+      {member && (
+        <p className="muted" style={{ marginTop: 10 }}>
+          {member.state === "expired"
+            ? `${member.name}, ${member.plan} plan, expired. Bookings are paused until it is renewed.`
+            : `${member.name}, ${member.plan} plan${plan ? `, courts at ${plan.court === 0 ? "no charge" : inr(plan.court) + " an hour"}` : ""}.`}
+        </p>
+      )}
+
+      <div className="slots" role="group" aria-label="Start times">
+        {allSlots.map((t) => (
+          <button key={t} className="slot num" disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>{fmtTime(t)}</button>
+        ))}
+      </div>
+
+      {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
+
+      <div className="summary">
+        <p className="s-lines">
+          {slot === null ? "No slot picked yet." : <>{court.name} at <span className="num">{fmtTime(slot)}</span> · <span className="num s-total" style={{ fontSize: 16 }}>{price === 0 ? "Covered by your plan" : inr(price ?? 0)}</span></>}
+        </p>
+        <button className="btn btn-ink" disabled={slot === null || !name.trim()} onClick={book}>
+          {slot === null ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
+        </button>
+      </div>
+
+      <p className="muted" style={{ marginTop: 28, maxWidth: 640 }}>
+        The rules are the same for everyone: one hour a booking, two bookings a day at most, and an expired plan pauses booking until it is renewed. Friday Social Play is the one exception, shared courts from 7 PM.
+      </p>
     </main>
   );
 }
