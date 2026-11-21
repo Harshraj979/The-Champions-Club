@@ -65,14 +65,20 @@ export async function listSchedule(date: string): Promise<BookingDTO[]> {
   return rows.map((b) => ({ ...toBookingDTO(b), phone: "" }));
 }
 
-export async function listBookings(date?: string): Promise<BookingDTO[]> {
-  const where: Prisma.BookingWhereInput = date
-    ? { date: new Date(`${date}T00:00:00.000Z`) }
-    : { date: { gte: new Date(`${todayISO()}T00:00:00.000Z`) } };
+export async function listBookings(date?: string, state?: string): Promise<BookingDTO[]> {
+  if (state !== undefined && state !== "BOOKED" && state !== "CANCELLED")
+    throw badRequest("state must be BOOKED or CANCELLED");
+  const where: Prisma.BookingWhereInput = {
+    ...(date
+      ? { date: new Date(`${date}T00:00:00.000Z`) }
+      : { date: { gte: new Date(`${todayISO()}T00:00:00.000Z`) } }),
+    ...(state ? { state } : {}),
+  };
   const rows = await db.booking.findMany({
     where,
     include: { court: true },
     orderBy: [{ date: "asc" }, { start: "asc" }],
+    take: 100,
   });
   return rows.map(toBookingDTO);
 }
