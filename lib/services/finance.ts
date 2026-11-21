@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { conflict, notFound } from "../errors";
+import { badRequest, conflict, notFound } from "../errors";
 import type { ExpenseDTO, InvoiceDTO, PayrollDTO } from "../types";
 
 // Owner finance, deliberately light: bills out, money out, staff pay.
@@ -7,6 +7,17 @@ import type { ExpenseDTO, InvoiceDTO, PayrollDTO } from "../types";
 // keeps, with the totals that matter.
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
+
+// Service-level validation: the route validators already reject most
+// of this, but the service must not trust its caller.
+const isMonth = (m: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
+const isRealDate = (s: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const [y, mo, d] = s.split("-").map(Number); // Date.parse("2026-02-30") rolls to Mar 2 — check the parts
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+};
+const positiveInt = (n: number) => Number.isInteger(n) && n > 0;
 
 export async function listInvoices(): Promise<InvoiceDTO[]> {
   const rows = await db.invoice.findMany({ orderBy: { issuedOn: "desc" } });
@@ -21,6 +32,7 @@ export async function listInvoices(): Promise<InvoiceDTO[]> {
 }
 
 export async function createInvoice(input: { billedTo: string; detail: string; amount: number }): Promise<InvoiceDTO> {
+  if (!positiveInt(input.amount)) throw badRequest("The invoice needs a positive amount");
   const r = await db.invoice.create({ data: input });
   return {
     id: r.id, billedTo: r.billedTo, detail: r.detail, amount: r.amount,
@@ -48,6 +60,8 @@ export async function listExpenses(): Promise<ExpenseDTO[]> {
 }
 
 export async function createExpense(input: { title: string; category: string; amount: number; spentOn: string; note: string }): Promise<ExpenseDTO> {
+  if (!positiveInt(input.amount)) throw badRequest("The expense needs a positive amount");
+  if (!isRealDate(input.spentOn)) throw badRequest("Date must be a real YYYY-MM-DD date");
   const r = await db.expense.create({
     data: { title: input.title, category: input.category, amount: input.amount, spentOn: new Date(`${input.spentOn}T00:00:00.000Z`), note: input.note },
   });
@@ -64,6 +78,11 @@ export async function listPayroll(): Promise<PayrollDTO[]> {
 }
 
 export async function createPayroll(input: { staffName: string; month: string; salary: number; leaveDays: number; tax: number }): Promise<PayrollDTO> {
+  if (!positiveInt(input.salary)) throw badRequest("Salary must be a positive amount");
+  if (!Number.isInteger(input.leaveDays) || input.leaveDays < 0) throw badRequest("Leave days cannot be negative");
+  if (!Number.isInteger(input.tax) || input.tax < 0) throw badRequest("Tax cannot be negative");
+  if (input.tax > input.salary) throw badRequest("Tax cannot be more than the salary — the net would be negative");
+  if (!isMonth(input.month)) throw badRequest("Month must be YYYY-MM with a real month (01-12)");
   const r = await db.payroll.create({ data: input });
   return {
     id: r.id, staffName: r.staffName, month: r.month, salary: r.salary,
