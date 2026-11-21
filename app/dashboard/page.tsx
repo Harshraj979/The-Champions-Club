@@ -62,7 +62,7 @@ export default function Dashboard() {
           </div>
 
           {period === "today" && d!.byMethod.length > 0 && (
-            <p className="muted" style={{ marginTop: 14 }}>
+            <p className="pay-strip">
               Taken today by{" "}
               {d!.byMethod.map((m, i) => (
                 <span key={m.method}>
@@ -105,10 +105,10 @@ export default function Dashboard() {
                 </table>
               </div>
             )}
-            <p style={{ marginTop: 20, display: "flex", gap: 20 }}>
-              <Link className="text-link" href="/members">Members</Link>
-              <Link className="text-link" href="/bar">Bar tabs</Link>
-              <Link className="text-link" href="/shop">Shop</Link>
+            <p style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <Link className="mini-link" href="/members">Members</Link>
+              <Link className="mini-link" href="/bar">Bar tabs</Link>
+              <Link className="mini-link" href="/shop">Shop</Link>
             </p>
           </section>
         </>

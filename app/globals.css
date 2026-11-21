@@ -112,6 +112,14 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .ledger th, .ledger td { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
 .ledger thead th { font-family: var(--font-display), sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--pine); border-bottom: 0; }
 .ledger tbody tr:last-child td { border-bottom: 0; }
+.ledger tbody tr { transition: background-color 0.12s; }
+.ledger tbody tr:hover { background: rgba(22, 48, 33, 0.03); }
+.figure { transition: box-shadow 0.15s; }
+.figure:hover { box-shadow: var(--shadow-lift); }
+.figure.total:hover { box-shadow: var(--shadow); }
+.pay-strip { margin-top: 14px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; font-size: 14px; color: var(--ink-2); }
+.mini-link { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--pine); transition: border-color 0.15s, background-color 0.15s; }
+.mini-link:hover { border-color: var(--pine); background: var(--volt); }
 .ledger .r, .ledger th.r { text-align: right; }
 
 .status { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 500; white-space: nowrap; }
