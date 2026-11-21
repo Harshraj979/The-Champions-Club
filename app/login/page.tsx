@@ -1,16 +1,22 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 
 // Staff sign-in: email and password, or Google for club accounts.
-// Members have their own sign-in (linked under the card). The demo
-// buttons sign in as each role's demo account in one tap.
+// Members have their own sign-in (linked under the card).
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [googleHref, setGoogleHref] = useState("/api/v1/auth/google");
+
+  // Only a same-site relative path is a safe place to land after
+  // sign-in: it must start with "/" but not "//" (protocol-relative)
+  // and must not contain "://".
+  const safeNext = (n: string | null) =>
+    n && n.startsWith("/") && !n.startsWith("//") && !n.includes("://") ? n : null;
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
@@ -19,8 +25,9 @@ export default function Login() {
     else if (q.get("error") === "gstate") setErr("Google session expired. Try signing in again.");
     else if (q.get("error") === "ginfo" || q.get("error") === "gemail") setErr("Could not retrieve verified email from Google.");
     else if (q.get("error") === "google") setErr("Google sign-in did not work. Try again, or use your password.");
-    const next = q.get("next");
+    const next = safeNext(q.get("next"));
     if (next) setGoogleHref(`/api/v1/auth/google?next=${encodeURIComponent(next)}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function go(e: string, p: string) {
@@ -35,7 +42,7 @@ export default function Login() {
         : staff.role === "BAR" ? "/bar"
         : staff.role === "SHOP" ? "/shop"
         : "/bookings";
-      window.location.href = next && next.startsWith("/") ? next : home;
+      window.location.href = safeNext(next) ?? home;
     } catch (ex) {
       setErr(ex instanceof ApiClientError ? ex.message : "Sign-in failed. Try again.");
       setBusy(false);
@@ -81,19 +88,9 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="demo-box">
-        <p><strong>Demo accounts</strong> — one tap each.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <button className="btn btn-ink" onClick={() => go("owner@champions.club", "champions")} disabled={busy}>Owner</button>
-          <button className="btn btn-quiet" onClick={() => go("neha@champions.club", "demo1234")} disabled={busy}>Front desk</button>
-          <button className="btn btn-quiet" onClick={() => go("arjun@champions.club", "demo1234")} disabled={busy}>Bar</button>
-          <button className="btn btn-quiet" onClick={() => go("meera@champions.club", "demo1234")} disabled={busy}>Shop</button>
-        </div>
-        <p className="demo-creds">owner@champions.club · champions — the rest use demo1234</p>
-      </div>
       </div>
       <p className="member-link">
-        A club member? <a href="/member/login">Member sign in</a>
+        A club member? <Link href="/member/login">Member sign in</Link>
       </p>
     </main>
   );
