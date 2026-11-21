@@ -106,7 +106,7 @@ export default function Shop() {
           <div className="field-row" style={{ marginTop: 24, maxWidth: 640 }}>
             <div>
               <label htmlFor="s-name">Your name</label>
-              <input id="s-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: your registered name gets your discount" />
+              <input id="s-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: use your registered name" />
               {name.trim().length >= 3 && !lookup.loading && (
                 <p className="muted" style={{ marginTop: 6 }} role="status">
                   {member
