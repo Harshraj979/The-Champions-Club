@@ -8,7 +8,7 @@ import { Loading, ErrorBox, Empty } from "@/components/States";
 import NumberTicker from "@/components/NumberTicker";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
-const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI" } as const;
+const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Online" } as const;
 
 const periods = [
   { code: "today", label: "Today" },
@@ -78,6 +78,31 @@ export default function Dashboard() {
             <div className="notice warn" role="status">
               Running low in the shop: {d!.lowStock.map((p) => `${p.name} (${p.stock} left)`).join(", ")}.
             </div>
+          )}
+
+          {period === "today" && d!.expiring.length > 0 && (
+            <section className="block">
+              <div className="sec-head">
+                <h2>Expiring in the next 14 days</h2>
+                <Link className="text-link" href="/members">All members</Link>
+              </div>
+              <div className="ledger-wrap">
+                <table className="ledger">
+                  <thead><tr><th>Member</th><th className="hide-m">Plan</th><th className="hide-m">Phone</th><th>Expires</th><th className="r">Days left</th></tr></thead>
+                  <tbody>
+                    {d!.expiring.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.name}</td>
+                        <td className="hide-m">{m.planName}</td>
+                        <td className="hide-m num">{m.phone}</td>
+                        <td>{m.expiresOn}</td>
+                        <td className="r num">{m.daysLeft === 0 ? "Today" : m.daysLeft}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
           )}
 
           <section className="block">

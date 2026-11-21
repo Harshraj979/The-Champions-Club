@@ -54,9 +54,19 @@ export type DashboardDTO = {
   date: string;
   totals: MoneySplit;
   periods: { today: MoneySplit; week: MoneySplit; month: MoneySplit };
-  byMethod: { method: "CASH" | "CARD" | "UPI"; amount: number }[];
+  byMethod: { method: "CASH" | "CARD" | "UPI" | "ONLINE"; amount: number }[];
   onCourt: BookingDTO[];
   lowStock: ProductDTO[];
+  expiring: ExpiringDTO[];
+};
+
+export type ExpiringDTO = {
+  id: number;
+  name: string;
+  phone: string;
+  planName: string;
+  expiresOn: string;
+  daysLeft: number;
 };
 
 export type TabDTO = {
