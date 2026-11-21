@@ -205,7 +205,7 @@ export default function Courts() {
       ) : courts.error ? (
         <ErrorBox message={courts.error} onRetry={courts.reload} />
       ) : (
-        <div className="panel">
+        <div className="panel panel-main">
           <div className="step">
             <div className="step-head">
               <span className="step-n">1</span>
@@ -239,7 +239,7 @@ export default function Courts() {
             ) : (
               <div className="slots" role="group" aria-label="Start times">
                 {starts.map((t) => (
-                  <button key={t} className="slot num" disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
+                  <button key={t} className={`slot num${date === today && t + 60 <= istMinutesNow() ? " past" : ""}`} disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
                     {fmtTime(t)}
                   </button>
                 ))}

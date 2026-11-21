@@ -51,7 +51,7 @@ export default function Enquiries() {
       <div className="page-head">
         <p className="page-eyebrow">Front desk</p>
         <h1 className="page-title">Enquiries</h1>
-        <p className="sub">Every question the club gets, in one list: website, trials and walk-ins. Work them, note the follow-up, convert the good ones. Staff view.</p>
+        <p className="sub">Every question the club gets, in one list: website, trials and walk-ins. Work them, note the follow-up, convert the good ones.</p>
       </div>
 
       {enquiries.loading ? (
@@ -63,12 +63,15 @@ export default function Enquiries() {
       ) : (
         <>
           {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
+          <p className="count-line" style={{ paddingBottom: 2 }}>
+            <b>{list.filter((e) => e.status === "NEW").length}</b> new · {list.length} total
+          </p>
           <div className="rows">
             {list.map((e) => (
-              <div className="row-item" key={e.id} style={{ alignItems: "start" }}>
+              <div className={`row-item${e.status === "NEW" ? " row-new" : ""}${e.status === "LOST" ? " row-off" : ""}`} key={e.id} style={{ alignItems: "start" }}>
                 <div className="row-main">
                   <p className="row-name">
-                    {e.name} <span className="muted" style={{ fontWeight: 400 }}>{e.interest}</span>
+                    {e.name} <span className="tag">{e.interest}</span>
                   </p>
                   <p className="muted">
                     {e.contact} · {new Date(e.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}

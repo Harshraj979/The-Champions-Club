@@ -77,12 +77,6 @@ export default function Home() {
     setMenuOpen(false);
   }
 
-  function requestAccess() {
-    scrollTo("membership");
-    setNotice("Membership enquiries are now open");
-    window.setTimeout(() => setNotice(""), 2800);
-  }
-
   return (
     <div className="make-landing min-h-screen bg-[#f2f0e8] text-[#163021]">
       <header className="absolute inset-x-0 top-0 z-40 border-b border-white/15 text-white">
@@ -92,9 +86,11 @@ export default function Home() {
             <div className="text-left"><p className="font-display text-[19px] font-bold uppercase leading-none tracking-wide">Champions</p><p className="mt-1 text-[8px] font-semibold uppercase tracking-[.34em] text-white/55">The club</p></div>
           </button>
           <nav className="hidden items-center gap-8 lg:flex">
-            {["The club", "Play", "Eat & drink", "Membership"].map((item, index) => (
-              <button key={item} onClick={() => scrollTo(["club", "play", "clubhouse", "membership"][index])} className="text-xs font-semibold text-white/75 transition hover:text-white">{item}</button>
-            ))}
+            <Link href="/courts" className="text-xs font-semibold text-white/75 transition hover:text-white">Courts</Link>
+            <Link href="/shop" className="text-xs font-semibold text-white/75 transition hover:text-white">Shop</Link>
+            <Link href="/bar" className="text-xs font-semibold text-white/75 transition hover:text-white">Bar &amp; Café</Link>
+            <Link href="/trial" className="text-xs font-semibold text-white/75 transition hover:text-white">Book a trial</Link>
+            <Link href="/#membership" className="text-xs font-semibold text-white/75 transition hover:text-white">Membership</Link>
           </nav>
           <div className="flex items-center gap-3">
             {member ? (
@@ -117,6 +113,9 @@ export default function Home() {
                 <Link href="/member-login?tab=signup" className="hidden rounded-full bg-[#dfff45] px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] transition hover:bg-white sm:block">
                   Join the club
                 </Link>
+                <Link href="/login" className="rounded-full bg-white px-4 py-2.5 sm:px-5 sm:py-3 text-[11px] font-bold uppercase tracking-wider text-[#173020] shadow-md transition hover:bg-[#dfff45]">
+                  Staff
+                </Link>
               </>
             )}
             <button onClick={() => setMenuOpen(!menuOpen)} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 lg:hidden" aria-label="Toggle menu"><Icon name={menuOpen ? "close" : "menu"} /></button>
@@ -124,26 +123,33 @@ export default function Home() {
         </div>
         {menuOpen && (
           <div className="border-t border-white/10 bg-[#132b1d] px-5 py-6 lg:hidden">
-            {["The club", "Play", "Eat & drink", "Membership"].map((item, index) => <button key={item} onClick={() => scrollTo(["club", "play", "clubhouse", "membership"][index])} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">{item}</button>)}
+            {[["Courts", "/courts"], ["Shop", "/shop"], ["Bar & Café", "/bar"], ["Book a trial", "/trial"], ["Membership", "/#membership"]].map(([item, href]) => (
+              <Link key={item} href={href} onClick={() => setMenuOpen(false)} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">
+                {item}
+              </Link>
+            ))}
             {member ? (
               <>
-                <Link href="/courts" className="mt-4 block w-full border-b border-white/10 py-3 text-left font-display text-lg font-bold uppercase text-[#dfff45]">
+                <Link href="/courts" onClick={() => setMenuOpen(false)} className="mt-4 block w-full border-b border-white/10 py-3 text-left font-display text-lg font-bold uppercase text-[#dfff45]">
                   ⚡ {member.name} ({member.plan ? member.plan.name : "No Plan"})
                 </Link>
-                <Link href="/courts" className="mt-4 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
+                <Link href="/courts" onClick={() => setMenuOpen(false)} className="mt-4 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
                   Book Courts
                 </Link>
-                <button onClick={handleMemberLogout} className="mt-3 block w-full py-2 text-center text-xs font-semibold text-white/70">
+                <button onClick={() => { handleMemberLogout(); setMenuOpen(false); }} className="mt-3 block w-full py-2 text-center text-xs font-semibold text-white/70">
                   Sign out
                 </button>
               </>
             ) : (
               <>
-                <Link href="/member-login" className="mt-4 block w-full border-b border-white/10 py-3 text-left font-display text-lg font-bold uppercase">
+                <Link href="/member-login" onClick={() => setMenuOpen(false)} className="mt-4 block w-full border-b border-white/10 py-3 text-left font-display text-lg font-bold uppercase">
                   Member sign-in
                 </Link>
-                <Link href="/member-login?tab=signup" className="mt-4 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
+                <Link href="/member-login?tab=signup" onClick={() => setMenuOpen(false)} className="mt-4 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
                   Join the club
+                </Link>
+                <Link href="/login" onClick={() => setMenuOpen(false)} className="mt-3 block w-full rounded-full bg-white py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">
+                  Staff sign-in
                 </Link>
               </>
             )}
@@ -171,12 +177,20 @@ export default function Home() {
                     Join the club <Icon name="arrow" className="h-4 w-4 transition group-hover:translate-x-1" />
                   </Link>
                 )}
-                <button onClick={() => scrollTo("play")} className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Discover the club</button>
+                <Link href="/trial" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Book a trial</Link>
+                <Link href="/courts" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Courts</Link>
+                <button onClick={() => scrollTo("membership")} className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Membership</button>
+              </div>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Club staff:</span>
+                <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-md transition hover:bg-[#dfff45]">
+                  Sign in <Icon name="arrow" className="h-3.5 w-3.5" />
+                </Link>
               </div>
             </div>
             <div className="mt-16 flex flex-wrap gap-x-12 gap-y-5 border-t border-white/20 pt-6 text-[10px] uppercase tracking-[.18em] text-white/55 lg:absolute lg:bottom-20 lg:right-12 lg:mt-0 lg:w-[430px]">
-              <span className="flex items-center gap-2"><Icon name="pin" className="h-4 w-4 text-[#dfff45]" />Cityside, Amsterdam</span>
-              <span className="flex items-center gap-2"><Icon name="clock" className="h-4 w-4 text-[#dfff45]" />Open daily 07–00</span>
+              <span className="flex items-center gap-2"><Icon name="pin" className="h-4 w-4 text-[#dfff45]" />Jalandhar, Punjab</span>
+              <span className="flex items-center gap-2"><Icon name="clock" className="h-4 w-4 text-[#dfff45]" />Open daily 6 AM – 10 PM</span>
             </div>
           </div>
         </section>
@@ -535,8 +549,17 @@ export default function Home() {
 
       <footer className="bg-[#10251a] px-5 py-10 text-white sm:px-8">
         <div className="mx-auto flex max-w-[1280px] flex-col justify-between gap-8 border-b border-white/10 pb-10 md:flex-row md:items-center">
-          <div className="font-display text-3xl font-bold uppercase">Champions <span className="text-[#dfff45]">Club.</span></div>
-          <div className="flex flex-wrap gap-7 text-xs text-white/55"><button onClick={() => scrollTo("club")}>About</button><button onClick={() => scrollTo("membership")}>Membership</button><button onClick={() => setNotice("Events calendar coming soon")}>Events</button><button onClick={() => setNotice("Contact details copied")}>Contact</button><Icon name="instagram" className="h-4 w-4 text-white" /></div>
+          <Link href="/" className="font-display text-3xl font-bold uppercase">Champions <span className="text-[#dfff45]">Club.</span></Link>
+          <div className="flex flex-wrap gap-7 text-xs text-white/55">
+            <Link href="/courts" className="transition hover:text-white">Courts</Link>
+            <Link href="/shop" className="transition hover:text-white">Shop</Link>
+            <Link href="/bar" className="transition hover:text-white">Bar &amp; Café</Link>
+            <Link href="/trial" className="transition hover:text-white">Book a trial</Link>
+            <Link href="/#membership" className="transition hover:text-white">Membership</Link>
+            <button onClick={() => setNotice("Events calendar coming soon")}>Events</button>
+            <button onClick={() => setNotice("Contact details: frontdesk@champions.club")}>Contact</button>
+            <Icon name="instagram" className="h-4 w-4 text-white" />
+          </div>
         </div>
         <div className="mx-auto mt-7 flex max-w-[1280px] flex-col justify-between gap-3 text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row"><span>© 2025 Champions Club</span><span>Play · Eat · Belong</span></div>
       </footer>

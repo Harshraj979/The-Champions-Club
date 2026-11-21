@@ -17,9 +17,17 @@ const staffLinksFor = (role: StaffDTO["role"]) => {
     { href: "/members", label: "Members" },
     { href: "/enquiries", label: "Enquiries" },
   ];
-  if (role === "OWNER") return [{ href: "/dashboard", label: "Dashboard" }, ...desk];
+  if (role === "OWNER") return [{ href: "/dashboard", label: "Dashboard" }, ...desk, { href: "/bar", label: "Bar" }, { href: "/shop", label: "Shop" }];
   if (role === "FRONT_DESK" || role === "STAFF") return desk;
-  return [];
+  if (role === "BAR") return [{ href: "/bar", label: "Bar" }];
+  return [{ href: "/shop", label: "Shop" }];
+};
+const roleLabel: Record<StaffDTO["role"], string> = {
+  OWNER: "Owner",
+  FRONT_DESK: "Front desk",
+  STAFF: "Staff",
+  BAR: "Bar",
+  SHOP: "Shop",
 };
 
 export default function Nav() {
@@ -61,7 +69,7 @@ export default function Nav() {
     window.location.href = "/";
   }
 
-  const links = staff ? [...publicLinks, ...staffLinksFor(staff.role)] : publicLinks;
+  const links = staff ? staffLinksFor(staff.role) : publicLinks;
 
   return (
     <header className="nav">
@@ -78,7 +86,7 @@ export default function Nav() {
         <div className="nav-end">
           {staff ? (
             <>
-              <span className="staff-name">{staff.name}</span>
+              <span className="staff-chip">{staff.name}<span className="chip-role">{roleLabel[staff.role]}</span></span>
               <button className="btn btn-quiet" onClick={signStaffOut}>Sign out</button>
             </>
           ) : member ? (
@@ -90,7 +98,7 @@ export default function Nav() {
             </>
           ) : (
             <>
-              <Link className="btn btn-quiet" href="/member-login">Member sign-in</Link>
+              <Link className="btn btn-paper" href="/member-login">Member sign-in</Link>
               <Link className="btn btn-quiet text-xs opacity-60" href="/login" title="Staff portal sign in">Staff</Link>
             </>
           )}
@@ -115,7 +123,10 @@ export default function Nav() {
             <Link href="/member-login?tab=signup">Join the club</Link>
           )}
           {staff ? (
-            <button className="mobile-signout" onClick={signStaffOut}>Sign out ({staff.name})</button>
+            <>
+              <span className="mobile-chip">{staff.name} · {roleLabel[staff.role]}</span>
+              <button className="mobile-signout" onClick={signStaffOut}>Sign out</button>
+            </>
           ) : member ? (
             <button className="mobile-signout" onClick={signMemberOut}>Sign out ({member.name})</button>
           ) : (
