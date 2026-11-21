@@ -75,8 +75,13 @@ export async function createOrder(input: {
       include: { items: { include: { product: true } } },
     });
     for (const l of lines) {
-      if (l.product.stock !== null)
-        await tx.product.update({ where: { id: l.product.id }, data: { stock: { decrement: l.qty } } });
+      if (l.product.stock !== null) {
+        const updated = await tx.product.updateMany({
+          where: { id: l.product.id, stock: { gte: l.qty } },
+          data: { stock: { decrement: l.qty } },
+        });
+        if (updated.count === 0) throw conflict(`${l.product.name} is out of stock`);
+      }
     }
     return order;
   });
