@@ -182,12 +182,14 @@ export default function Home() {
                 <Link href="/courts" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Courts</Link>
                 <button onClick={() => scrollTo("membership")} className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Membership</button>
               </div>
-              <div className="mt-6 flex flex-wrap items-center gap-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Club staff:</span>
-                <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-md transition hover:bg-[#dfff45]">
-                  Sign in <Icon name="arrow" className="h-3.5 w-3.5" />
-                </Link>
-              </div>
+              {!member && (
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Club staff:</span>
+                  <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-md transition hover:bg-[#dfff45]">
+                    Sign in <Icon name="arrow" className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              )}
             </div>
             <div className="mt-16 flex flex-wrap gap-x-12 gap-y-5 border-t border-white/20 pt-6 text-[10px] uppercase tracking-[.18em] text-white/55 lg:absolute lg:bottom-20 lg:right-12 lg:mt-0 lg:w-[430px]">
               <span className="flex items-center gap-2"><Icon name="pin" className="h-4 w-4 text-[#dfff45]" />Jalandhar, Punjab</span>
