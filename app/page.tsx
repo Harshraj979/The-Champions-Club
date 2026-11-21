@@ -5,6 +5,7 @@ import { useApi } from "@/lib/use-api";
 import { allStarts, fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
 import Reveal from "@/components/Reveal";
+import { Clock, MapPin } from "lucide-react";
 
 const starts = allStarts();
 
@@ -28,19 +29,23 @@ export default function Home() {
   return (
     <main>
       <section className="hero">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/hero.jpg" alt="The club ground, seen from above" width={2744} height={1568} fetchPriority="high" />
+        <div className="hero-shade" />
         <div className="hero-in">
           <div className="hero-text">
-            <h1>First serve at six. Last over by dusk.</h1>
+            <p className="hero-eyebrow">Tennis · Cricket · Bar &amp; Café</p>
+            <h1>First serve at six.<br /><span className="volt">Last over by dusk.</span></h1>
             <p>Two tennis courts, a cricket pitch, a gear shop and a bar that knows your name. Booked in seconds, not WhatsApp threads.</p>
             <div className="hero-actions">
               <Link className="btn btn-ink" href="/trial">Book a free trial</Link>
-              <Link className="btn btn-quiet" href="/courts">See court times</Link>
+              <Link className="btn btn-ghost-light" href="/courts">See court times</Link>
+            </div>
+            <div className="hero-meta">
+              <span><MapPin size={15} /> Front desk · +91 98765 43210</span>
+              <span><Clock size={15} /> Open daily 6 AM – 10 PM</span>
             </div>
           </div>
-        </div>
-        <div className="hero-photo">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero.jpg" alt="The club ground, seen from above" width={2744} height={1568} fetchPriority="high" />
         </div>
         <div className="today-card">
           {schedule.loading ? (
