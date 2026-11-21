@@ -153,21 +153,21 @@ export default function Bar() {
           </section>
 
           <div className="panel panel-main">
-          <div className="bar-open-grid" style={{ maxWidth: 640 }}>
+          <div className="bar-open-grid" style={{ maxWidth: 640, gridTemplateColumns: "1fr auto" }}>
             <div>
               <label htmlFor="b-who">Open a tab for</label>
               <input id="b-who" value={who} onChange={(e) => setWho(e.target.value)} placeholder="Member or guest name" />
             </div>
-            <div>
-              <label>Table</label>
-              <div className="seg" role="group" aria-label="Table">
-                <button aria-pressed={tableNo === null} onClick={() => setTableNo(null)}>None</button>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <button key={n} aria-pressed={tableNo === n} disabled={open.some((t) => t.tableNo === n)} onClick={() => setTableNo(n)}>T{n}</button>
-                ))}
-              </div>
-            </div>
             <button className="btn btn-ink" disabled={!who.trim() || busy} onClick={openNew}>Open tab</button>
+          </div>
+          <div style={{ marginTop: 14 }}>
+            <label>Table</label>
+            <div className="seg" role="group" aria-label="Table">
+              <button aria-pressed={tableNo === null} onClick={() => setTableNo(null)}>None</button>
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <button key={n} aria-pressed={tableNo === n} disabled={open.some((t) => t.tableNo === n)} onClick={() => setTableNo(n)}>T{n}</button>
+              ))}
+            </div>
           </div>
 
           {open.length > 0 && (
