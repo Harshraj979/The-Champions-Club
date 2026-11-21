@@ -124,6 +124,18 @@ export async function createBooking(input: {
     if (sameDay.some((b) => overlaps(b.start, input.start)))
       throw conflict("That court is already booked at that time");
 
+    if (input.type === "TRIAL") {
+      // Trials are free, so one phone number gets one trial a day —
+      // otherwise a single number could block a court all day.
+      const digits = input.phone.replace(/\D/g, "");
+      const trials = await tx.booking.findMany({
+        where: { date: day, state: "BOOKED", type: "TRIAL" },
+        select: { phone: true },
+      });
+      if (trials.some((t) => t.phone.replace(/\D/g, "") === digits))
+        throw conflict("One free trial per phone number per day");
+    }
+
     if (input.type === "REGULAR") {
       const mine = await tx.booking.count({
         where: {
