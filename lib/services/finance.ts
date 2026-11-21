@@ -9,7 +9,10 @@ import type { ExpenseDTO, InvoiceDTO, PayrollDTO } from "../types";
 const iso = (d: Date) => d.toISOString().slice(0, 10);
 
 export async function listInvoices(): Promise<InvoiceDTO[]> {
-  const rows = await db.invoice.findMany({ orderBy: [{ status: "asc" }, { issuedOn: "desc" }] });
+  const rows = await db.invoice.findMany({ orderBy: { issuedOn: "desc" } });
+  // Unpaid first — money owed should not be buried under paid bills.
+  // (status is a plain String, so Prisma cannot order UNPAID before PAID.)
+  rows.sort((a, b) => Number(a.status === "PAID") - Number(b.status === "PAID"));
   return rows.map((r) => ({
     id: r.id, billedTo: r.billedTo, detail: r.detail, amount: r.amount,
     status: r.status === "PAID" ? "PAID" : "UNPAID",
