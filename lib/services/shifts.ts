@@ -16,7 +16,10 @@ export async function listShifts(fromISO: string, toISO: string): Promise<ShiftD
   const rows = await db.shift.findMany({
     where: { date: { gte: day(fromISO), lte: day(toISO) } },
     include: { staff: true },
-    orderBy: [{ date: "asc" }, { part: "asc" }],
+    // MORNING before EVENING: alphabetically EVENING < MORNING, so
+    // part sorts descending. (part is a plain String; the DTO below
+    // still coerces anything that is not EVENING to MORNING.)
+    orderBy: [{ date: "asc" }, { part: "desc" }],
   });
   return rows.map((r) => ({
     id: r.id,
