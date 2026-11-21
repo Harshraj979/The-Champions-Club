@@ -1,16 +1,15 @@
 import type { ReactNode } from "react";
-import { Anton, Poppins } from "next/font/google";
+import { Poppins } from "next/font/google";
 import Link from "next/link";
 import Nav from "@/components/Nav";
 import "./globals.css";
 
 const poppins = Poppins({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-poppins" });
-const anton = Anton({ subsets: ["latin"], weight: ["400"], variable: "--font-anton" });
 export const metadata = { title: "The Champions Club", description: "Two tennis courts, a cricket pitch, a gear shop and a bar. One club, open 6 AM to 10 PM." };
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${poppins.variable} ${anton.variable}`}>
+    <html lang="en" className={poppins.variable}>
       <body>
         <Nav />
         {children}

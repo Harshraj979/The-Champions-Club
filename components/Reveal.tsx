@@ -21,7 +21,7 @@ export default function Reveal({ children }: { children: ReactNode }) {
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={show ? { opacity: 1, y: 0 } : undefined}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
