@@ -60,6 +60,36 @@ export type DashboardDTO = {
   expiring: ExpiringDTO[];
 };
 
+export type InvoiceDTO = {
+  id: number;
+  billedTo: string;
+  detail: string;
+  amount: number;
+  status: "UNPAID" | "PAID";
+  issuedOn: string;
+  paidAt: string | null;
+};
+
+export type ExpenseDTO = {
+  id: number;
+  title: string;
+  category: string;
+  amount: number;
+  spentOn: string;
+  note: string;
+};
+
+export type PayrollDTO = {
+  id: number;
+  staffName: string;
+  month: string;
+  salary: number;
+  leaveDays: number;
+  tax: number;
+  net: number;
+  status: "PENDING" | "PAID";
+};
+
 export type ExpiringDTO = {
   id: number;
   name: string;

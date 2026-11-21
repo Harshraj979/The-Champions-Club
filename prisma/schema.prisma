@@ -173,6 +173,39 @@ model Tab {
   @@index([settledAt])
 }
 
+// Owner finance, kept light: bills the club sends out, money going
+// out, and the monthly staff pay record. One small table each.
+model Invoice {
+  id       Int       @id @default(autoincrement())
+  billedTo String // member or business client
+  detail   String    @default("") // what it is for
+  amount   Int // rupees
+  status   String    @default("UNPAID") // UNPAID | PAID
+  issuedOn DateTime  @default(now())
+  paidAt   DateTime?
+}
+
+model Expense {
+  id        Int      @id @default(autoincrement())
+  title     String
+  category  String   @default("General") // Rent, Utilities, Supplies, Maintenance, Other
+  amount    Int // rupees
+  spentOn   DateTime // the day the money went out (UTC date)
+  note      String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model Payroll {
+  id        Int      @id @default(autoincrement())
+  staffName String
+  month     String // "2026-11"
+  salary    Int // rupees for the month
+  leaveDays Int      @default(0)
+  tax       Int      @default(0) // tax deducted, rupees
+  status    String   @default("PENDING") // PENDING | PAID
+  createdAt DateTime @default(now())
+}
+
 model Enquiry {
   id        Int           @id @default(autoincrement())
   name      String

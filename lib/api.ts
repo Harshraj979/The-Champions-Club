@@ -1,4 +1,4 @@
-import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, ExpiringDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PlanDTO, ProductDTO, StaffDTO, TabDTO } from "./types";
+import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, ExpenseDTO, ExpiringDTO, InvoiceDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PayrollDTO, PlanDTO, ProductDTO, StaffDTO, TabDTO } from "./types";
 
 // The web app's one door to the API. Every page fetches through here, so
 // error handling and the base path live in exactly one place. A mobile
@@ -75,6 +75,14 @@ export const api = {
     payOnline?: boolean;
   }) => post<OrderDTO & { razorpayOrderId?: string }>("/orders", input),
   orders: () => call<OrderDTO[]>("/orders"),
+  invoices: () => call<InvoiceDTO[]>("/invoices"),
+  createInvoice: (input: { billedTo: string; detail?: string; amount: number }) => post<InvoiceDTO>("/invoices", input),
+  payInvoice: (id: number) => post<InvoiceDTO>(`/invoices/${id}/pay`, {}),
+  expenses: () => call<ExpenseDTO[]>("/expenses"),
+  createExpense: (input: { title: string; category?: string; amount: number; spentOn: string; note?: string }) => post<ExpenseDTO>("/expenses", input),
+  payroll: () => call<PayrollDTO[]>("/payroll"),
+  createPayroll: (input: { staffName: string; month: string; salary: number; leaveDays?: number; tax?: number }) => post<PayrollDTO>("/payroll", input),
+  payPayroll: (id: number) => post<PayrollDTO>(`/payroll/${id}/pay`, {}),
   payConfig: () => call<{ enabled: boolean; keyId: string | null }>("/payments/config"),
   confirmPayment: (id: number, proof: { razorpayOrderId: string; paymentId: string; signature: string }) =>
     post<OrderDTO>(`/orders/${id}/pay-confirm`, proof),
