@@ -83,6 +83,8 @@ export async function createPayroll(input: { staffName: string; month: string; s
   if (!Number.isInteger(input.tax) || input.tax < 0) throw badRequest("Tax cannot be negative");
   if (input.tax > input.salary) throw badRequest("Tax cannot be more than the salary — the net would be negative");
   if (!isMonth(input.month)) throw badRequest("Month must be YYYY-MM with a real month (01-12)");
+  const dup = await db.payroll.findFirst({ where: { staffName: input.staffName, month: input.month } });
+  if (dup) throw conflict(`${input.staffName} already has a payroll record for ${input.month}`);
   const r = await db.payroll.create({ data: input });
   return {
     id: r.id, staffName: r.staffName, month: r.month, salary: r.salary,
