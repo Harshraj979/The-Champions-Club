@@ -95,8 +95,9 @@ export default function Home() {
           <div className="flex items-center gap-3">
             {member ? (
               <>
-                <Link href="/courts" className="hidden text-xs font-bold text-[#dfff45] sm:block hover:underline">
-                  ⚡ {member.name} ({member.plan ? member.plan.name : "No Plan"})
+                <Link href="/courts" className="member-chip hidden sm:inline-flex" title="View courts and membership status">
+                  <span>⚡ {member.name}</span>
+                  <span className="chip-tier">{member.plan ? member.plan.name : "No Plan"}</span>
                 </Link>
                 <button onClick={handleMemberLogout} className="hidden text-xs font-semibold text-white/75 hover:text-white sm:block">
                   Sign out

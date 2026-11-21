@@ -91,8 +91,9 @@ export default function Nav() {
             </>
           ) : member ? (
             <>
-              <Link href="/courts" className="staff-name font-bold text-xs" style={{ color: "var(--brand-ink, #163021)" }}>
-                ⚡ {member.name} ({member.plan ? member.plan.name : "No Plan"})
+              <Link href="/courts" className="member-chip" title="View courts and membership status">
+                <span>⚡ {member.name}</span>
+                <span className="chip-tier">{member.plan ? member.plan.name : "No Plan"}</span>
               </Link>
               <button className="btn btn-quiet" onClick={signMemberOut}>Sign out</button>
             </>
