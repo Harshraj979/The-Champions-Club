@@ -3,11 +3,8 @@
 // The landing page, implemented exactly from the user's Figma Make design
 // ("Sports Club Management System"). Only wiring differs: Member login goes
 // to the real staff sign-in. Everything else keeps the design's behaviour.
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
-import { allStarts, inr, istMinutesNow, todayISO } from "@/lib/format";
-import type { PlanDTO, ProductDTO } from "@/lib/types";
 
 type IconName = "arrow" | "menu" | "close" | "court" | "cup" | "bag" | "clock" | "pin" | "instagram";
 
@@ -27,7 +24,7 @@ function Icon({ name, className = "h-5 w-5" }: { name: IconName; className?: str
 }
 
 const facilities = [
-  { number: "01", title: "Courts", description: "Three championship courts — two tennis, one cricket — thoughtfully designed for every level of play.", icon: "court" as IconName, meta: "3 courts · Tennis & cricket", href: "/courts" },
+  { number: "01", title: "Courts", description: "Six championship padel and tennis courts, thoughtfully designed for every level of play.", icon: "court" as IconName, meta: "6 premium courts", href: "/courts" },
   { number: "02", title: "Clubhouse", description: "A relaxed bar and kitchen serving all-day plates, considered drinks, and post-match rituals.", icon: "cup" as IconName, meta: "Open until late", href: "/bar" },
   { number: "03", title: "Pro shop", description: "Technical essentials, fresh club apparel, and expert advice—all right where you play.", icon: "bag" as IconName, meta: "Curated for players", href: "/shop" },
 ];
@@ -36,35 +33,6 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [email, setEmail] = useState("");
-
-  // Live data: plans, today's court availability and a few shop items.
-  // Each load is independent — if one fails, that strip hides and the
-  // rest of the page carries on. Nothing here is hard-coded.
-  const [plans, setPlans] = useState<PlanDTO[] | null>(null);
-  const [freeCourts, setFreeCourts] = useState<{ free: number; total: number } | null>(null);
-  const [shopPicks, setShopPicks] = useState<ProductDTO[] | null>(null);
-  useEffect(() => {
-    let live = true;
-    void api.plans().then((ps) => { if (live) setPlans(ps); }).catch(() => {});
-    void Promise.all([api.courts(), api.schedule(todayISO())])
-      .then(([courts, bookings]) => {
-        if (!live) return;
-        const taken = new Map<number, Set<number>>();
-        for (const b of bookings) {
-          if (b.state !== "BOOKED") continue;
-          if (!taken.has(b.courtId)) taken.set(b.courtId, new Set());
-          taken.get(b.courtId)!.add(b.start);
-        }
-        const now = istMinutesNow();
-        const free = courts.filter((c) => allStarts().some((s) => s > now && !taken.get(c.id)?.has(s))).length;
-        setFreeCourts({ free, total: courts.length });
-      })
-      .catch(() => {});
-    void api.products("GEAR")
-      .then((ps) => { if (live) setShopPicks(ps.filter((x) => x.stock === null || x.stock > 0).slice(0, 4)); })
-      .catch(() => {});
-    return () => { live = false; };
-  }, []);
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -96,8 +64,7 @@ export default function Home() {
           <div className="border-t border-white/10 bg-[#132b1d] px-5 py-6 lg:hidden">
             {[["Courts", "/courts"], ["Shop", "/shop"], ["Bar & Café", "/bar"], ["Book a trial", "/trial"], ["Membership", "/#membership"]].map(([item, href]) => <Link key={item} href={href} onClick={() => setMenuOpen(false)} className="block w-full border-b border-white/10 py-4 text-left font-display text-xl font-bold uppercase">{item}</Link>)}
             <Link href="/trial" onClick={() => setMenuOpen(false)} className="mt-6 block w-full rounded-full bg-[#dfff45] py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Book a trial</Link>
-            <Link href="/member/login" onClick={() => setMenuOpen(false)} className="mt-3 block w-full rounded-full bg-white py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Member sign in</Link>
-            <Link href="/login" onClick={() => setMenuOpen(false)} className="mt-3 block w-full rounded-full bg-white py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Staff sign in</Link>
+            <Link href="/login" onClick={() => setMenuOpen(false)} className="mt-3 block w-full rounded-full bg-white py-4 text-center text-xs font-bold uppercase tracking-wider text-[#173020]">Sign in</Link>
           </div>
         )}
       </header>
@@ -105,11 +72,11 @@ export default function Home() {
       <main>
         <section id="home" className="relative flex min-h-[760px] items-end overflow-hidden bg-[#10251a] text-white lg:min-h-screen">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/hero.jpg" alt="Tennis player on court at Champions Club" className="absolute inset-0 h-full w-full object-cover object-center" />
-          <div className="absolute inset-0 bg-[linear-gradient(0deg,rgba(7,23,14,.84)_0%,rgba(8,28,17,.36)_48%,rgba(8,28,17,.52)_100%)]" />
-          <div className="relative mx-auto w-full max-w-[1440px] px-5 py-36 sm:px-8 lg:px-12 lg:py-28">
-            <div className="mx-auto flex max-w-[880px] flex-col items-center text-center">
-              <div className="mb-7 flex items-center justify-center gap-3"><span className="h-px w-10 bg-[#dfff45]" /><span className="text-[10px] font-bold uppercase tracking-[.28em] text-[#dfff45]">Courts · Kitchen · Community</span><span className="h-px w-10 bg-[#dfff45]" /></div>
+          <img src="/hero.jpg" alt="Padel player on court at Champions Club" className="absolute inset-0 h-full w-full object-cover object-[62%_center]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,28,17,.94)_0%,rgba(9,30,18,.74)_35%,rgba(9,29,18,.1)_70%),linear-gradient(0deg,rgba(7,23,14,.72)_0%,transparent_45%)]" />
+          <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-16 pt-36 sm:px-8 lg:px-12 lg:pb-20">
+            <div className="max-w-[720px]">
+              <div className="mb-7 flex items-center gap-3"><span className="h-px w-10 bg-[#dfff45]" /><span className="text-[10px] font-bold uppercase tracking-[.28em] text-[#dfff45]">Courts · Kitchen · Community</span></div>
               <h1 className="font-display text-[64px] font-bold uppercase leading-[.84] tracking-[-.035em] sm:text-[86px] lg:text-[118px]">Play hard.<br /><span className="text-[#dfff45]">Stay longer.</span></h1>
               <p className="mt-8 max-w-lg text-sm leading-7 text-white/70 sm:text-base">More than a place to play. Champions is your home court, your local, and your community—all under one roof.</p>
               <div className="mt-9 flex flex-wrap gap-3">
@@ -117,11 +84,7 @@ export default function Home() {
                 <Link href="/courts" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Courts</Link>
                 <Link href="/#membership" className="rounded-full border border-white/35 px-6 py-4 text-xs font-bold uppercase tracking-wider text-white transition hover:bg-white hover:text-[#163021]">Membership</Link>
               </div>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Members:</span>
-                <Link href="/member/login" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-md transition hover:bg-[#dfff45]">
-                  Member sign in <Icon name="arrow" className="h-3.5 w-3.5" />
-                </Link>
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <span className="text-xs font-semibold uppercase tracking-wider text-white/70">Club staff:</span>
                 <Link href="/login" className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-md transition hover:bg-[#dfff45]">
                   Sign in <Icon name="arrow" className="h-3.5 w-3.5" />
@@ -130,11 +93,6 @@ export default function Home() {
             </div>
             <div className="mt-16 flex flex-wrap gap-x-12 gap-y-5 border-t border-white/20 pt-6 text-[10px] uppercase tracking-[.18em] text-white/55 lg:absolute lg:bottom-20 lg:right-12 lg:mt-0 lg:w-auto">
               <span className="flex items-center gap-2"><Icon name="clock" className="h-4 w-4 text-[#dfff45]" />Open daily 6 AM – 10 PM</span>
-              {freeCourts && freeCourts.total > 0 && (
-                <Link href="/courts" className="flex items-center gap-2 text-white transition hover:text-[#dfff45]">
-                  <Icon name="court" className="h-4 w-4 text-[#dfff45]" />Today: {freeCourts.free} of {freeCourts.total} courts have free slots
-                </Link>
-              )}
             </div>
           </div>
         </section>
@@ -170,23 +128,6 @@ export default function Home() {
           </div>
         </section>
 
-        {shopPicks && shopPicks.length > 0 && (
-          <section className="bg-[#f2f0e8] py-20 sm:py-24">
-            <div className="mx-auto max-w-[1280px] px-5 text-center sm:px-8">
-              <p className="eyebrow">From the pro shop</p>
-              <h2 className="mt-4 font-display text-4xl font-bold uppercase sm:text-5xl">In stock today.</h2>
-              <div className="mt-10 flex flex-wrap justify-center gap-3">
-                {shopPicks.map((x) => (
-                  <Link href="/shop" key={x.id} className="rounded-full border border-[#173021]/15 bg-white px-5 py-3 text-sm font-semibold transition hover:border-[#173021] hover:bg-[#dfff45]">
-                    {x.name} · <span className="num">{inr(x.price)}</span>
-                  </Link>
-                ))}
-              </div>
-              <Link href="/shop" className="mt-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider underline underline-offset-4 transition hover:text-[#294d36]">Visit the shop <Icon name="arrow" className="h-4 w-4" /></Link>
-            </div>
-          </section>
-        )}
-
         <section id="clubhouse" className="grid min-h-[620px] lg:grid-cols-2">
           <div className="clubhouse-art relative min-h-[420px] overflow-hidden">
             <div className="absolute inset-0 bg-[linear-gradient(140deg,transparent_40%,rgba(9,30,18,.35))]" />
@@ -207,18 +148,6 @@ export default function Home() {
             <p className="eyebrow">Memberships now open</p>
             <h2 className="mx-auto mt-5 max-w-4xl font-display text-6xl font-bold uppercase leading-[.88] tracking-tight sm:text-8xl">Make Champions<br /><span className="text-[#7c887e]">your home court.</span></h2>
             <p className="mx-auto mt-7 max-w-xl text-sm leading-7 text-[#68746b]">Priority booking, member rates, club events, and a community that always has room for one more.</p>
-            {plans && plans.length > 0 && (
-              <div className="plan-grid mt-12 text-left">
-                {plans.map((pl) => (
-                  <article className={`plan-card${pl.code === "gold" ? " plan-gold" : ""}`} key={pl.code}>
-                    <h3 className="plan-name">{pl.name}</h3>
-                    <p className="plan-from">From <span className="num">{inr(Math.min(pl.tennisPrice, pl.cricketPrice))}</span> a session · {pl.termDays} days</p>
-                    <p className="text-sm leading-6" style={{ opacity: 0.75 }}>Save {pl.shopDiscount}% in the shop · {pl.barDiscount}% at the bar</p>
-                  </article>
-                ))}
-              </div>
-            )}
-            <p className="mt-8"><Link href="/plans" className="text-xs font-bold uppercase tracking-wider underline underline-offset-4 transition hover:text-[#294d36]">See all plans &amp; prices</Link></p>
             <div className="mx-auto mt-10 flex max-w-md rounded-full border border-[#173021]/15 bg-white p-1.5 shadow-sm">
               <input aria-label="Email address" placeholder="Your email address" value={email} onChange={(e) => setEmail(e.target.value)} className="min-w-0 flex-1 bg-transparent px-5 text-sm outline-none placeholder:text-[#849087]" />
               <button onClick={async () => {
@@ -245,11 +174,12 @@ export default function Home() {
             <Link href="/bar" className="transition hover:text-white">Bar &amp; Café</Link>
             <Link href="/trial" className="transition hover:text-white">Book a trial</Link>
             <Link href="/#membership" className="transition hover:text-white">Membership</Link>
-            <a href="mailto:frontdesk@champions.club" className="transition hover:text-white">Contact</a>
+            <button onClick={() => setNotice("Events calendar coming soon")}>Events</button>
+            <button onClick={() => setNotice("Contact details: frontdesk@champions.club")}>Contact</button>
             <Icon name="instagram" className="h-4 w-4 text-white" />
           </div>
         </div>
-        <div className="mx-auto mt-7 flex max-w-[1280px] flex-col items-center gap-3 text-center text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row sm:justify-center sm:gap-10"><span>© 2026 Champions Club</span><span>Play · Eat · Belong</span></div>
+        <div className="mx-auto mt-7 flex max-w-[1280px] flex-col justify-between gap-3 text-[9px] uppercase tracking-[.15em] text-white/30 sm:flex-row"><span>© 2025 Champions Club</span><span>Play · Eat · Belong</span></div>
       </footer>
 
       {notice && <div className="make-toast fixed bottom-5 right-5 z-50 rounded-full bg-white px-5 py-3 text-xs font-bold text-[#173021] shadow-2xl">{notice}</div>}
