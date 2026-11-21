@@ -41,7 +41,7 @@ export async function createOrder(input: {
   if (input.payOnline && !razorpayConfigured())
     throw badRequest("Online payment is not switched on yet. Pay at the counter instead.");
   const member = await findMemberByName(input.name);
-  const active = member && memberState(member.expiresOn) === "active";
+  const active = member && memberState(member.expiresOn) !== "expired";
   const discountPct = active ? member.plan.shopDiscount : 0;
 
   const created = await db.$transaction(async (tx) => {
