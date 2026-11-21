@@ -2,24 +2,50 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { api } from "@/lib/api";
+import type { StaffDTO } from "@/lib/types";
 
-const links = [
+const publicLinks = [
   { href: "/courts", label: "Courts" },
   { href: "/#plans", label: "Membership" },
   { href: "/shop", label: "Shop" },
   { href: "/bar", label: "Bar & Café" },
-  { href: "/dashboard", label: "Staff" },
+];
+const staffLinks = [
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/bookings", label: "Bookings" },
+  { href: "/members", label: "Members" },
 ];
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const [staff, setStaff] = useState<StaffDTO | null>(null);
   const path = usePathname();
-  useEffect(() => { setOpen(false); }, [path]);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    setOpen(false);
+  }, [path]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+  useEffect(() => {
+    api.me()
+      .then((r) => setStaff(r.staff))
+      .catch(() => setStaff(null));
+  }, [path]);
+
+  async function signOut() {
+    await api.logout().catch(() => {});
+    setStaff(null);
+    window.location.href = "/";
+  }
+
+  const links = staff ? [...publicLinks, ...staffLinks] : publicLinks;
+
   return (
     <header className="nav">
       <div className="nav-in">
@@ -30,6 +56,14 @@ export default function Nav() {
           ))}
         </nav>
         <div className="nav-end">
+          {staff ? (
+            <>
+              <span className="staff-name">{staff.name}</span>
+              <button className="btn btn-quiet" onClick={signOut}>Sign out</button>
+            </>
+          ) : (
+            <Link className="btn btn-quiet" href="/login">Staff sign-in</Link>
+          )}
           <Link className="btn btn-ink" href="/trial">Book a free trial</Link>
           <button className="menu-btn" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? "✕" : "☰"}
@@ -38,8 +72,15 @@ export default function Nav() {
       </div>
       {open && (
         <nav className="nav-mobile" aria-label="Club">
-          {links.map((l) => <Link key={l.href} href={l.href}>{l.label}</Link>)}
+          {links.map((l) => (
+            <Link key={l.href} href={l.href}>{l.label}</Link>
+          ))}
           <Link href="/trial">Book a free trial</Link>
+          {staff ? (
+            <button className="mobile-signout" onClick={signOut}>Sign out ({staff.name})</button>
+          ) : (
+            <Link href="/login">Staff sign-in</Link>
+          )}
         </nav>
       )}
     </header>

@@ -1,43 +1,73 @@
 "use client";
-import { todayBookings, todayISO, fmtTime, inr } from "@/lib/data";
-import { useStore } from "@/lib/store";
+import { useState } from "react";
+import { api, ApiClientError } from "@/lib/api";
+import { useApi } from "@/lib/use-api";
+import { fmtTime, inr } from "@/lib/format";
+import { Loading, ErrorBox, Empty } from "@/components/States";
+
+const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
 
 export default function Bookings() {
-  const { store, cancelBooking } = useStore();
-  const today = todayISO();
-  const seeds = todayBookings.map((b) => ({
-    id: b.id, date: today, court: b.court, who: b.who, time: b.time, type: b.type, price: b.price,
-    state: store.cancelledSeeds.includes(b.id) ? "cancelled" : "booked", seed: true,
-  }));
-  const mine = store.bookings.map((b) => ({ ...b, seed: false }));
-  const rows = [...seeds, ...mine].sort((a, b) => a.date.localeCompare(b.date) || a.time - b.time);
-  const live = rows.filter((b) => b.state === "booked");
+  const [date, setDate] = useState("");
+  const [msg, setMsg] = useState("");
+  const bookings = useApi(() => api.bookings(date || undefined), [date]);
+  const rows = bookings.data ?? [];
+  const live = rows.filter((b) => b.state === "BOOKED");
+
+  async function cancel(id: number) {
+    setMsg("");
+    try {
+      await api.cancelBooking(id);
+      void bookings.reload();
+    } catch (e) {
+      setMsg(e instanceof ApiClientError ? e.message : "Cancelling failed. Try again.");
+    }
+  }
 
   return (
     <main className="wrap page">
       <div className="page-head">
         <h1 className="page-title">Bookings</h1>
-        <p className="sub">Every booking on the books. Cancelling frees the slot at once. Staff view.</p>
+        <p className="sub">Every booking on the books from today on. Cancelling frees the slot at once. Staff view.</p>
       </div>
-      {live.length === 0 ? (
-        <div className="empty">No bookings standing. Everything has been cancelled, and the courts are free.</div>
+
+      <div style={{ maxWidth: 260, marginBottom: 8 }}>
+        <label htmlFor="b-date">Show one day</label>
+        <input id="b-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        {date && (
+          <button className="text-link" style={{ marginTop: 6 }} onClick={() => setDate("")}>
+            Show all upcoming days
+          </button>
+        )}
+      </div>
+
+      {msg && <div className="notice err" role="alert">{msg}</div>}
+      {bookings.loading ? (
+        <Loading />
+      ) : bookings.error ? (
+        <ErrorBox message={bookings.error} onRetry={bookings.reload} />
+      ) : live.length === 0 ? (
+        <Empty>No bookings standing. The courts are free.</Empty>
       ) : (
-        <table className="ledger">
-          <thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Who</th><th className="hide-m">Price</th><th>Status</th><th /></tr></thead>
-          <tbody>
-            {rows.map((b) => (
-              <tr key={`${b.seed ? "s" : "m"}-${b.id}`}>
-                <td className="num">{b.date}</td>
-                <td className="num">{fmtTime(b.time)}</td>
-                <td>{b.court}</td>
-                <td>{b.who}</td>
-                <td className="num hide-m">{b.price ? inr(b.price) : "Plan"}</td>
-                <td><span className={`status ${b.state}`}>{b.state === "booked" ? "Booked" : "Cancelled"}</span></td>
-                <td className="r">{b.state === "booked" && <button className="text-link" onClick={() => cancelBooking(b.id, b.seed)}>Cancel</button>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="ledger-wrap">
+          <table className="ledger">
+            <thead><tr><th>Date</th><th>Time</th><th>Court</th><th>Who</th><th className="hide-m">Type</th><th className="hide-m">Price</th><th>Status</th><th /></tr></thead>
+            <tbody>
+              {rows.map((b) => (
+                <tr key={b.id}>
+                  <td className="num">{b.date}</td>
+                  <td className="num">{fmtTime(b.start)}</td>
+                  <td>{b.court}</td>
+                  <td>{b.who}{b.type === "TRIAL" && b.phone ? <span className="muted"> · {b.phone}</span> : null}</td>
+                  <td className="hide-m">{typeLabel[b.type]}</td>
+                  <td className="num hide-m">{b.price ? inr(b.price) : "Plan"}</td>
+                  <td><span className={`status ${b.state === "BOOKED" ? "booked" : "cancelled"}`}>{b.state === "BOOKED" ? "Booked" : "Cancelled"}</span></td>
+                  <td className="r">{b.state === "BOOKED" && <button className="text-link" onClick={() => cancel(b.id)}>Cancel</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );
