@@ -60,6 +60,8 @@ export async function updateEnquiry(
 ): Promise<EnquiryDTO> {
   const row = await db.enquiry.findUnique({ where: { id } });
   if (!row) throw notFound("No such enquiry");
+  if (input.status === "CONVERTED")
+    throw badRequest("Use the convert action to turn an enquiry into a member");
   const updated = await db.enquiry.update({ where: { id }, data: input });
   return toDTO(updated);
 }
