@@ -132,11 +132,13 @@ export async function confirmPayment(
     include: { items: { include: { product: true } } },
   });
   if (!order) throw notFound("No such order");
-  if (order.payState === "PAID") return toOrderDTO(order as OrderRow);
+  // The signature is checked first: a forged confirm for an
+  // already-paid order used to return success without any check.
   if (order.razorpayOrderId !== proof.razorpayOrderId)
     throw badRequest("That payment does not belong to this order");
   if (!verifyPaymentSignature(proof.razorpayOrderId, proof.paymentId, proof.signature))
     throw forbidden("Payment could not be verified");
+  if (order.payState === "PAID") return toOrderDTO(order as OrderRow);
   const updated = await db.order.update({
     where: { id: orderId },
     data: { payState: "PAID", razorpayPaymentId: proof.paymentId },
