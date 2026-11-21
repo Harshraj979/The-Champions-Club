@@ -237,6 +237,8 @@ export async function openTab(input: { who: string; tableNo?: number }): Promise
   if (input.tableNo !== undefined && (input.tableNo < 1 || input.tableNo > 8))
     throw badRequest("Tables run T1 to T8");
   const member = await findMemberByName(input.who);
+  if (member && memberState(member.expiresOn) === "expired")
+    throw forbidden(`${member.name}'s plan has expired. The front desk can renew it in a minute.`);
   // The occupied-table check and the create run in one transaction,
   // so two requests racing for the same table cannot both open a tab.
   const tab = await db.$transaction(async (tx) => {
@@ -284,23 +286,29 @@ export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI"):
   });
   if (!tab) throw notFound("No such tab");
   if (tab.status !== "OPEN") throw conflict("That tab is already settled");
-  // The discount comes from the member's plan on record, applied here at
-  // settle time. Nobody types a discount, and nobody can inflate one.
+  // The discount comes from the plan snapshotted on the tab when it
+  // was opened (tab.planCode), not the member's current plan: a plan
+  // change between open and settle must not change the discount.
+  // Nobody types a discount, and nobody can inflate one.
+  const plan =
+    tab.planCode === "walkin" ? null : await db.plan.findUnique({ where: { code: tab.planCode } });
   const member = tab.member;
   const discountPct =
-    member && memberState(member.expiresOn) !== "expired" ? member.plan.barDiscount : 0;
+    plan && member && memberState(member.expiresOn) !== "expired" ? plan.barDiscount : 0;
   const discount = Math.round((tab.subtotal * discountPct) / 100);
-  const updated = await db.tab.update({
-    where: { id },
+  // Atomic settle: only an OPEN tab flips to SETTLED. Two settles
+  // racing each other cannot both win — the loser updates 0 rows.
+  const settled = await db.tab.updateMany({
+    where: { id, status: "OPEN" },
     data: {
       status: "SETTLED",
-      planCode: member ? member.plan.code : "walkin",
+      planCode: tab.planCode,
       discountPct,
       total: tab.subtotal - discount,
       payMethod,
       settledAt: new Date(),
     },
-    include: tabInclude,
   });
-  return toTabDTO(updated as TabRow);
+  if (settled.count === 0) throw conflict("That tab is already settled");
+  return toTabDTO(await getTabRow(id));
 }
