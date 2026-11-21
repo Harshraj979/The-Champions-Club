@@ -70,7 +70,8 @@ export default function Courts() {
           <div className="seg" role="group" aria-label="Court">
             {courts.data!.map((c) => (
               <button key={c.id} aria-pressed={courtId === c.id} onClick={() => setCourtId(c.id)}>
-                {c.name} · <span className="num">{inr(c.walkinPrice)}</span>
+                <span>{c.name}</span>
+                <span className="num seg-price">{inr(c.walkinPrice)}</span>
               </button>
             ))}
           </div>
