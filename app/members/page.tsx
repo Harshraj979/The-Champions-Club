@@ -8,12 +8,14 @@ const stateLabel = { active: "Active", expiring: "Expiring soon", expired: "Expi
 
 export default function Members() {
   const [q, setQ] = useState("");
-  const [form, setForm] = useState({ name: "", phone: "", planCode: "silver" });
+  const [stateFilter, setStateFilter] = useState<"all" | "active" | "expiring" | "expired">("all");
+  const [form, setForm] = useState({ name: "", phone: "", email: "", planCode: "silver" });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const members = useApi(() => api.members(q || undefined), [q]);
   const plans = useApi(() => api.plans());
-  const list = members.data ?? [];
+  const all = members.data ?? [];
+  const list = stateFilter === "all" ? all : all.filter((m) => m.state === stateFilter);
 
   async function add() {
     if (!form.name.trim()) return setMsg({ ok: false, text: "The member needs a name." });
@@ -22,10 +24,10 @@ export default function Members() {
     setBusy(true);
     setMsg(null);
     try {
-      const m = await api.createMember({ name: form.name.trim(), phone: form.phone.trim(), planCode: form.planCode });
+      const m = await api.createMember({ name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, planCode: form.planCode });
       const plan = plans.data?.find((p) => p.code === form.planCode);
-      setMsg({ ok: true, text: `${m.name} added on ${m.plan}. The plan runs ${plan?.termDays ?? 365} days from today.` });
-      setForm({ name: "", phone: "", planCode: "silver" });
+      setMsg({ ok: true, text: `${m.name} added on ${m.plan}. The plan runs ${plan?.termDays ?? 365} days from today.${m.email ? " They can sign in to the member portal with their phone number as the first password." : ""}` });
+      setForm({ name: "", phone: "", email: "", planCode: "silver" });
       void members.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Adding failed. Try again." });
@@ -47,10 +49,19 @@ export default function Members() {
           <label htmlFor="m-search">Search members</label>
           <input id="m-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name" />
         </div>
-        {!members.loading && !members.error && list.length > 0 && (
-          <p className="count-line"><b>{list.length}</b> {list.length === 1 ? "member" : "members"}{q ? " found" : ""} · {list.filter((m) => m.state === "active").length} active</p>
+        {!members.loading && !members.error && all.length > 0 && (
+          <p className="count-line"><b>{list.length}</b> {list.length === 1 ? "member" : "members"}{q ? " found" : ""} · {all.filter((m) => m.state === "active").length} active</p>
         )}
       </div>
+
+      {!members.loading && !members.error && all.length > 0 && (
+        <div className="seg" role="group" aria-label="Filter by plan state" style={{ marginTop: 16 }}>
+          <button aria-pressed={stateFilter === "all"} onClick={() => setStateFilter("all")}>All</button>
+          <button aria-pressed={stateFilter === "active"} onClick={() => setStateFilter("active")}>Active</button>
+          <button aria-pressed={stateFilter === "expiring"} onClick={() => setStateFilter("expiring")}>Expiring soon</button>
+          <button aria-pressed={stateFilter === "expired"} onClick={() => setStateFilter("expired")}>Expired</button>
+        </div>
+      )}
 
       {members.loading ? (
         <div style={{ marginTop: 20 }}><Loading /></div>
@@ -58,7 +69,7 @@ export default function Members() {
         <ErrorBox message={members.error} onRetry={members.reload} />
       ) : list.length === 0 ? (
         <div style={{ marginTop: 20 }}>
-          <Empty>{q ? <>No member matches &ldquo;{q}&rdquo;. Check the spelling, or add them below.</> : "No members yet. Add the first one below."}</Empty>
+          <Empty>{q ? <>No member matches &ldquo;{q}&rdquo;. Check the spelling, or add them below.</> : all.length > 0 ? "No members in this state right now." : "No members yet. Add the first one below."}</Empty>
         </div>
       ) : (
         <div className="ledger-wrap">
@@ -93,6 +104,10 @@ export default function Members() {
             </div>
           </div>
           <div className="field-row" style={{ marginTop: 16, alignItems: "end" }}>
+            <div>
+              <label htmlFor="m-email">Email (for the member portal)</label>
+              <input id="m-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="Optional" />
+            </div>
             <div>
               <label htmlFor="m-plan">Plan</label>
               <select id="m-plan" value={form.planCode} onChange={(e) => setForm({ ...form, planCode: e.target.value })}>

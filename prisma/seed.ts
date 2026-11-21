@@ -69,23 +69,27 @@ async function main() {
   const plans = await db.plan.findMany();
   const planId = (code: string) => plans.find((p) => p.code === code)!.id;
   const demoMemberHash = await bcrypt.hash("demo1234", 10);
-  const member = (name: string, email: string, phone: string, code: string, expiresInDays: number) => ({
+  const member = (name: string, phone: string, email: string, code: string, expiresInDays: number) => ({
     name,
+    phone,
     email,
     passwordHash: demoMemberHash,
-    phone,
     planId: planId(code),
     joinedOn: plus(today, -90),
     expiresOn: plus(today, expiresInDays),
   });
+  // Portal passwords start as demo1234 / phone number.
+  const memberRows = [
+    member("Aarav Mehta", "9811000001", "aarav@example.com", "gold", 240),
+    member("Priya Nair", "9811000002", "priya@example.com", "gold", 300),
+    member("Rohan Shah", "9811000003", "rohan@example.com", "silver", 120),
+    member("Sneha Kulkarni", "9811000004", "sneha@example.com", "silver", 3), // renews this week
+    member("Kabir Singh", "9811000005", "kabir@example.com", "junior", 200),
+    member("Ananya Iyer", "9811000006", "ananya@example.com", "junior", -5), // already expired
+  ];
   await db.member.createMany({
     data: [
-      member("Aarav Mehta", "aarav@example.com", "9811000001", "gold", 240),
-      member("Priya Nair", "priya@example.com", "9811000002", "gold", 300),
-      member("Rohan Shah", "rohan@example.com", "9811000003", "silver", 120),
-      member("Sneha Kulkarni", "sneha@example.com", "9811000004", "silver", 3), // renews this week
-      member("Kabir Singh", "kabir@example.com", "9811000005", "junior", 200),
-      member("Ananya Iyer", "ananya@example.com", "9811000006", "junior", -5), // already expired
+      ...memberRows,
       {
         name: "Rahul Verma",
         email: "rahul@example.com",
@@ -96,6 +100,7 @@ async function main() {
         expiresOn: null,
       },
     ],
+  });
   });
 
   const courts = await db.court.findMany();

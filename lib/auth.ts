@@ -8,8 +8,9 @@ import { memberState } from "./services/members";
 import type { MemberSessionDTO, StaffDTO } from "./types";
 
 // Staff sign-in for the web today, the same token works as a Bearer token
-// for a future mobile app. Members have no login by product decision;
-// the front desk works under a staff account, under their own account.
+// for a future mobile app. Members have their own separate portal login
+// below (cc_member cookie, kind:"member" tokens); the two never mix —
+// a member token is rejected here and a staff token opens no portal page.
 const COOKIE = "cc_session";
 const secret = new TextEncoder().encode(
   process.env.AUTH_SECRET ?? "dev-only-secret-change-me",
@@ -34,6 +35,7 @@ async function signToken(staff: StaffDTO): Promise<string> {
 export async function verifyToken(token: string): Promise<StaffDTO | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
+    if (payload.kind === "member") return null; // portal tokens are not staff tokens
     const staff = await db.staff.findUnique({ where: { id: Number(payload.sub) } });
     return staff ? toStaffDTO(staff) : null;
   } catch {
@@ -103,6 +105,8 @@ export async function currentStaff(): Promise<StaffDTO | null> {
 
 const MEMBER_COOKIE = "cc_member_session";
 
+export type MemberSession = MemberSessionDTO;
+
 export const toMemberSessionDTO = (m: {
   id: number;
   name: string;
@@ -139,8 +143,9 @@ export const toMemberSessionDTO = (m: {
   };
 };
 
-export async function signMemberToken(memberId: number): Promise<string> {
-  return new SignJWT({ sub: String(memberId), type: "member" })
+export async function signMemberToken(memberOrId: number | { id: number }): Promise<string> {
+  const id = typeof memberOrId === "number" ? memberOrId : memberOrId.id;
+  return new SignJWT({ sub: String(id), type: "member", kind: "member" })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
@@ -150,9 +155,10 @@ export async function signMemberToken(memberId: number): Promise<string> {
 export async function verifyMemberToken(token: string): Promise<MemberSessionDTO | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
-    if (!payload.sub) return null;
+    const sub = payload.sub || (payload as any).subject;
+    if (!sub) return null;
     const member = await db.member.findUnique({
-      where: { id: Number(payload.sub) },
+      where: { id: Number(sub) },
       include: { plan: true },
     });
     return member ? toMemberSessionDTO(member) : null;
@@ -170,22 +176,41 @@ export async function setMemberSessionCookie(token: string) {
     path: "/",
     maxAge: 7 * 24 * 60 * 60,
   });
+  jar.set("cc_member", token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+  });
 }
+
+export const setMemberCookie = setMemberSessionCookie;
 
 export async function clearMemberSessionCookie() {
   const jar = await cookies();
   jar.delete(MEMBER_COOKIE);
+  jar.delete("cc_member");
 }
+
+export const clearMemberCookie = clearMemberSessionCookie;
 
 export async function currentMember(): Promise<MemberSessionDTO | null> {
   const jar = await cookies();
-  const token = jar.get(MEMBER_COOKIE)?.value;
+  const token = jar.get(MEMBER_COOKIE)?.value || jar.get("cc_member")?.value;
   return token ? verifyMemberToken(token) : null;
 }
 
 export async function requireMember(req?: Request): Promise<MemberSessionDTO> {
+  if (req) {
+    const bearer = req.headers.get("authorization")?.replace(/^Bearer /, "");
+    if (bearer) {
+      const member = await verifyMemberToken(bearer);
+      if (member) return member;
+    }
+  }
   const jar = await cookies();
-  const token = jar.get(MEMBER_COOKIE)?.value;
+  const token = jar.get(MEMBER_COOKIE)?.value || jar.get("cc_member")?.value;
   if (token) {
     const member = await verifyMemberToken(token);
     if (member) return member;
@@ -260,6 +285,7 @@ export async function memberSignup(data: {
   });
   const dto = toMemberSessionDTO(newMember);
   return { member: dto, token: await signMemberToken(newMember.id) };
+}
 }
 
 export const GOOGLE_REDIRECT_URI = "https://the-champions-club.vercel.app/api/v1/auth/google/callback";
