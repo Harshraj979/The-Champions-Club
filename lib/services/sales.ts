@@ -40,12 +40,20 @@ export async function createOrder(input: {
     throw badRequest("Add the full delivery address");
   if (input.payOnline && !razorpayConfigured())
     throw badRequest("Online payment is not switched on yet. Pay at the counter instead.");
+  // Merge duplicate lines for the same product, so the order does not
+  // fail on the unique (orderId, productId) key.
+  const items = input.items.reduce<Item[]>((acc, i) => {
+    const existing = acc.find((x) => x.productId === i.productId);
+    if (existing) existing.qty += i.qty;
+    else acc.push({ ...i });
+    return acc;
+  }, []);
   const member = await findMemberByName(input.name);
   const active = member && memberState(member.expiresOn) !== "expired";
   const discountPct = active ? member.plan.shopDiscount : 0;
 
   const created = await db.$transaction(async (tx) => {
-    const lines = await priceItems(input.items, "GEAR");
+    const lines = await priceItems(items, "GEAR");
     for (const l of lines) {
       if (l.product.stock !== null && l.qty > l.product.stock)
         throw conflict(
