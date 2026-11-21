@@ -67,50 +67,68 @@ export default function Courts() {
         <ErrorBox message={courts.error} onRetry={courts.reload} />
       ) : (
         <div className="panel">
-          <div className="seg" role="group" aria-label="Court">
-            {courts.data!.map((c) => (
-              <button key={c.id} aria-pressed={courtId === c.id} onClick={() => setCourtId(c.id)}>
-                <span>{c.name}</span>
-                <span className="num seg-price">{inr(c.walkinPrice)}</span>
-              </button>
-            ))}
-          </div>
-
-          <div className="field-row" style={{ marginTop: 20, maxWidth: 640 }}>
-            <div>
-              <label htmlFor="date">Date</label>
-              <input id="date" type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
+          <div className="step">
+            <div className="step-head">
+              <span className="step-n">1</span>
+              <h3>Pick a court</h3>
+              <span className="step-hint">Prices are the walk-in rate; member plans apply by name</span>
             </div>
-            <div>
-              <label htmlFor="name">Your name</label>
-              <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: your registered name" />
-            </div>
-          </div>
-          {member && (
-            <p className="muted" style={{ marginTop: 10 }} role="status">
-              {member.state === "expired"
-                ? `${member.name}, ${member.plan} plan, expired. Bookings are paused until it is renewed.`
-                : `${member.name}, ${member.plan} plan, courts at ${member.courtPrice === 0 ? "no charge" : inr(member.courtPrice) + " an hour"}.`}
-            </p>
-          )}
-
-          {avail.loading ? (
-            <div style={{ marginTop: 12 }}><Loading rows={3} /></div>
-          ) : avail.error ? (
-            <ErrorBox message={avail.error} onRetry={avail.reload} />
-          ) : (
-            <div className="slots" role="group" aria-label="Start times">
-              {starts.map((t) => (
-                <button key={t} className="slot num" disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
-                  {fmtTime(t)}
+            <div className="seg" role="group" aria-label="Court">
+              {courts.data!.map((c) => (
+                <button key={c.id} aria-pressed={courtId === c.id} onClick={() => setCourtId(c.id)}>
+                  <span>{c.name}</span>
+                  <span className="num seg-price">{inr(c.walkinPrice)}</span>
                 </button>
               ))}
             </div>
-          )}
+          </div>
 
-          {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
+          <div className="step">
+            <div className="step-head">
+              <span className="step-n">2</span>
+              <h3>Date and time</h3>
+              <span className="step-hint">One hour a booking, crossed-out slots are taken</span>
+            </div>
+            <div style={{ maxWidth: 300 }}>
+              <label htmlFor="date">Date</label>
+              <input id="date" type="date" value={date} min={today} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            {avail.loading ? (
+              <div style={{ marginTop: 12 }}><Loading rows={3} /></div>
+            ) : avail.error ? (
+              <ErrorBox message={avail.error} onRetry={avail.reload} />
+            ) : (
+              <div className="slots" role="group" aria-label="Start times">
+                {starts.map((t) => (
+                  <button key={t} className="slot num" disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
+                    {fmtTime(t)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
-          <div className="summary">
+          <div className="step">
+            <div className="step-head">
+              <span className="step-n">3</span>
+              <h3>Your details</h3>
+              <span className="step-hint">Members: your registered name gets your plan price</span>
+            </div>
+            <div style={{ maxWidth: 420 }}>
+              <label htmlFor="name">Your name</label>
+              <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: your registered name" />
+            </div>
+            {member && (
+              <p className="muted" style={{ marginTop: 10 }} role="status">
+                {member.state === "expired"
+                  ? `${member.name}, ${member.plan} plan, expired. Bookings are paused until it is renewed.`
+                  : `${member.name}, ${member.plan} plan, courts at ${member.courtPrice === 0 ? "no charge" : inr(member.courtPrice) + " an hour"}.`}
+              </p>
+            )}
+
+            {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}
+
+            <div className="summary">
             <p className="s-lines">
               {slot === null || !court ? (
                 "No slot picked yet."
@@ -123,9 +141,10 @@ export default function Courts() {
                 </>
               )}
             </p>
-            <button className="btn btn-ink" disabled={slot === null || !name.trim() || busy} onClick={book}>
-              {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
-            </button>
+              <button className="btn btn-ink" disabled={slot === null || !name.trim() || busy} onClick={book}>
+                {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : `Book ${court.name} at ${fmtTime(slot)}`}
+              </button>
+            </div>
           </div>
         </div>
       )}

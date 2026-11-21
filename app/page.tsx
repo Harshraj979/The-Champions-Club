@@ -4,12 +4,8 @@ import { api } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { allStarts, fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
-import Marquee from "@/components/Marquee";
-import BlurText from "@/components/BlurText";
 import Reveal from "@/components/Reveal";
-import Spotlight from "@/components/Spotlight";
 
-const ticker = ["Tennis", "Cricket", "Friday Social Play", "Gear Shop", "Bar & Café", "Open 6 AM to 10 PM", "First trial is free"];
 const starts = allStarts();
 
 export default function Home() {
@@ -32,64 +28,64 @@ export default function Home() {
   return (
     <main>
       <section className="hero">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero.jpg" alt="The club ground, seen from above" width={2744} height={1568} fetchPriority="high" />
-        <div className="hero-shade" />
         <div className="hero-in">
           <div className="hero-text">
-            <h1><BlurText text="First serve at six. Last over by dusk." /></h1>
+            <h1>First serve at six. Last over by dusk.</h1>
             <p>Two tennis courts, a cricket pitch, a gear shop and a bar that knows your name. Booked in seconds, not WhatsApp threads.</p>
             <div className="hero-actions">
-              <Link className="btn btn-paper" href="/trial">Book a free trial</Link>
-              <Link className="btn btn-ghost-light" href="/courts">See court times</Link>
-            </div>
-
-            <div className="today-card">
-              <div className="today-head">
-                <b>Today at the club</b>
-                <span>Live sheet</span>
-              </div>
-              {schedule.loading ? (
-                <p className="today-note">Reading today's sheet...</p>
-              ) : schedule.error ? (
-                <p className="today-note">The live sheet is not loading. <Link className="text-link" href="/courts" style={{ color: "#fff" }}>See court times</Link></p>
-              ) : (
-                <>
-                  <div className="today-stats">
-                    <div>
-                      <p className="ts-v">{sheet.length}</p>
-                      <p className="ts-l">Bookings today</p>
-                    </div>
-                    <div>
-                      <p className="ts-v">{courts.data?.length ?? 3} <em>courts</em></p>
-                      <p className="ts-l">Tennis + cricket</p>
-                    </div>
-                    <div>
-                      <p className="ts-v">6 AM</p>
-                      <p className="ts-l">First slot, daily</p>
-                    </div>
-                  </div>
-                  {sheet.length > 0 ? (
-                    <div className="today-rows">
-                      {sheet.slice(0, 3).map((b) => (
-                        <div className="today-row" key={b.id}>
-                          <span className="tr-t num">{fmtTime(b.start)}</span>
-                          <span className="tr-c">{b.court}</span>
-                          <span className="tr-w">{b.who}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="today-note">Nothing booked yet today. The first slot is 6 AM.</p>
-                  )}
-                </>
-              )}
+              <Link className="btn btn-ink" href="/trial">Book a free trial</Link>
+              <Link className="btn btn-quiet" href="/courts">See court times</Link>
             </div>
           </div>
         </div>
+        <div className="hero-photo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/hero.jpg" alt="The club ground, seen from above" width={2744} height={1568} fetchPriority="high" />
+        </div>
+        <div className="today-card">
+          {schedule.loading ? (
+            <div className="today-inner"><p className="today-note">Reading today's sheet...</p></div>
+          ) : schedule.error ? (
+            <div className="today-inner"><p className="today-note">The live sheet is not loading. <Link className="text-link" href="/courts">See court times</Link></p></div>
+          ) : (
+            <div className="today-inner">
+              <div>
+                <div className="today-head">
+                  <b>Today at the club</b>
+                  <span>Live from the booking sheet</span>
+                </div>
+                <div className="today-stats">
+                  <div>
+                    <p className="ts-v">{sheet.length}</p>
+                    <p className="ts-l">Bookings today</p>
+                  </div>
+                  <div>
+                    <p className="ts-v">{courts.data?.length ?? 3} <em>courts</em></p>
+                    <p className="ts-l">Tennis + cricket</p>
+                  </div>
+                  <div>
+                    <p className="ts-v">6 AM</p>
+                    <p className="ts-l">First slot, daily</p>
+                  </div>
+                </div>
+              </div>
+              {sheet.length > 0 ? (
+                <div className="today-rows">
+                  {sheet.slice(0, 3).map((b) => (
+                    <div className="today-row" key={b.id}>
+                      <span className="tr-t num">{fmtTime(b.start)}</span>
+                      <span className="tr-c">{b.court}</span>
+                      <span className="tr-w">{b.who}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="today-note">Nothing booked yet today. The first slot is 6 AM.</p>
+              )}
+            </div>
+          )}
+        </div>
       </section>
-
-      <Marquee items={ticker} />
 
       <div className="wrap">
         <Reveal>
@@ -133,7 +129,7 @@ export default function Home() {
             ) : (
               <div className="plan-grid">
                 {plans.data!.map((p) => (
-                  <Spotlight key={p.code} className={`plan-card${p.code === "gold" ? " hot" : ""}`}>
+                  <div key={p.code} className={`plan-card${p.code === "gold" ? " hot" : ""}`}>
                     {p.code === "gold" && <span className="plan-tag">Most picked</span>}
                     <p className="plan-name">{p.name}</p>
                     <p className="plan-price">
@@ -147,7 +143,7 @@ export default function Home() {
                     <div className="plan-cta">
                       <Link className="btn btn-ink" href="/trial">Start with a free trial</Link>
                     </div>
-                  </Spotlight>
+                  </div>
                 ))}
               </div>
             )}
@@ -170,7 +166,7 @@ export default function Home() {
                 {courts.data!.map((c) => {
                   const free = schedule.data ? nextFree(c.id) : undefined;
                   return (
-                    <Spotlight key={c.id} className="court-card">
+                    <div key={c.id} className="court-card">
                       <p className="court-name">{c.name}</p>
                       <p className="muted">{c.sport} · walk-in <span className="num">{inr(c.walkinPrice)}</span> an hour</p>
                       <p className="court-next">
@@ -179,7 +175,7 @@ export default function Home() {
                       <div className="court-cta">
                         <Link className="btn btn-quiet" href="/courts">Book {c.name}</Link>
                       </div>
-                    </Spotlight>
+                    </div>
                   );
                 })}
               </div>
@@ -193,36 +189,36 @@ export default function Home() {
               <h2>The club</h2>
             </div>
             <div className="bento">
-              <Spotlight className="tile wide dark">
+              <div className="tile wide dark">
                 <h3>Friday Social Play</h3>
                 <p className="t-big">Fridays, 7 PM</p>
                 <p>Shared courts, rotating players, no booking maths. The one session where the 2-a-day rule does not apply.</p>
                 <p className="t-link"><Link className="text-link" href="/courts">Get on court</Link></p>
-              </Spotlight>
-              <Spotlight className="tile">
+              </div>
+              <div className="tile">
                 <h3>Club shop</h3>
                 <p className="t-big">{gear.length} lines</p>
                 <p>{gear.length ? <>From {inr(Math.min(...gear.map((p) => p.price)))}. </> : ""}What is listed is what is in stock.</p>
                 <p className="t-link"><Link className="text-link" href="/shop">Shop</Link></p>
-              </Spotlight>
-              <Spotlight className="tile">
+              </div>
+              <div className="tile">
                 <h3>Bar &amp; Café</h3>
                 <p className="t-big">11 AM to 11 PM</p>
                 <p>{bar.length ? bar.map((p) => p.name.toLowerCase()).join(", ") : "Cold coffee, beer, sandwiches."}. Member plans take their discount at the till.</p>
                 <p className="t-link"><Link className="text-link" href="/bar">Bar &amp; Café</Link></p>
-              </Spotlight>
-              <Spotlight className="tile wide volt">
+              </div>
+              <div className="tile wide volt">
                 <h3>Never played here?</h3>
                 <p className="t-big">First session is free</p>
                 <p>One hour on court, rackets and balls on us. Book it in under a minute, no card, no calls.</p>
                 <p className="t-link"><Link className="text-link" href="/trial">Book a free trial</Link></p>
-              </Spotlight>
-              <Spotlight className="tile wide">
+              </div>
+              <div className="tile wide">
                 <h3>Visit</h3>
                 <p>Courts 6 AM to 10 PM · Shop 8 AM to 9 PM · Bar &amp; Café 11 AM to 11 PM, every day.</p>
                 <p>Front desk: +91 98765 43210</p>
                 <p className="t-link"><Link className="text-link" href="/courts">See court times</Link></p>
-              </Spotlight>
+              </div>
             </div>
           </section>
         </Reveal>
