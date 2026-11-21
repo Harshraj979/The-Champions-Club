@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import type { Prisma } from "@prisma/client";
 import { db } from "../db";
 import { badRequest, conflict, notFound } from "../errors";
-import { todayISO } from "../format";
+import { addDaysISO, todayISO } from "../format";
 import type { ExpiringDTO, MemberDTO, MemberHomeDTO, MemberState } from "../types";
 import { toBookingDTO } from "./bookings";
 import { toOrderDTO, toTabDTO } from "./sales";
@@ -19,16 +19,24 @@ type MemberRow = {
 // The front desk's renewal chase list: plans ending within the next
 // `withinDays` days (14 by default), soonest first, with days left.
 export async function expiringMembers(withinDays = 14): Promise<ExpiringDTO[]> {
-  const rows = await db.member.findMany({ include: { plan: true }, orderBy: { expiresOn: "asc" } });
+  // The date window is a DB filter, not a scan of every member in
+  // memory: expiry from today up to today + withinDays.
   const today = todayISO();
-  const out: ExpiringDTO[] = [];
-  for (const m of rows) {
+  const rows = await db.member.findMany({
+    where: {
+      expiresOn: {
+        gte: new Date(`${today}T00:00:00.000Z`),
+        lt: new Date(`${addDaysISO(today, withinDays + 1)}T00:00:00.000Z`),
+      },
+    },
+    include: { plan: true },
+    orderBy: { expiresOn: "asc" },
+  });
+  return rows.map((m) => {
     const exp = m.expiresOn.toISOString().slice(0, 10);
     const daysLeft = Math.round((Date.parse(exp) - Date.parse(today)) / 86400000);
-    if (daysLeft >= 0 && daysLeft <= withinDays)
-      out.push({ id: m.id, name: m.name, phone: m.phone, planName: m.plan.name, expiresOn: exp, daysLeft });
-  }
-  return out;
+    return { id: m.id, name: m.name, phone: m.phone, planName: m.plan.name, expiresOn: exp, daysLeft };
+  });
 }
 
 // Membership state is derived from the expiry date, never stored, so it
