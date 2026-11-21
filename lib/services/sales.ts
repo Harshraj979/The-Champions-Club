@@ -260,7 +260,7 @@ export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI"):
     where: { id },
     data: {
       status: "SETTLED",
-      planCode: discountPct && member ? member.plan.code : "walkin",
+      planCode: member ? member.plan.code : "walkin",
       discountPct,
       total: tab.subtotal - discount,
       payMethod,
