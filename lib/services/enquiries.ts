@@ -66,6 +66,8 @@ export async function updateEnquiry(
   // cannot be moved back to NEW, QUOTED or LOST.
   if (row.status === "CONVERTED" && row.memberId && input.status && input.status !== "CONVERTED")
     throw conflict("That enquiry already became a member — it cannot go back");
+  if (input.status === undefined && input.note === undefined)
+    throw badRequest("Nothing to update");
   const updated = await db.enquiry.update({ where: { id }, data: input });
   return toDTO(updated);
 }
