@@ -2,13 +2,17 @@
 import { useState } from "react";
 import { members as demoMembers, plans } from "@/lib/demo";
 import { useApi } from "@/lib/useApi";
+import { useStore } from "@/lib/store";
 
 type M = typeof demoMembers[number];
 export default function Members() {
   const [q, setQ] = useState("");
   const url = q ? `/api/members/search?q=${encodeURIComponent(q)}` : null;
   const { data: found, demo } = useApi<M[]>(url, (j) => j.members, []);
-  const [added, setAdded] = useState<M[]>([]);
+  const { store, addMember } = useStore();
+  const added: M[] = store.members.map((m) => ({
+    id: m.id, name: m.name, club_plan_id: [0, m.plan] as any, membership_state: "active",
+  }));
   const [form, setForm] = useState({ name: "", phone: "", plan: "silver" });
   const [msg, setMsg] = useState("");
   const list = [...added, ...(q ? found : demoMembers)];
@@ -20,7 +24,7 @@ export default function Members() {
         body: JSON.stringify({ name: form.name, phone: form.phone, planCode: form.plan }) });
       if (!r.ok) throw new Error();
     } catch { /* demo */ }
-    setAdded((a) => [{ id: Date.now(), name: form.name, club_plan_id: [0, plan.name] as any, membership_state: "active" }, ...a]);
+    addMember({ name: form.name, plan: plan.name });
     setMsg(`${form.name} added on ${plan.name}.`); setForm({ name: "", phone: "", plan: "silver" });
   }
 

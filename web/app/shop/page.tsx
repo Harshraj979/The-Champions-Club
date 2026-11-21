@@ -2,12 +2,14 @@
 import { useState } from "react";
 import { products as demoProducts, inr } from "@/lib/demo";
 import { useApi } from "@/lib/useApi";
+import { useStore } from "@/lib/store";
 
 type P = typeof demoProducts[number];
 export default function Shop() {
   const { data: products, demo } = useApi<P[]>("/api/shop/products", (j) => j.products, demoProducts);
   const [cart, setCart] = useState<Record<number, number>>({});
   const [msg, setMsg] = useState("");
+  const { addRevenue } = useStore();
   const gear = products.filter((p) => p.categ_id?.[1] === "Gear");
   const total = gear.reduce((s, p) => s + (cart[p.id] ?? 0) * p.list_price, 0);
 
@@ -19,6 +21,7 @@ export default function Shop() {
       if (!r.ok) throw new Error();
       setMsg("Order placed — we'll keep it at the desk for pickup.");
     } catch { setMsg("Order placed (demo) — we'll keep it at the desk for pickup."); }
+    addRevenue("shop", total);
     setCart({});
   }
 

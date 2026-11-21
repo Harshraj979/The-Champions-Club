@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { todayBookings, fmtTime, inr } from "@/lib/demo";
 import { useApi } from "@/lib/useApi";
+import { useStore } from "@/lib/store";
 
 type Dash = {
   courts: number; shop: number; bar: number; total: number;
@@ -13,7 +14,21 @@ const fallback: Dash = {
 };
 
 export default function Dashboard() {
-  const { data, demo } = useApi<Dash>("/api/dashboard", (j) => j, fallback);
+  const { data: live, demo } = useApi<Dash>("/api/dashboard", (j) => j, fallback);
+  const { store } = useStore();
+  // demo mode: the dashboard reflects what was actually done in the prototype
+  const mine = store.bookings.filter((b) => b.state === "booked");
+  const data: Dash = demo ? {
+    courts: fallback.courts + mine.reduce((s, b) => s + b.price, 0),
+    shop: fallback.shop + store.shopRevenue,
+    bar: fallback.bar + store.barRevenue,
+    total: 0,
+    bookings: [
+      ...fallback.bookings.filter((b) => !store.cancelledSeeds.includes(b.id)),
+      ...store.bookings.map((b) => ({ id: b.id + 1000, court: b.court, who: b.who, time: b.time, type: b.type, price: b.price })),
+    ],
+  } : live;
+  data.total = data.courts + data.shop + data.bar;
   const stats = [
     { label: "Courts today", value: data.courts }, { label: "Shop today", value: data.shop },
     { label: "Bar today", value: data.bar }, { label: "Total today", value: data.total },

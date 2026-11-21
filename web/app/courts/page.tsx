@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { courts, demoTaken, fmtTime, inr } from "@/lib/demo";
+import { useStore } from "@/lib/store";
 
 const today = new Date().toISOString().slice(0, 10);
 const allSlots = Array.from({ length: 31 }, (_, i) => 6 + i * 0.5); // 6:00 .. 21:00
@@ -11,10 +12,15 @@ export default function Courts() {
   const [slot, setSlot] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [taken, setTaken] = useState<Record<number, number[]>>(demoTaken);
+  const { store, addBooking } = useStore();
   const court = courts.find((c) => c.id === courtId)!;
-  const busy = useMemo(() => taken[courtId] ?? [], [taken, courtId]);
+  // taken = today's seed bookings + anything booked in this prototype, for this court and day
+  const busy = useMemo(() => [
+    ...(date === today ? (demoTaken[courtId] ?? []) : []),
+    ...store.bookings.filter((b) => b.courtId === courtId && b.date === date && b.state === "booked").map((b) => b.time),
+  ], [store.bookings, courtId, date]);
   const free = (t: number) => !busy.some((b) => Math.abs(b - t) < 1);
+  const record = () => addBooking({ courtId, court: court.name, who: name.trim(), date, time: slot!, type: "regular", price: court.walkin_price });
 
   async function book() {
     if (slot === null || !name.trim()) return;
@@ -23,11 +29,12 @@ export default function Courts() {
       const r = await fetch("/api/bookings/create", { method: "POST", body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error ?? "Booking refused");
+      record();
       setMsg({ ok: true, text: `Booked — ${court.name}, ${fmtTime(slot)}.` });
     } catch {
       // demo mode: enforce the same overlap rule locally, then book it
       if (!free(slot)) return setMsg({ ok: false, text: "That court is already booked at that time. No double-booking, ever." });
-      setTaken((t) => ({ ...t, [courtId]: [...(t[courtId] ?? []), slot] }));
+      record();
       setMsg({ ok: true, text: `Booked (demo) — ${court.name}, ${fmtTime(slot)}, ${inr(court.walkin_price)} at the desk.` });
     }
     setSlot(null);
