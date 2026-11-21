@@ -1,44 +1,65 @@
 "use client";
 import { useState } from "react";
-import { products, plans, inr } from "@/lib/demo";
+import { products, plans, inr } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
-const menu = products.filter((p) => p.categ_id[1] === "Bar and Cafe");
+const menu = products.filter((p) => p.category === "bar");
+
 export default function Bar() {
   const [tab, setTab] = useState<Record<number, number>>({});
-  const [plan, setPlan] = useState("walkin");
+  const [planCode, setPlanCode] = useState<string>("walkin");
+  const [msg, setMsg] = useState("");
   const { addRevenue } = useStore();
-  const discount = plan === "walkin" ? 0 : plans.find((p) => p.code === plan)!.bar;
-  const subtotal = menu.reduce((s, p) => s + (tab[p.id] ?? 0) * p.list_price, 0);
+  const discount = planCode === "walkin" ? 0 : plans.find((p) => p.code === planCode)!.bar;
+  const subtotal = menu.reduce((s, p) => s + (tab[p.id] ?? 0) * p.price, 0);
   const off = Math.round((subtotal * discount) / 100);
+  const set = (id: number, qty: number) => setTab((t) => ({ ...t, [id]: Math.max(0, qty) }));
+
+  function settle() {
+    if (!subtotal) return;
+    addRevenue("bar", subtotal - off);
+    setTab({});
+    setMsg(`Tab settled, ${inr(subtotal - off)} by cash, card or UPI.`);
+  }
+
   return (
     <main className="wrap page">
-      <h2 className="title">Bar &amp; Café — tab</h2>
-      <p className="sub">Open a tab, add as they order, settle before they leave. Pick the member's plan and the discount applies itself. <span className="tag grey">Staff view</span></p>
-      <div className="row">
-        <div style={{ maxWidth: 260 }}><label>Member plan (walk-in pays full)</label>
-          <select value={plan} onChange={(e) => setPlan(e.target.value)}>
-            <option value="walkin">Walk-in</option>
-            {plans.map((p) => <option key={p.code} value={p.code}>{p.name} — bar −{p.bar}%</option>)}
-          </select></div>
+      <div className="page-head">
+        <h1 className="page-title">Bar &amp; Café</h1>
+        <p className="sub">Open a tab, add as they order, settle before they leave. Pick the member&apos;s plan and the discount applies itself. Staff view.</p>
       </div>
-      <div className="grid c4" style={{ marginTop: 16 }}>
+
+      <div className="seg" role="group" aria-label="Member plan">
+        <button aria-pressed={planCode === "walkin"} onClick={() => setPlanCode("walkin")}>Walk-in</button>
+        {plans.map((p) => (
+          <button key={p.code} aria-pressed={planCode === p.code} onClick={() => setPlanCode(p.code)}>
+            {p.name}{p.bar ? `, −${p.bar}%` : ""}
+          </button>
+        ))}
+      </div>
+
+      <div className="rows" style={{ marginTop: 20 }}>
         {menu.map((p) => (
-          <div className="card" key={p.id}>
-            <h3>{p.name}</h3><div className="big">{inr(p.list_price)}</div>
-            <div className="row" style={{ marginTop: 10 }}>
-              <button className="pill ghost" onClick={() => setTab((t) => ({ ...t, [p.id]: Math.max(0, (t[p.id] ?? 0) - 1) }))}>−</button>
-              <b>{tab[p.id] ?? 0}</b>
-              <button className="pill ghost" onClick={() => setTab((t) => ({ ...t, [p.id]: (t[p.id] ?? 0) + 1 }))}>+</button>
+          <div className="row-item" key={p.id}>
+            <div className="row-main"><p className="row-name">{p.name}</p></div>
+            <span className="num" style={{ fontSize: 15 }}>{inr(p.price)}</span>
+            <div className="stepper">
+              <button aria-label={`One less ${p.name}`} onClick={() => set(p.id, (tab[p.id] ?? 0) - 1)}>−</button>
+              <b className="num">{tab[p.id] ?? 0}</b>
+              <button aria-label={`One more ${p.name}`} onClick={() => set(p.id, (tab[p.id] ?? 0) + 1)}>+</button>
             </div>
           </div>
         ))}
       </div>
-      <div className="card" style={{ marginTop: 16, maxWidth: 420 }}>
-        <p className="muted">Subtotal {inr(subtotal)}{discount ? ` · plan discount −${inr(off)}` : ""}</p>
-        <div className="big">Tab total: {inr(subtotal - off)}</div>
-        <button className="pill black" style={{ marginTop: 12 }} disabled={!subtotal}
-          onClick={() => { addRevenue("bar", subtotal - off); setTab({}); }}>{subtotal ? "Settle tab (cash / card / UPI)" : "Tab is empty"}</button>
+
+      {msg && <div className="notice ok" role="status">{msg}</div>}
+      <div className="summary">
+        <p className="s-lines">
+          Subtotal <span className="num">{inr(subtotal)}</span>
+          {discount > 0 && subtotal > 0 ? <> · plan discount <span className="num">−{inr(off)}</span> · </> : " · "}
+          <span className="num s-total">{inr(subtotal - off)}</span>
+        </p>
+        <button className="btn btn-ink" disabled={!subtotal} onClick={settle}>{subtotal ? `Settle tab, ${inr(subtotal - off)}` : "Tab is empty"}</button>
       </div>
     </main>
   );
