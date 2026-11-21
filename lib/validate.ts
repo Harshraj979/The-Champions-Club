@@ -29,7 +29,9 @@ export const trialInput = bookingInput.extend({
   type: z.enum(["TRIAL"]).optional().default("TRIAL"),
 });
 
-export const memberBookingInput = bookingInput.pick({ courtId: true, date: true, start: true });
+export const memberBookingInput = bookingInput
+  .pick({ courtId: true, date: true, start: true })
+  .extend({ type: z.enum(["REGULAR", "FRIDAY_SOCIAL"]).optional().default("REGULAR") });
 
 export const memberLoginInput = z.object({
   email: z.string().trim().email("That email does not look right").max(120),
