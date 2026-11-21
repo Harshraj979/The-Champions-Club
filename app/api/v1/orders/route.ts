@@ -1,5 +1,5 @@
 import { handle, body } from "@/lib/http";
-import { requireRole } from "@/lib/auth";
+import { requireRole, requireStaff } from "@/lib/auth";
 import { parse, orderInput } from "@/lib/validate";
 import { createOrder, listOrders } from "@/lib/services/sales";
 
@@ -15,5 +15,8 @@ export const GET = (req: Request) =>
 export const POST = (req: Request) =>
   handle(async () => {
     const input = parse(orderInput, await body(req));
-    return createOrder(input);
+    // A staff session in this browser means the counter took the
+    // order (and the money). Anyone else's order stays PENDING.
+    const staff = await requireStaff(req).catch(() => null);
+    return createOrder({ ...input, paidAtCounter: staff !== null });
   }, 201);
