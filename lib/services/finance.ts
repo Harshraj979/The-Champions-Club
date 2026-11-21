@@ -90,7 +90,7 @@ export async function createPayroll(input: { staffName: string; month: string; s
   if (!staff) throw badRequest(`No staff member called "${input.staffName}" — pick someone from the roster`);
   const dup = await db.payroll.findFirst({ where: { staffName: staff.name, month: input.month } });
   if (dup) throw conflict(`${staff.name} already has a payroll record for ${input.month}`);
-  const r = await db.payroll.create({ data: { ...input, staffName: staff.name } });
+  const r = await db.payroll.create({ data: { ...input, staffName: staff.name, staffId: staff.id } });
   return {
     id: r.id, staffName: r.staffName, month: r.month, salary: r.salary,
     leaveDays: r.leaveDays, tax: r.tax, net: r.salary - r.tax, status: "PENDING",
