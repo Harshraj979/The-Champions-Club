@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const jar = await cookies();
   const state = req.nextUrl.searchParams.get("state");
   const code = req.nextUrl.searchParams.get("code");
-  if (!code || !state || jar.get("cc_gstate")?.value !== state) return back("/login?error=gstate");
+  if (!code || !state || jar.get("cc_gstate")?.value !== state) return back("/login?error=google");
   jar.delete("cc_gstate");
   const next = jar.get("cc_gnext")?.value ?? "/dashboard";
   jar.delete("cc_gnext");
@@ -26,19 +26,15 @@ export async function GET(req: NextRequest) {
       grant_type: "authorization_code",
     }),
   });
-  if (!tokenRes.ok) {
-    const detail = await tokenRes.text().catch(() => "");
-    console.error("google token exchange failed", tokenRes.status, detail.slice(0, 300));
-    return back("/login?error=gtoken");
-  }
+  if (!tokenRes.ok) return back("/login?error=google");
   const { access_token } = await tokenRes.json();
 
   const infoRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
     headers: { Authorization: `Bearer ${access_token}` },
   });
-  if (!infoRes.ok) return back("/login?error=ginfo");
+  if (!infoRes.ok) return back("/login?error=google");
   const info = await infoRes.json();
-  if (!info.email || info.email_verified === false) return back("/login?error=gemail");
+  if (!info.email || info.email_verified === false) return back("/login?error=google");
 
   const staff = await db.staff.findUnique({ where: { email: String(info.email).toLowerCase() } });
   if (!staff) return back("/login?error=notstaff");
