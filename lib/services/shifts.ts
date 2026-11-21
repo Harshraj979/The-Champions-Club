@@ -18,7 +18,7 @@ export async function createStaff(input: {
   name: string;
   email: string;
   password: string;
-  role: StaffRosterDTO["role"];
+  role: StaffDTO["role"];
 }): Promise<StaffRosterDTO> {
   const email = input.email.trim().toLowerCase();
   // Email is the sign-in identity (unique in the schema), so a second
