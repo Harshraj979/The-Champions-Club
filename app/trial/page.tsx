@@ -126,6 +126,12 @@ export default function Trial() {
             </div>
           </div>
           {freeSlots.length === 0 && <div className="notice err">No free slots on {court?.name} that day. Try another court or day.</div>}
+          {err && <div className="notice err" role="alert">{err}</div>}
+          <div>
+            <button className="btn btn-ink" disabled={freeSlots.length === 0 || busy} onClick={submit}>
+              {busy ? "Booking..." : "Book my trial"}
+            </button>
+          </div>
           <div className="panel" style={{ marginTop: 8 }}>
             <h3 style={{ marginBottom: 6 }}>Ask the club anything</h3>
             <p className="muted" style={{ marginBottom: 14 }}>Membership, courts, coaching, the shop. Your question lands on the front desk&apos;s list, with the name and phone above.</p>
@@ -147,12 +153,6 @@ export default function Trial() {
                 <button className="btn btn-quiet" disabled={qBusy} onClick={ask}>{qBusy ? "Sending..." : "Send to the front desk"}</button>
               </div>
             </div>
-          </div>
-          {err && <div className="notice err" role="alert">{err}</div>}
-          <div>
-            <button className="btn btn-ink" disabled={freeSlots.length === 0 || busy} onClick={submit}>
-              {busy ? "Booking..." : "Book my trial"}
-            </button>
           </div>
         </div>
       )}
