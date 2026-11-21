@@ -43,6 +43,12 @@ export const memberInput = z.object({
   phone: z.string().trim().max(20).optional().default(""),
   email: z.string().trim().email("That email does not look right").max(120).optional(),
   planCode: z.string().min(1),
+  // Real calendar date (Feb 30 is rejected by isISODate); Junior is
+  // under-18 only, enforced in the service, not just the page.
+  dateOfBirth: z
+    .string()
+    .refine((d) => isISODate(d), "That date of birth is not a real date")
+    .optional(),
 });
 
 export const itemsInput = z

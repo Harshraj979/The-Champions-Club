@@ -50,7 +50,7 @@ export default function Members() {
     setBusy(true);
     setMsg(null);
     try {
-      const m = await api.createMember({ name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, planCode: form.planCode });
+      const m = await api.createMember({ name: form.name.trim(), phone: form.phone.trim(), email: form.email.trim() || undefined, planCode: form.planCode, dateOfBirth: form.dob || undefined });
       const plan = plans.data?.find((p) => p.code === form.planCode);
       setMsg({ ok: true, text: `${m.name} added on ${m.plan}. The plan runs ${plan?.termDays ?? 365} days from today.${m.email && form.phone.trim() ? " They can sign in to the member portal with their phone number as the first password." : ""}` });
       setForm({ name: "", phone: "", email: "", dob: "", planCode: "silver" });
