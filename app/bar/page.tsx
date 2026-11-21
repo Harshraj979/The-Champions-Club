@@ -107,7 +107,7 @@ export default function Bar() {
       <div className="page-head">
         <p className="page-eyebrow">Clubhouse</p>
         <h1 className="page-title">Bar &amp; Café</h1>
-        <p className="sub">Open a tab, add as they order, settle before they leave. The member&apos;s plan discount applies itself at settle. Staff view.</p>
+        <p className="sub">Open a tab, add as they order, settle before they leave. The member&apos;s plan discount applies itself at settle.</p>
       </div>
 
       {menu.loading ? (

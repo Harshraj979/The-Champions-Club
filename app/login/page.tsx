@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
 
-// Staff sign-in: email and password, or Google for staff accounts.
+// Sign-in: email and password, or Google for club accounts.
 // Members never sign in, they book by name. The demo buttons sign in
 // as each role's demo account in one tap.
 export default function Login() {
@@ -14,7 +14,7 @@ export default function Login() {
 
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
-    if (q.get("error") === "notstaff") setErr("That Google account is not a staff account.");
+    if (q.get("error") === "notstaff") setErr("That Google account is not a club account.");
     else if (q.get("error") === "gtoken") setErr("Google token exchange failed. Check client secret or try again.");
     else if (q.get("error") === "gstate") setErr("Google session expired. Try signing in again.");
     else if (q.get("error") === "ginfo" || q.get("error") === "gemail") setErr("Could not retrieve verified email from Google.");
@@ -43,11 +43,11 @@ export default function Login() {
   }
 
   return (
-    <main className="wrap page" style={{ maxWidth: 440 }}>
+    <main className="wrap page login-main" style={{ maxWidth: 440 }}>
       <div className="page-head">
         <span className="badge-mark">CC</span>
-        <h1 className="page-title">Staff sign-in</h1>
-        <p className="sub">Dashboard, bookings, members and the bar till live behind this.</p>
+        <h1 className="page-title">Sign in</h1>
+        <p className="sub">Everything behind the desk, in one place.</p>
       </div>
 
       <div className="panel login-card">
@@ -82,7 +82,7 @@ export default function Login() {
       </div>
 
       <div className="demo-box">
-        <p><strong>Demo accounts.</strong> One tap, no typing — each button signs you in as that role.</p>
+        <p><strong>Demo accounts</strong> — one tap each.</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           <button className="btn btn-ink" onClick={() => go("owner@champions.club", "champions")} disabled={busy}>Owner</button>
           <button className="btn btn-quiet" onClick={() => go("neha@champions.club", "demo1234")} disabled={busy}>Front desk</button>

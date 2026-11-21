@@ -28,6 +28,7 @@ export default function Chrome({ children }: { children: React.ReactNode }) {
     <div className="shell">
       <Nav />
       {children}
+      {path !== "/login" && (
       <footer className="footer">
         <div className="wrap footer-in">
           <div>
@@ -57,6 +58,7 @@ export default function Chrome({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </footer>
+      )}
     </div>
   );
 }

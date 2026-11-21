@@ -37,7 +37,7 @@ export default function Dashboard() {
       <div className="page-head">
         <p className="page-eyebrow">The club</p>
         <h1 className="page-title">Owner dashboard</h1>
-        <p className="sub">The whole day in one place: courts, shop and bar. Staff view.</p>
+        <p className="sub">The whole day in one place: courts, shop and bar.</p>
       </div>
 
       {dash.loading ? (
