@@ -181,6 +181,11 @@ export async function cancelBooking(id: number): Promise<BookingDTO> {
   const row = await db.booking.findUnique({ where: { id }, include: { court: true } });
   if (!row) throw notFound("No such booking");
   if (row.state === "CANCELLED") throw conflict("That booking is already cancelled");
+  // Same rule as booking: once the slot has started, it cannot be
+  // cancelled (no refund / no-show handling exists to fall back on).
+  const dayISO = row.date.toISOString().slice(0, 10);
+  if (dayISO < todayISO() || (dayISO === todayISO() && row.start <= istMinutesNow()))
+    throw conflict("That slot has already started");
   const updated = await db.booking.update({
     where: { id },
     data: { state: "CANCELLED" },
