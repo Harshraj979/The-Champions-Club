@@ -1,10 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 
-// One shared demo store for the whole prototype. When Odoo is offline the
-// site still behaves like one system: a booking made on Courts shows up in
-// Bookings and moves the Dashboard, a settled bar tab moves the Bar total.
-// Everything persists in the browser (localStorage), nothing is faked twice.
+// One shared store for the whole app, kept in the browser. A booking made
+// on Courts shows up in Bookings and moves the Dashboard, a settled bar
+// tab moves the Bar total. Nothing is kept in two places.
 export type StoreBooking = {
   id: number; courtId: number; court: string; who: string;
   date: string; time: number; type: string; price: number; state: string;
