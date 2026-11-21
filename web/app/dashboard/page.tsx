@@ -1,61 +1,70 @@
 "use client";
 import Link from "next/link";
-import { todayBookings, fmtTime, inr } from "@/lib/demo";
-import { useApi } from "@/lib/useApi";
+import { todayBookings, dayTotals, todayISO, fmtTime, inr } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
-type Dash = {
-  courts: number; shop: number; bar: number; total: number;
-  bookings: { id: number; court: string; who: string; time: number; type: string; price: number }[];
-};
-const fallback: Dash = {
-  courts: 13400, shop: 10399, bar: 6680, total: 30479,
-  bookings: todayBookings.map((b) => ({ id: b.id, court: b.court, who: b.who, time: b.time, type: b.type, price: b.price })),
-};
-
 export default function Dashboard() {
-  const { data: live, demo } = useApi<Dash>("/api/dashboard", (j) => j, fallback);
   const { store } = useStore();
-  // demo mode: the dashboard reflects what was actually done in the prototype
-  const mine = store.bookings.filter((b) => b.state === "booked");
-  const data: Dash = demo ? {
-    courts: fallback.courts + mine.reduce((s, b) => s + b.price, 0),
-    shop: fallback.shop + store.shopRevenue,
-    bar: fallback.bar + store.barRevenue,
-    total: 0,
-    bookings: [
-      ...fallback.bookings.filter((b) => !store.cancelledSeeds.includes(b.id)),
-      ...store.bookings.map((b) => ({ id: b.id + 1000, court: b.court, who: b.who, time: b.time, type: b.type, price: b.price })),
-    ],
-  } : live;
-  data.total = data.courts + data.shop + data.bar;
-  const stats = [
-    { label: "Courts today", value: data.courts }, { label: "Shop today", value: data.shop },
-    { label: "Bar today", value: data.bar }, { label: "Total today", value: data.total },
+  const today = todayISO();
+  const mine = store.bookings.filter((b) => b.state === "booked" && b.date === today);
+  const courts = dayTotals.courts + mine.reduce((s, b) => s + b.price, 0);
+  const shop = dayTotals.shop + store.shopRevenue;
+  const bar = dayTotals.bar + store.barRevenue;
+  const figures = [
+    { label: "Courts today", value: courts },
+    { label: "Shop today", value: shop },
+    { label: "Bar today", value: bar },
+    { label: "Total today", value: courts + shop + bar, total: true },
   ];
+  const onCourt = [
+    ...todayBookings.filter((b) => !store.cancelledSeeds.includes(b.id)).map((b) => ({ key: `s${b.id}`, time: b.time, court: b.court, who: b.who, type: b.type, price: b.price })),
+    ...mine.map((b) => ({ key: `m${b.id}`, time: b.time, court: b.court, who: b.who, type: b.type, price: b.price })),
+  ].sort((a, b) => a.time - b.time);
+
   return (
     <main className="wrap page">
-      <h2 className="title">Owner dashboard</h2>
-      <p className="sub">One place for the whole day — courts, shop and bar, totalled by the website from live Odoo records. <span className="tag grey">Staff view</span></p>
-      {demo && <div className="notice demo">Showing demo figures — Odoo is offline.</div>}
-      <div className="grid c4">
-        {stats.map((s) => (
-          <div className="card" key={s.label}><p className="muted">{s.label}</p><div className="big">{inr(s.value)}</div></div>
+      <div className="page-head">
+        <h1 className="page-title">Owner dashboard</h1>
+        <p className="sub">The whole day in one place: courts, shop and bar. Staff view.</p>
+      </div>
+      <div className="figures">
+        {figures.map((f) => (
+          <div className={`figure${f.total ? " total" : ""}`} key={f.label}>
+            <p className="f-label">{f.label}</p>
+            <p className="f-value num">{inr(f.value)}</p>
+          </div>
         ))}
       </div>
-      <div className="card" style={{ marginTop: 16 }}>
-        <h3>On court today</h3>
-        <table><thead><tr><th>Time</th><th>Court</th><th>Who</th><th>Type</th><th>Price</th></tr></thead>
-          <tbody>{data.bookings.map((b) => (
-            <tr key={b.id}><td>{fmtTime(b.time)}</td><td>{b.court}</td><td>{b.who}</td>
-              <td>{b.type === "friday_social" ? "Social Play" : b.type === "trial" ? "Trial" : "Regular"}</td><td>{inr(b.price)}</td></tr>))}
-          </tbody></table>
-        <p style={{ marginTop: 14, display: "flex", gap: 10 }}>
-          <Link href="/bookings"><button className="pill ghost">All bookings</button></Link>
-          <Link href="/members"><button className="pill ghost">Members</button></Link>
-          <Link href="/bar"><button className="pill ghost">Bar tabs</button></Link>
+
+      <section className="block">
+        <div className="sec-head">
+          <h2>On court today</h2>
+          <Link className="text-link" href="/bookings">All bookings</Link>
+        </div>
+        {onCourt.length === 0 ? (
+          <div className="empty">Nothing on court today yet. Bookings made on the Courts page will show up here.</div>
+        ) : (
+          <table className="ledger">
+            <thead><tr><th>Time</th><th>Court</th><th>Who</th><th className="hide-m">Type</th><th className="r">Price</th></tr></thead>
+            <tbody>
+              {onCourt.map((b) => (
+                <tr key={b.key}>
+                  <td className="num">{fmtTime(b.time)}</td>
+                  <td>{b.court}</td>
+                  <td>{b.who}</td>
+                  <td className="hide-m">{b.type === "friday_social" ? "Social Play" : b.type === "trial" ? "Trial" : "Regular"}</td>
+                  <td className="r num">{b.price ? inr(b.price) : "Plan"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        <p style={{ marginTop: 20, display: "flex", gap: 20 }}>
+          <Link className="text-link" href="/members">Members</Link>
+          <Link className="text-link" href="/bar">Bar tabs</Link>
+          <Link className="text-link" href="/shop">Shop</Link>
         </p>
-      </div>
+      </section>
     </main>
   );
 }
