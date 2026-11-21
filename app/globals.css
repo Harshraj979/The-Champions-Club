@@ -97,39 +97,6 @@ section.block { padding: 56px 0 8px; }
 .sec-head h2 { font-family: var(--font-display), sans-serif; font-size: 30px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1; display: flex; align-items: center; gap: 12px; }
 .sec-head h2::before { content: ""; width: 26px; height: 3px; background: var(--volt-dark); flex: none; }
 
-/* dark hero: the ground photo under a green gradient, display headline,
-   and the live card overlapping in cream */
-.hero { position: relative; background: var(--pine-deep); color: #fff; overflow: visible; }
-.hero > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 46%; }
-.hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8, 28, 17, 0.94) 0%, rgba(9, 30, 18, 0.74) 38%, rgba(9, 29, 18, 0.12) 72%), linear-gradient(0deg, rgba(7, 23, 14, 0.75) 0%, transparent 46%); }
-.hero-in { position: relative; max-width: 1200px; margin: 0 auto; padding: 92px 32px 120px; }
-.hero-text { max-width: 760px; }
-.hero-eyebrow { display: flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.28em; text-transform: uppercase; color: var(--volt); margin-bottom: 24px; }
-.hero-eyebrow::before { content: ""; width: 40px; height: 1px; background: var(--volt); }
-.hero h1 { font-family: var(--font-display), sans-serif; font-size: clamp(52px, 7.2vw, 96px); font-weight: 700; text-transform: uppercase; line-height: 0.88; letter-spacing: -0.01em; }
-.hero h1 .volt { color: var(--volt); }
-.hero p { margin-top: 22px; max-width: 520px; font-size: 16px; line-height: 1.65; color: rgba(255, 255, 255, 0.72); }
-.hero-actions { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; align-items: center; }
-.hero-meta { display: flex; flex-wrap: wrap; gap: 14px 40px; margin-top: 44px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255, 255, 255, 0.6); }
-.hero-meta span { display: inline-flex; align-items: center; gap: 8px; }
-.hero-meta svg { color: var(--volt); }
-.hero-photo { display: none; }
-.today-card { position: relative; max-width: 1200px; margin: -72px auto 0; padding: 0 32px; z-index: 2; }
-.today-inner { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: var(--shadow-lift); padding: 24px 28px; display: grid; grid-template-columns: 1fr 1.4fr; gap: 28px; align-items: center; color: var(--pine); }
-.today-head b { font-family: var(--font-display), sans-serif; font-size: 21px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; display: block; line-height: 1; }
-.today-head span { font-size: 10.5px; color: var(--good); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-.today-stats { display: flex; gap: 30px; margin-top: 14px; }
-.today-stats .ts-v { font-family: var(--font-display), sans-serif; font-size: 32px; font-weight: 700; line-height: 1; }
-.today-stats .ts-v em { font-style: normal; color: var(--muted); font-size: 17px; font-weight: 600; }
-.today-stats .ts-l { font-size: 12px; color: var(--muted); margin-top: 3px; }
-.today-rows { border-left: 1px solid var(--line-soft); padding-left: 28px; }
-.today-row { display: flex; gap: 14px; align-items: baseline; padding: 7px 0; font-size: 14px; }
-.today-row + .today-row { border-top: 1px solid var(--line-soft); }
-.today-row .tr-t { color: var(--pine); font-weight: 700; min-width: 74px; }
-.today-row .tr-c { font-weight: 600; min-width: 86px; }
-.today-row .tr-w { color: var(--ink-2); }
-.today-note { font-size: 13.5px; color: var(--muted); }
-
 /* rows and tables */
 .rows { border-top: 1px solid var(--line); }
 .row-item { display: flex; align-items: center; gap: 16px; padding: 16px 4px; border-bottom: 1px solid var(--line-soft); }
@@ -213,57 +180,6 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .footer nav { display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; color: rgba(255, 255, 255, 0.72); }
 .footer nav a:hover { color: var(--volt); }
 
-/* today's fixtures as clean list cards */
-.fixtures { display: grid; gap: 10px; }
-.fixture { display: flex; align-items: center; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 18px; box-shadow: var(--shadow); transition: box-shadow 0.15s; }
-.fixture:hover { box-shadow: var(--shadow-lift); }
-.fixture .fx-t { font-family: var(--font-display), sans-serif; font-weight: 700; font-size: 19px; min-width: 88px; }
-.fixture .fx-c { background: var(--pine); color: var(--volt); border-radius: 999px; padding: 3px 11px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
-.fixture .fx-w { flex: 1; font-weight: 500; min-width: 0; }
-.fixture .fx-p { font-size: 14.5px; color: var(--ink-2); }
-
-/* membership pricing cards; Gold on deep green with volt figures */
-.plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; align-items: stretch; }
-.plan-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
-.plan-card.hot { background: var(--pine-2); border-color: var(--pine-2); color: #fff; }
-.plan-tag { align-self: flex-start; background: var(--volt); color: var(--pine); font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 11px; border-radius: 999px; margin-bottom: 14px; }
-.plan-name { font-family: var(--font-display), sans-serif; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
-.plan-price { font-family: var(--font-display), sans-serif; font-size: 46px; font-weight: 700; line-height: 1; margin-top: 8px; }
-.plan-card.hot .plan-price { color: var(--volt); }
-.plan-price small { font-family: var(--font-dm), sans-serif; font-size: 14px; color: var(--muted); font-weight: 500; letter-spacing: 0; text-transform: none; }
-.plan-card.hot .plan-price small { color: rgba(255, 255, 255, 0.6); }
-.plan-feats { margin-top: 16px; }
-.plan-feats div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
-.plan-card.hot .plan-feats div { border-top-color: rgba(255, 255, 255, 0.14); }
-.plan-feats span:first-child { color: var(--muted); }
-.plan-card.hot .plan-feats span:first-child { color: rgba(255, 255, 255, 0.6); }
-.plan-feats b { font-weight: 600; }
-.plan-cta { margin-top: auto; padding-top: 20px; }
-.plan-cta .btn { width: 100%; }
-
-/* courts as cards with the next free slot worked out live */
-.court-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
-.court-card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px 26px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; }
-.court-name { font-family: var(--font-display), sans-serif; font-size: 25px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
-.court-next { margin-top: 10px; font-size: 14px; color: var(--ink-2); }
-.court-next b { color: var(--pine); background: linear-gradient(transparent 62%, var(--volt) 62%); padding: 0 2px; }
-.court-cta { margin-top: 16px; }
-
-/* the club as a tidy tile grid; one deep green tile, one volt tile */
-.bento { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
-.tile { border: 1px solid var(--line); border-radius: 20px; padding: 24px 26px; background: var(--surface); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 6px; }
-.tile.wide { grid-column: span 2; }
-.tile.dark { background: var(--pine-2); border-color: var(--pine-2); color: #fff; }
-.tile.volt { background: var(--volt); border-color: var(--volt); }
-.tile h3 { font-family: var(--font-display), sans-serif; font-size: 21px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
-.tile .t-big { font-family: var(--font-display), sans-serif; font-size: 32px; font-weight: 700; text-transform: uppercase; line-height: 1; }
-.tile p { font-size: 14px; color: var(--ink-2); }
-.tile.dark p { color: rgba(255, 255, 255, 0.7); }
-.tile.volt p { color: var(--ink-2); }
-.tile .t-link { margin-top: auto; padding-top: 14px; }
-.tile.dark .text-link { color: #fff; }
-.tile.volt .text-link { color: var(--pine); }
-
 /* shop shelf as product cards */
 .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
 .product-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px; transition: box-shadow 0.15s; }
@@ -278,25 +194,24 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
   .nav-end { margin-left: auto; }
   .nav-mobile { display: flex; flex-direction: column; padding: 10px 20px 18px; gap: 4px; font-weight: 500; background: var(--pine-deep); border-top: 1px solid rgba(255, 255, 255, 0.1); }
   .nav-mobile a { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); color: #fff; }
-  .nav-in, .wrap, .hero-in, .today-card { padding-left: 20px; padding-right: 20px; }
-  .hero-in { padding-top: 64px; padding-bottom: 104px; }
-  .today-inner { grid-template-columns: 1fr; gap: 16px; }
-  .today-rows { border-left: 0; padding-left: 0; border-top: 1px solid var(--line-soft); padding-top: 8px; }
   .figures { grid-template-columns: 1fr 1fr; }
   .field-row { grid-template-columns: 1fr; }
   .footer-in { grid-template-columns: 1fr 1fr; }
   .ledger .hide-m { display: none; }
-  .plan-grid, .court-grid { grid-template-columns: 1fr; }
-  .bento { grid-template-columns: 1fr; }
-  .tile.wide { grid-column: span 1; }
-  .fixture { flex-wrap: wrap; gap: 8px 14px; }
-  .fixture .fx-t { min-width: 0; }
   .seg { display: flex; width: 100%; }
   .seg button { flex: 1; padding: 8px 6px; font-size: 13px; white-space: nowrap; flex-direction: column; align-items: center; gap: 0; }
   .seg .seg-price { font-size: 11px; }
   .panel { padding: 20px; }
   .step-head .step-hint { display: none; }
 }
+/* Landing page pieces, from the Figma Make design's own stylesheet */
+.eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.25em; line-height: 1.2; text-transform: uppercase; }
+.clubhouse-art { background: linear-gradient(180deg, rgba(18, 45, 28, 0.05), rgba(18, 45, 28, 0.2)), url("/images/champions-hero.png") center / cover; }
+@keyframes notice-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.make-toast { animation: notice-in 180ms ease-out both; }
+.make-landing input { border: 0; background: transparent; min-height: 0; width: auto; box-shadow: none; }
+.make-landing input:focus { box-shadow: none; }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   * { transition: none !important; animation: none !important; }
