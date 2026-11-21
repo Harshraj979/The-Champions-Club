@@ -55,6 +55,107 @@ export async function login(email: string, password: string): Promise<{ staff: S
   return { staff: dto, token: await signToken(dto) };
 }
 
+export const DEFAULT_ROLE_PINS: Record<string, string> = {
+  OWNER: "1234",
+  FRONT_DESK: "2222",
+  BAR: "3333",
+  SHOP: "4444",
+};
+
+export const ROLE_LABELS: Record<string, string> = {
+  OWNER: "Owner",
+  FRONT_DESK: "Front Desk",
+  BAR: "Bar & Café",
+  SHOP: "Pro Shop",
+};
+
+export async function pinLogin(role: StaffDTO["role"], pin: string): Promise<{ staff: StaffDTO; token: string }> {
+  if (!role || !pin) {
+    throw badRequest("Role and PIN are required");
+  }
+  const cleanPin = pin.trim();
+  const staffMembers = await db.staff.findMany({
+    where: { role },
+    orderBy: { id: "asc" },
+  });
+  if (!staffMembers.length) {
+    throw unauthorized(`No staff profile configured for role ${role}`);
+  }
+
+  let matched = false;
+  let activeStaff = staffMembers[0];
+
+  for (const s of staffMembers) {
+    if (s.pinHash) {
+      if (await bcrypt.compare(cleanPin, s.pinHash)) {
+        matched = true;
+        activeStaff = s;
+        break;
+      }
+    } else {
+      const def = DEFAULT_ROLE_PINS[role];
+      if (def && cleanPin === def) {
+        matched = true;
+        activeStaff = s;
+        break;
+      }
+    }
+  }
+
+  if (!matched) {
+    throw unauthorized(`Incorrect PIN for ${ROLE_LABELS[role] || role}`);
+  }
+
+  const dto = toStaffDTO(activeStaff);
+  const token = await signToken(dto);
+  return { staff: dto, token };
+}
+
+export async function updateRolePin(role: StaffDTO["role"], newPin: string) {
+  if (!["OWNER", "FRONT_DESK", "BAR", "SHOP"].includes(role)) {
+    throw badRequest("Invalid role specified");
+  }
+  const cleanPin = newPin.trim();
+  if (!/^\d{4,6}$/.test(cleanPin)) {
+    throw badRequest("PIN must be 4 to 6 numeric digits");
+  }
+  const pinHash = await bcrypt.hash(cleanPin, 10);
+  await db.staff.updateMany({
+    where: { role },
+    data: { pinHash },
+  });
+  return { ok: true, role, message: `PIN updated successfully for ${ROLE_LABELS[role] || role}` };
+}
+
+export async function resetRolePin(role: StaffDTO["role"]) {
+  if (!["OWNER", "FRONT_DESK", "BAR", "SHOP"].includes(role)) {
+    throw badRequest("Invalid role specified");
+  }
+  await db.staff.updateMany({
+    where: { role },
+    data: { pinHash: null },
+  });
+  return { ok: true, role, message: `PIN reset to default for ${ROLE_LABELS[role] || role}` };
+}
+
+export async function getRolePinStatuses() {
+  const roles: StaffDTO["role"][] = ["OWNER", "FRONT_DESK", "BAR", "SHOP"];
+  const result = [];
+  for (const r of roles) {
+    const staff = await db.staff.findFirst({
+      where: { role: r },
+      select: { pinHash: true },
+    });
+    result.push({
+      role: r,
+      label: ROLE_LABELS[r] || r,
+      defaultPin: DEFAULT_ROLE_PINS[r] || "0000",
+      hasCustomPin: Boolean(staff?.pinHash),
+    });
+  }
+  return result;
+}
+
 
 export async function setSessionCookie(token: string) {
   const jar = await cookies();

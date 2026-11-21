@@ -154,12 +154,6 @@ export type OrderDTO = {
   items: { productId: number; name: string; qty: number; price: number }[];
 };
 
-export type MemberSessionDTO = {
-  id: number;
-  name: string;
-  email: string;
-};
-
 export type MemberHomeDTO = {
   member: MemberDTO;
   bookings: BookingDTO[];
@@ -172,6 +166,13 @@ export type StaffDTO = {
   name: string;
   email: string;
   role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP";
+};
+
+export type RolePinDTO = {
+  role: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
+  label: string;
+  defaultPin: string;
+  hasCustomPin: boolean;
 };
 
 export type MemberSessionDTO = {

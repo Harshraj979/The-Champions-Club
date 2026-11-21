@@ -22,6 +22,7 @@ export async function expiringMembers(withinDays = 14): Promise<ExpiringDTO[]> {
   const today = todayISO();
   const out: ExpiringDTO[] = [];
   for (const m of rows) {
+    if (!m.expiresOn || !m.plan) continue;
     const exp = m.expiresOn.toISOString().slice(0, 10);
     const daysLeft = Math.round((Date.parse(exp) - Date.parse(today)) / 86400000);
     if (daysLeft >= 0 && daysLeft <= withinDays)
@@ -44,7 +45,7 @@ export const toMemberDTO = (m: MemberRow): MemberDTO => ({
   id: m.id,
   name: m.name,
   phone: m.phone,
-  email: m.email ?? undefined,
+  email: m.email ?? null,
   plan: m.plan ? m.plan.name : "None",
   planCode: m.plan ? m.plan.code : "none",
   state: (memberState(m.expiresOn) === "none" ? "expired" : memberState(m.expiresOn)) as MemberState,

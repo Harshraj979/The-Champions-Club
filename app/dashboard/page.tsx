@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
 import NumberTicker from "@/components/NumberTicker";
+import type { RolePinDTO } from "@/lib/types";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
 const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Online" } as const;
@@ -21,6 +22,50 @@ export default function Dashboard() {
   const dash = useApi(() => api.dashboard(today), [today]);
   const d = dash.data;
   const [period, setPeriod] = useState<(typeof periods)[number]["code"]>("today");
+  const [pins, setPins] = useState<RolePinDTO[]>([]);
+  const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
+  const [pinMsg, setPinMsg] = useState<{ role: string; text: string; ok: boolean } | null>(null);
+  const [pinBusy, setPinBusy] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.staffPins().then((res) => setPins(res.roles)).catch(() => {});
+  }, []);
+
+  async function handleSavePin(role: string) {
+    const val = (pinInputs[role] || "").trim();
+    if (!/^\d{4,6}$/.test(val)) {
+      setPinMsg({ role, text: "Enter 4 to 6 numeric digits", ok: false });
+      return;
+    }
+    setPinBusy(role);
+    setPinMsg(null);
+    try {
+      const res = await api.updateRolePin(role, val);
+      setPinMsg({ role, text: res.message || "PIN updated successfully!", ok: true });
+      setPinInputs((prev) => ({ ...prev, [role]: "" }));
+      const updated = await api.staffPins();
+      setPins(updated.roles);
+    } catch (err: any) {
+      setPinMsg({ role, text: err.message || "Failed to update PIN", ok: false });
+    } finally {
+      setPinBusy(null);
+    }
+  }
+
+  async function handleResetPin(role: string) {
+    setPinBusy(role);
+    setPinMsg(null);
+    try {
+      const res = await api.resetRolePin(role);
+      setPinMsg({ role, text: res.message || "PIN reset to default", ok: true });
+      const updated = await api.staffPins();
+      setPins(updated.roles);
+    } catch (err: any) {
+      setPinMsg({ role, text: err.message || "Failed to reset PIN", ok: false });
+    } finally {
+      setPinBusy(null);
+    }
+  }
 
   const split = d?.periods[period];
   const figures = split
@@ -139,6 +184,109 @@ export default function Dashboard() {
               <Link className="mini-link" href="/payroll">Payroll</Link>
               <Link className="mini-link" href="/shifts">Staff rota</Link>
             </p>
+          </section>
+
+          <section className="block">
+            <div className="sec-head">
+              <div>
+                <h2>Staff Role Access PINs</h2>
+                <p className="sub" style={{ margin: "4px 0 0" }}>
+                  Owner controls: configure security PINs for staff and till terminals.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+              {pins.map((p) => {
+                const isBusy = pinBusy === p.role;
+                const msg = pinMsg?.role === p.role ? pinMsg : null;
+                const roleIcons: Record<string, string> = {
+                  OWNER: "👑",
+                  FRONT_DESK: "📋",
+                  BAR: "🍸",
+                  SHOP: "🛍️",
+                };
+                return (
+                  <div key={p.role} className="panel" style={{ padding: 18, borderRadius: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontSize: 22 }}>{roleIcons[p.role] || "🔑"}</span>
+                        <div>
+                          <strong style={{ fontSize: 16, display: "block" }}>{p.label}</strong>
+                          <span style={{ fontSize: 12, color: "#666" }}>Role: {p.role}</span>
+                        </div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "3px 8px",
+                          borderRadius: 999,
+                          background: p.hasCustomPin ? "#dcfce7" : "#f1f5f9",
+                          color: p.hasCustomPin ? "#166534" : "#475569",
+                          border: p.hasCustomPin ? "1px solid #86efac" : "1px solid #cbd5e1",
+                        }}
+                      >
+                        {p.hasCustomPin ? "CUSTOM PIN" : `DEFAULT (${p.defaultPin})`}
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="New PIN (4-6 digits)"
+                        value={pinInputs[p.role] || ""}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          setPinInputs((prev) => ({ ...prev, [p.role]: val }));
+                        }}
+                        style={{
+                          flex: 1,
+                          minHeight: 38,
+                          padding: "6px 12px",
+                          fontSize: 15,
+                          letterSpacing: 2,
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-ink"
+                        disabled={isBusy || !(pinInputs[p.role] && pinInputs[p.role].length >= 4)}
+                        onClick={() => handleSavePin(p.role)}
+                        style={{ minHeight: 38, padding: "6px 14px", fontSize: 13, whiteSpace: "nowrap" }}
+                      >
+                        {isBusy ? "Saving..." : "Save PIN"}
+                      </button>
+                    </div>
+
+                    {p.hasCustomPin && (
+                      <div style={{ marginTop: 8, textAlign: "right" }}>
+                        <button
+                          type="button"
+                          className="mini-link"
+                          disabled={isBusy}
+                          onClick={() => handleResetPin(p.role)}
+                          style={{ fontSize: 11, padding: "2px 8px", minHeight: 24, cursor: "pointer" }}
+                        >
+                          Reset to default ({p.defaultPin})
+                        </button>
+                      </div>
+                    )}
+
+                    {msg && (
+                      <div
+                        className={`notice ${msg.ok ? "ok" : "err"}`}
+                        style={{ marginTop: 10, padding: "6px 10px", fontSize: 12 }}
+                      >
+                        {msg.text}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </section>
         </>
       )}

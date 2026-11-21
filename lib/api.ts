@@ -1,4 +1,4 @@
-import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, ExpenseDTO, ExpiringDTO, InvoiceDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PayrollDTO, PlanDTO, ProductDTO, ShiftDTO, StaffDTO, StaffRosterDTO, TabDTO } from "./types";
+import type { BookingDTO, CourtDTO, DashboardDTO, EnquiryDTO, ExpenseDTO, ExpiringDTO, InvoiceDTO, MemberDTO, MemberHomeDTO, MemberSessionDTO, OrderDTO, PayrollDTO, PlanDTO, ProductDTO, RolePinDTO, ShiftDTO, StaffDTO, StaffRosterDTO, TabDTO } from "./types";
 
 // The web app's one door to the API. Every page fetches through here, so
 // error handling and the base path live in exactly one place. A mobile
@@ -105,6 +105,10 @@ export const api = {
   quoteEnquiry: (id: number, input: { planCode: string; amount: number; note?: string }) => post<EnquiryDTO>(`/enquiries/${id}/quote`, input),
   dashboard: (date?: string) => call<DashboardDTO>(`/dashboard${date ? `?date=${date}` : ""}`),
   login: (email: string, password: string) => post<{ staff: StaffDTO }>("/auth/login", { email, password }),
+  pinLogin: (role: string, pin: string) => post<{ staff: StaffDTO; token: string }>("/auth/pin-login", { role, pin }),
+  staffPins: () => call<{ roles: RolePinDTO[] }>("/staff/pins"),
+  updateRolePin: (role: string, pin: string) => post<{ ok: boolean; message: string }>("/staff/pins", { role, pin }),
+  resetRolePin: (role: string) => post<{ ok: boolean; message: string }>("/staff/pins", { role, reset: true }),
   logout: () => post<{ ok: boolean }>("/auth/logout"),
   me: () => call<{ staff: StaffDTO }>("/auth/me"),
   memberSignup: (input: { name: string; email: string; phone: string; password: string; planCode?: string }) =>

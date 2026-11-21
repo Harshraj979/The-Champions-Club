@@ -101,7 +101,6 @@ async function main() {
       },
     ],
   });
-  });
 
   const courts = await db.court.findMany();
   const courtId = (name: string) => courts.find((c) => c.name === name)!.id;
