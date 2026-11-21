@@ -54,6 +54,7 @@ input:hover, select:hover { border-color: rgba(23, 27, 23, 0.28); }
 .nav-links a:hover, .nav-links a[aria-current="page"] { color: var(--ink); }
 .nav-end { display: flex; align-items: center; gap: 8px; }
 .nav-end .btn { min-height: 40px; padding: 8px 16px; }
+.role-select { width: auto; min-height: 38px; padding: 6px 12px; font-size: 13.5px; font-weight: 500; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); }
 .menu-btn { display: none; width: 44px; height: 44px; font-size: 18px; }
 .nav-mobile { display: none; }
 

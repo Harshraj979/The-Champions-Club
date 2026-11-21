@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Role } from "./rbac";
 
 // One store for the whole app, saved in the browser. Book a court and it
 // turns up in Bookings and moves the Dashboard. Nothing lives in two places.
@@ -11,9 +12,10 @@ export type StoreMember = { id: number; name: string; plan: string };
 type Store = {
   bookings: StoreBooking[]; members: StoreMember[];
   cancelledSeeds: number[]; shopRevenue: number; barRevenue: number;
+  role: Role;
 };
 const KEY = "champions-club-store-v1";
-const empty: Store = { bookings: [], members: [], cancelledSeeds: [], shopRevenue: 0, barRevenue: 0 };
+const empty: Store = { bookings: [], members: [], cancelledSeeds: [], shopRevenue: 0, barRevenue: 0, role: "customer" };
 
 function load(): Store {
   try { return { ...empty, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") }; }
@@ -40,6 +42,7 @@ export function useStore() {
   const update = (patch: Partial<Store>) => save({ ...(cache ?? load()), ...patch });
   return {
     store,
+    setRole: (role: Role) => update({ role }),
     addBooking: (b: Omit<StoreBooking, "id" | "state">) =>
       update({ bookings: [...(cache ?? load()).bookings, { ...b, id: Date.now(), state: "booked" }] }),
     cancelBooking: (id: number, isSeed: boolean) => {
