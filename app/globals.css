@@ -124,6 +124,9 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 .count-line b { color: var(--pine); }
 .ledger tr.row-off td { opacity: 0.55; }
 .ledger tr.row-off td .status { opacity: 1; }
+.tag { display: inline-block; padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--cream); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-2); vertical-align: 2px; }
+.rows .row-item.row-new { box-shadow: inset 3px 0 0 var(--volt-dark); padding-left: 14px; }
+.rows .row-item.row-off { opacity: 0.55; }
 .mini-link { display: inline-flex; align-items: center; min-height: 36px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-size: 13px; font-weight: 600; color: var(--pine); transition: border-color 0.15s, background-color 0.15s; }
 .mini-link:hover { border-color: var(--pine); background: var(--volt); }
 .ledger .r, .ledger th.r { text-align: right; }
