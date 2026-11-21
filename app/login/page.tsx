@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
 
 // Staff sign-in: email and password, or Google for staff accounts.
-// Members never sign in, they book by name. The demo button signs in
-// as the club owner.
+// Members never sign in, they book by name. The demo buttons sign in
+// as each role's demo account in one tap.
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,11 +70,14 @@ export default function Login() {
       </div>
 
       <div className="demo-box">
-        <p><strong>Just looking around?</strong> One tap, no typing.</p>
-        <div>
-          <button className="btn btn-primary" onClick={() => go("owner@champions.club", "champions")} disabled={busy}>Enter the demo</button>
+        <p><strong>Demo accounts.</strong> One tap, no typing — each button signs you in as that role.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <button className="btn btn-primary" onClick={() => go("owner@champions.club", "champions")} disabled={busy}>Owner</button>
+          <button className="btn btn-quiet" onClick={() => go("neha@champions.club", "demo1234")} disabled={busy}>Front desk</button>
+          <button className="btn btn-quiet" onClick={() => go("arjun@champions.club", "demo1234")} disabled={busy}>Bar</button>
+          <button className="btn btn-quiet" onClick={() => go("meera@champions.club", "demo1234")} disabled={busy}>Shop</button>
         </div>
-        <p className="demo-creds">Demo login: owner@champions.club · champions</p>
+        <p className="demo-creds">owner@champions.club · champions — the rest use demo1234</p>
       </div>
     </main>
   );
