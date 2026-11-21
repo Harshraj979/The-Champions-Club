@@ -1,3 +1,4 @@
+@layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
@@ -36,22 +37,26 @@
   --shadow: 0 1px 2px rgba(22, 48, 33, 0.05), 0 10px 30px rgba(22, 48, 33, 0.07);
   --shadow-lift: 0 2px 4px rgba(22, 48, 33, 0.06), 0 18px 44px rgba(22, 48, 33, 0.13);
 }
+@layer base {
 * { box-sizing: border-box; margin: 0; }
 html { scroll-behavior: smooth; }
 body { font-family: var(--font-dm), system-ui, sans-serif; background: var(--paper); color: var(--pine); font-size: 15px; line-height: 1.55; }
 a { color: inherit; text-decoration: none; }
 button { font: inherit; cursor: pointer; background: none; border: 0; color: inherit; }
 button:disabled { cursor: not-allowed; }
+}
 :focus-visible { outline: 2px solid var(--pine); outline-offset: 2px; border-radius: 6px; }
 ::selection { background: var(--volt); color: var(--pine); }
 .num { font-variant-numeric: tabular-nums; }
 .muted { color: var(--muted); font-size: 14px; }
 .display { font-family: var(--font-display), sans-serif; text-transform: uppercase; }
 
+@layer base {
 label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 input, select { font: inherit; width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--pine); min-height: 44px; transition: border-color 0.15s, box-shadow 0.15s; }
 input:hover, select:hover { border-color: rgba(22, 48, 33, 0.3); }
 input:focus, select:focus { border-color: var(--pine); outline: none; box-shadow: 0 0 0 3px rgba(223, 255, 69, 0.45); }
+}
 
 /* pill buttons, uppercase and letterspaced, like the club design */
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 11px 22px; border-radius: 999px; font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; border: 1px solid transparent; transition: background-color 0.15s, color 0.15s, border-color 0.15s; white-space: nowrap; }
@@ -206,7 +211,7 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; backgr
 }
 /* Landing page pieces, from the Figma Make design's own stylesheet */
 .eyebrow { font-size: 10px; font-weight: 700; letter-spacing: 0.25em; line-height: 1.2; text-transform: uppercase; }
-.clubhouse-art { background: linear-gradient(180deg, rgba(18, 45, 28, 0.05), rgba(18, 45, 28, 0.2)), url("/images/champions-hero.png") center / cover; }
+.clubhouse-art { background: linear-gradient(180deg, rgba(18, 45, 28, 0.05), rgba(18, 45, 28, 0.2)), url("/hero.jpg") center / cover; }
 @keyframes notice-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .make-toast { animation: notice-in 180ms ease-out both; }
 .make-landing input { border: 0; background: transparent; min-height: 0; width: auto; box-shadow: none; }

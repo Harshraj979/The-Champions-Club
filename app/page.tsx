@@ -74,7 +74,7 @@ export default function Home() {
       <main>
         <section id="home" className="relative flex min-h-[760px] items-end overflow-hidden bg-[#10251a] text-white lg:min-h-screen">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/champions-hero.png" alt="Padel player on court at Champions Club" className="absolute inset-0 h-full w-full object-cover object-[62%_center]" />
+          <img src="/hero.jpg" alt="Padel player on court at Champions Club" className="absolute inset-0 h-full w-full object-cover object-[62%_center]" />
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,28,17,.94)_0%,rgba(9,30,18,.74)_35%,rgba(9,29,18,.1)_70%),linear-gradient(0deg,rgba(7,23,14,.72)_0%,transparent_45%)]" />
           <div className="relative mx-auto w-full max-w-[1440px] px-5 pb-16 pt-36 sm:px-8 lg:px-12 lg:pb-20">
             <div className="max-w-[720px]">
