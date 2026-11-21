@@ -1,9 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 
-// One shared store for the whole app, kept in the browser. A booking made
-// on Courts shows up in Bookings and moves the Dashboard, a settled bar
-// tab moves the Bar total. Nothing is kept in two places.
+// One store for the whole app, saved in the browser. Book a court and it
+// turns up in Bookings and moves the Dashboard. Nothing lives in two places.
 export type StoreBooking = {
   id: number; courtId: number; court: string; who: string;
   date: string; time: number; type: string; price: number; state: string;
@@ -20,6 +19,7 @@ function load(): Store {
   try { return { ...empty, ...JSON.parse(localStorage.getItem(KEY) ?? "{}") }; }
   catch { return empty; }
 }
+// in-memory copy + a tiny pub/sub, so every page sees the same store
 let cache: Store | null = null;
 const listeners = new Set<() => void>();
 function save(next: Store) {

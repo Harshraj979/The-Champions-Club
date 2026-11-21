@@ -1,11 +1,7 @@
-/* Design direction, in one place.
-   World: the club scorebook and the noticeboard by the desk. Warm paper
-   neutrals, ink text, ruled hairlines. Clay is the one accent, taken from
-   the court surface, used only for the selected thing and small marks.
-   Poppins is the club's typeface across its projects. Times and money are
-   set in tabular mono, the way a scorebook writes figures.
-   No glass, no glows, no hue gradients. Depth is hairlines and paper steps.
-   Radius: 8px controls, 12px panels. Spacing on a 4px grid. */
+/* Looks like a club scorebook on purpose: warm paper, ink, ruled lines.
+   Clay is the only accent, and only for the thing you've picked.
+   Times and money sit in mono, like figures written in a ledger.
+   No glass, no glows. If something needs depth, it gets a hairline. */
 :root {
   --paper: #f6f4ee;
   --surface: #fdfcfa;
@@ -33,12 +29,11 @@ button:disabled { cursor: not-allowed; }
 .num { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .muted { color: var(--muted); font-size: 14px; }
 
-/* forms */
 label { display: block; font-size: 13px; font-weight: 500; color: var(--ink-2); margin-bottom: 6px; }
 input, select { font: inherit; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); min-height: 44px; }
 input:hover, select:hover { border-color: rgba(23, 27, 23, 0.28); }
 
-/* buttons: ink is the primary, clay marks the one selected thing */
+/* ink does the work, clay is just for the selected thing */
 .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 20px; border-radius: 8px; font-weight: 500; font-size: 14.5px; border: 1px solid transparent; transition: background-color 0.15s, border-color 0.15s; white-space: nowrap; }
 .btn-ink { background: var(--ink); color: var(--paper); }
 .btn-ink:hover { background: #2a302a; }
@@ -50,7 +45,7 @@ input:hover, select:hover { border-color: rgba(23, 27, 23, 0.28); }
 .text-link { font-weight: 500; color: var(--clay); }
 .text-link:hover { text-decoration: underline; text-underline-offset: 3px; }
 
-/* nav: a plain bar on paper, hairline under it. Quiet on purpose. */
+/* plain bar, hairline under it. the nav should never be the loudest thing on the page */
 .nav { position: sticky; top: 0; z-index: 50; background: var(--paper); border-bottom: 1px solid var(--line); }
 .nav-in { max-width: 1200px; margin: 0 auto; padding: 0 32px; height: 64px; display: flex; align-items: center; gap: 32px; }
 .brand { font-weight: 600; font-size: 16.5px; white-space: nowrap; }
@@ -62,7 +57,6 @@ input:hover, select:hover { border-color: rgba(23, 27, 23, 0.28); }
 .menu-btn { display: none; width: 44px; height: 44px; font-size: 18px; }
 .nav-mobile { display: none; }
 
-/* layout */
 .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
 .page { padding-top: 40px; padding-bottom: 72px; }
 .page-head { max-width: 640px; margin-bottom: 28px; }
@@ -72,8 +66,7 @@ section.block { padding: 56px 0 8px; }
 .sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
 .sec-head h2 { font-size: 21px; font-weight: 600; letter-spacing: -0.01em; }
 
-/* hero: the photograph of the ground carries the colour. Text sits low
-   left, on the scrim that exists only to keep it readable. */
+/* the photo brings all the colour. text sits low, scrim is only there so it stays readable */
 .hero { position: relative; color: #fff; }
 .hero img { display: block; width: 100%; height: min(88svh, 760px); min-height: 520px; object-fit: cover; object-position: center 46%; }
 .hero-shade { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10, 14, 10, 0.18) 0%, rgba(10, 14, 10, 0) 34%, rgba(10, 14, 10, 0.52) 100%); }
@@ -87,7 +80,7 @@ section.block { padding: 56px 0 8px; }
 .hero-hours span { font-size: 12.5px; color: rgba(255, 255, 255, 0.75); }
 .hero-hours b { font-weight: 500; font-size: 14.5px; }
 
-/* ruled rows: the scorebook table, used for bookings, plans, products */
+/* the ledger. bookings, plans, products, all ruled the same way */
 .rows { border-top: 1px solid var(--line); }
 .row-item { display: flex; align-items: center; gap: 16px; padding: 16px 4px; border-bottom: 1px solid var(--line-soft); }
 .row-item:last-child { border-bottom: 1px solid var(--line); }
@@ -99,7 +92,7 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .ledger tbody tr:last-child td { border-bottom: 1px solid var(--line); }
 .ledger .r, .ledger th.r { text-align: right; }
 
-/* status: a dot and a word, never a pill */
+/* a dot and a word. no pills */
 .status { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 500; white-space: nowrap; }
 .status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
 .status.active::before { background: var(--good); }
@@ -107,7 +100,6 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .status.expired::before, .status.cancelled::before { background: var(--bad); }
 .status.booked::before { background: var(--good); }
 
-/* panels and figures */
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
 .figures { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 12px; background: var(--surface); overflow: hidden; }
 .figure { padding: 20px 24px; }
@@ -116,7 +108,6 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .figure .f-value { font-size: 26px; margin-top: 4px; }
 .figure.total .f-value { color: var(--clay); }
 
-/* segmented control and slots */
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
 .seg button { padding: 10px 16px; min-height: 44px; font-weight: 500; font-size: 14px; color: var(--ink-2); }
 .seg button + button { border-left: 1px solid var(--line-soft); }
@@ -127,19 +118,16 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 14.5px; }
 .slot[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
 .slot:disabled { opacity: 0.38; text-decoration: line-through; }
 
-/* stepper */
 .stepper { display: inline-flex; align-items: center; gap: 14px; }
 .stepper button { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 16px; line-height: 1; }
 .stepper button:hover { border-color: rgba(23, 27, 23, 0.32); }
 .stepper b { min-width: 20px; text-align: center; }
 
-/* notices and empty states */
 .notice { border-radius: 8px; padding: 12px 16px; font-size: 14px; margin: 16px 0; border: 1px solid var(--line); background: var(--surface); }
 .notice.ok { background: var(--ok-bg); border-color: transparent; }
 .notice.err { background: var(--bad-bg); border-color: transparent; color: #7c241a; }
 .empty { padding: 40px 24px; text-align: center; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; }
 
-/* summary bar for shop and bar totals */
 .summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-top: 24px; }
 .summary .s-lines { font-size: 14px; color: var(--ink-2); }
 .summary .s-total { font-size: 21px; color: var(--ink); }

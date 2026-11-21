@@ -1,6 +1,5 @@
-// Club data, in the app's own shapes. One place for plans, courts,
-// products, members and today's bookings. When a backend is added,
-// this file is what its responses replace.
+// Everything the club runs on, in one file: plans, courts, products,
+// members, today's bookings. When the backend lands, it sends this shape.
 export const plans = [
   { code: "gold", name: "Gold", court: 0, shop: 15, bar: 15, days: 365 },
   { code: "silver", name: "Silver", court: 300, shop: 10, bar: 10, days: 365 },
@@ -42,9 +41,9 @@ export const todayBookings: SeedBooking[] = [
   { id: 3, courtId: 3, court: "Cricket 1", who: "Walk-in: Imran", time: 17, type: "regular", price: 800 },
   { id: 4, courtId: 2, court: "Tennis 2", who: "Friday Social Play (8 members)", time: 19, type: "friday_social", price: 0 },
 ];
-// start times already taken today, by court id
+// already booked today, by court
 export const takenSlots: Record<number, number[]> = { 1: [10, 18], 2: [19], 3: [17] };
-// the day's takings before anything done in this session
+// what the tills already had before this session started
 export const dayTotals = { courts: 13400, shop: 10399, bar: 6680 };
 
 export const hours = [

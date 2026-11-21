@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { courts, members, plans, takenSlots, todayBookings, todayISO, fmtTime, inr } from "@/lib/data";
 import { useStore } from "@/lib/store";
 
-const allSlots = Array.from({ length: 31 }, (_, i) => 6 + i * 0.5); // 6:00 AM to 9:00 PM starts, one hour each
+const allSlots = Array.from({ length: 31 }, (_, i) => 6 + i * 0.5); // half-hour starts, 6 AM to 9 PM
 
 export default function Courts() {
   const today = todayISO();
@@ -19,9 +19,10 @@ export default function Courts() {
     ...(date === today ? (takenSlots[courtId] ?? []) : []),
     ...store.bookings.filter((b) => b.courtId === courtId && b.date === date && b.state === "booked").map((b) => b.time),
   ], [store.bookings, courtId, date, today]);
+  // a booking runs a full hour, so it also blocks the starts either side of it
   const free = (t: number) => !busy.some((b) => Math.abs(b - t) < 1);
 
-  // the club's own rules, applied the same way for everyone
+  // club rules. same for members, same for walk-ins
   const member = members.find((m) => m.name.toLowerCase() === name.trim().toLowerCase());
   const plan = member ? plans.find((p) => p.name === member.plan) : undefined;
   const price = slot === null ? null : member ? (plan?.court ?? court.walkin) : court.walkin;
