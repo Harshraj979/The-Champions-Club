@@ -106,12 +106,18 @@ export async function convertEnquiry(id: number, planCode: string): Promise<Enqu
   const isEmail = contact.includes("@");
   const phone = !isEmail && contact.replace(/\D/g, "").length >= 10 ? contact : "";
   const email = isEmail ? contact : undefined;
-  const member = await createMember({ name: row.name, phone, email, planCode }).catch((e) => {
-    throw e instanceof Error ? e : badRequest("Could not create the member");
-  });
-  const updated = await db.enquiry.update({
-    where: { id },
-    data: { status: "CONVERTED", memberId: member.id },
-  });
+  // One transaction: if the enquiry update fails, the member
+  // creation rolls back too, so a retry cannot create a second member.
+  const updated = await db
+    .$transaction(async (tx) => {
+      const member = await createMember({ name: row.name, phone, email, planCode }, tx);
+      return tx.enquiry.update({
+        where: { id },
+        data: { status: "CONVERTED", memberId: member.id },
+      });
+    })
+    .catch((e) => {
+      throw e instanceof Error ? e : badRequest("Could not create the member");
+    });
   return toDTO(updated);
 }
