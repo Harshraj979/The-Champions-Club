@@ -12,10 +12,25 @@ export class ApiClientError extends Error {
   }
 }
 
+// useApi threads one request's AbortSignal through here so a reload can
+// cancel the fetch it supersedes. The signal is captured synchronously
+// when fetch() is called, so concurrent hooks cannot clobber each other.
+let fetchSignal: AbortSignal | undefined;
+export function withFetchSignal<T>(signal: AbortSignal | undefined, fn: () => Promise<T>): Promise<T> {
+  const prev = fetchSignal;
+  fetchSignal = signal;
+  try {
+    return fn();
+  } finally {
+    fetchSignal = prev;
+  }
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`/api/v1${path}`, {
+      signal: fetchSignal,
       ...init,
       headers: { "Content-Type": "application/json", ...init?.headers },
     });
@@ -225,5 +240,66 @@ export const api = {
   memberBook: (input: { courtId: number; date: string; start: number }) => post<BookingDTO>("/member/bookings", input),
   memberRenew: (extra?: PlanPayment) =>
     post<MemberDTO & { needsPayment?: boolean; razorpayOrderId?: string; amount?: number }>("/member/renew", extra ?? {}),
+  changeMemberPlan: (id: number, planCode: string, staffReceipt?: boolean) =>
+    post<MemberDTO>(`/members/${id}/plan`, { planCode, staffReceipt: staffReceipt ?? true }),
+  cancelMyBooking: (id: number) => post<BookingDTO>(`/member/bookings/${id}/cancel`, {}),
+  myRenewals: () =>
+    call<{ id: number; planCode?: string; planName?: string; amount: number; renewedOn?: string; createdAt: string; expiresOn?: string }[]>("/member/renewals"),
+  withdrawLeave: (id: number) => call<{ ok: boolean }>(`/leave/${id}`, { method: "DELETE" }),
   memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI"; fulfilment?: "PICKUP" | "DELIVERY"; address?: string; payOnline?: boolean }) => post<OrderDTO & { razorpayOrderId?: string }>("/member/orders", input),
 };
+
+// The signed proof a real Razorpay checkout hands back. It is a
+// PlanPayment with every field present; buyPlan/memberRenew accept it
+// through the broader PlanPayment parameter.
+export type RazorpayProof = {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+};
+
+// Opens the real Razorpay checkout and resolves with the signed proof
+// from its handler, or null when the member closes the window. The
+// payment is never faked: if the checkout script cannot load, this
+// throws instead of inventing a payment.
+export async function openRazorpayCheckout(input: {
+  keyId: string;
+  orderId: string;
+  amount: number;
+  name?: string;
+  description?: string;
+}): Promise<RazorpayProof | null> {
+  const win = window as unknown as { Razorpay?: any };
+  if (!win.Razorpay) {
+    await new Promise<void>((resolve, reject) => {
+      const s = document.createElement("script");
+      s.src = "https://checkout.razorpay.com/v1/checkout.js";
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("Could not load the payment window"));
+      document.body.appendChild(s);
+    });
+  }
+  if (!win.Razorpay) throw new Error("Could not load the payment window");
+  return new Promise<RazorpayProof | null>((resolve, reject) => {
+    try {
+      const rzp = new win.Razorpay({
+        key: input.keyId,
+        order_id: input.orderId,
+        amount: Math.round(input.amount * 100),
+        currency: "INR",
+        name: input.name ?? "The Champions Club",
+        description: input.description ?? "Club payment",
+        handler: (resp: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) =>
+          resolve({
+            razorpayOrderId: resp.razorpay_order_id,
+            razorpayPaymentId: resp.razorpay_payment_id,
+            razorpaySignature: resp.razorpay_signature,
+          }),
+        modal: { ondismiss: () => resolve(null) },
+      });
+      rzp.open();
+    } catch (e) {
+      reject(e instanceof Error ? e : new Error("Could not open the payment window"));
+    }
+  });
+}
