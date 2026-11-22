@@ -97,11 +97,6 @@ export async function GET(req: NextRequest) {
     return back(destination);
   }
 
-  // STAFF FLOW (Existing backward-compatible logic)
-  const staff = await db.staff.findUnique({ where: { email: cleanEmail } });
-  if (!staff) return back("/login?error=notstaff");
-  await setSessionCookie(await tokenForStaff(staff));
-
-  const destination = safeNextPath(next) === "/login" ? "/dashboard" : safeNextPath(next);
-  return back(destination);
+  // Staff and Owner cannot sign in with Google — they must use their secure role PIN
+  return back("/login");
 }

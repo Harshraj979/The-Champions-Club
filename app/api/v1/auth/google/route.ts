@@ -3,20 +3,22 @@ import { cookies } from "next/headers";
 import crypto from "node:crypto";
 import { getGoogleRedirectUri, safeNextPath } from "@/lib/auth";
 
-// Google sign-in / sign-up initiation for members, users, and staff.
-// Needs GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the environment.
-// When credentials are not yet configured, routes gracefully to the Demo Google Account Chooser.
+// Google sign-in / sign-up initiation strictly for club members & users.
+// Staff and Owner access is restricted to secure role PINs.
 export async function GET(req: NextRequest) {
   const type = req.nextUrl.searchParams.get("type") || "member";
-  const defaultNext = type === "staff" ? "/dashboard" : "/member";
-  const rawNext = req.nextUrl.searchParams.get("next") ?? defaultNext;
+  if (type === "staff") {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  const rawNext = req.nextUrl.searchParams.get("next") ?? "/member";
   const next = safeNextPath(rawNext);
   const plan = req.nextUrl.searchParams.get("plan");
 
   const id = process.env.GOOGLE_CLIENT_ID?.trim();
   const jar = await cookies();
   const opts = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 600 };
-  jar.set("cc_gtype", type, opts);
+  jar.set("cc_gtype", "member", opts);
   jar.set("cc_gnext", next, opts);
   if (plan) jar.set("cc_gplan", plan, opts);
 
@@ -33,11 +35,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // If GOOGLE_CLIENT_ID is not configured in local environment, route to Google Account Chooser
-  if (type === "staff") {
-    return NextResponse.redirect(new URL("/login?error=google", req.url));
-  }
   return NextResponse.redirect(
-    new URL(`/member-login?google_demo=1&next=${encodeURIComponent(next)}`, req.url),
+    new URL(`/member-login?next=${encodeURIComponent(next)}`, req.url),
   );
 }

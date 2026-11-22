@@ -31,12 +31,19 @@ async function kindOf(token: string | undefined): Promise<string | null> {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Member portal: everything under /member except its sign-in page.
-  if (pathname === "/member" || (pathname.startsWith("/member/") && pathname !== "/member/login")) {
+  // Redirect legacy /member/login to /member-login
+  if (pathname === "/member/login" || pathname === "/member/login/") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/member-login";
+    return NextResponse.redirect(url, 308);
+  }
+
+  // Member portal: everything under /member requires active member authentication.
+  if (pathname === "/member" || pathname.startsWith("/member/")) {
     if ((await kindOf(req.cookies.get("cc_member")?.value)) === "member")
       return NextResponse.next();
     const url = req.nextUrl.clone();
-    url.pathname = "/member/login";
+    url.pathname = "/member-login";
     return NextResponse.redirect(url);
   }
 

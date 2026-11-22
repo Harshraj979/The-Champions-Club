@@ -7,7 +7,7 @@ export default function MemberBar({ name, plan }: { name: string; plan: string }
   const router = useRouter();
   async function out() {
     await api.memberLogout().catch(() => {});
-    router.push("/member/login");
+    router.push("/member-login");
     router.refresh();
   }
   return (

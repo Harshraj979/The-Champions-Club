@@ -15,7 +15,7 @@ import MemberActions from "@/components/MemberActions";
 async function renewPlan() {
   "use server";
   const session = await currentMember();
-  if (!session) redirect("/member/login");
+  if (!session) redirect("/member-login");
   await renewMember(session.id);
   revalidatePath("/member");
   redirect("/member?renewed=1");
@@ -23,7 +23,7 @@ async function renewPlan() {
 
 export default async function MemberHome({ searchParams }: { searchParams?: Promise<{ renewed?: string }> }) {
   const session = await currentMember();
-  if (!session) redirect("/member/login");
+  if (!session) redirect("/member-login");
   const home = await memberHome(session.id);
   const m = home.member;
   const renewed = (await searchParams)?.renewed === "1";
