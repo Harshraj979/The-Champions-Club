@@ -6,8 +6,9 @@ import { Loading, ErrorBox, Empty } from "@/components/States";
 import type { EnquiryDTO } from "@/lib/types";
 import { inr } from "@/lib/format";
 
-// CONVERTED is not offered: the server rejects it — conversion happens via "Make member".
-const statuses: EnquiryDTO["status"][] = ["NEW", "CONTACTED", "QUOTED", "LOST"];
+// CONVERTED is shown but disabled: conversion happens via "Make member",
+// never by picking it here — a converted enquiry otherwise renders blank.
+const statuses: EnquiryDTO["status"][] = ["NEW", "CONTACTED", "QUOTED", "CONVERTED", "LOST"];
 
 export default function Enquiries() {
   const enquiries = useApi(() => api.enquiries());
@@ -46,7 +47,7 @@ export default function Enquiries() {
     const planCode = planFor[e.id];
     const amount = Number(quoteAmt[e.id] ?? e.quoteAmount ?? "");
     if (!planCode) {
-      setMsg({ ok: false, text: `Pick a plan for ${e.name} first — the quote amount comes from the plan.` });
+      setMsg({ ok: false, text: `Pick a plan for ${e.name} first, then add the quote amount.` });
       return;
     }
     if (!Number.isInteger(amount) || amount <= 0) {
@@ -155,9 +156,9 @@ export default function Enquiries() {
                           onChange={(ev) => {
                             const code = ev.target.value;
                             setPlanFor((p) => ({ ...p, [e.id]: code }));
-                            // The quote amount comes from the plan picked.
-                            const plan = plans.data?.find((p) => p.code === code);
-                            if (plan) setQuoteAmt((q) => ({ ...q, [e.id]: String(plan.tennisPrice) }));
+                            // The quote amount is entered by hand — no fee
+                            // is filled in from the plan's per-session
+                            // rate; a real fee field is coming.
                           }}
                         >
                           <option value="" disabled>Pick a plan</option>
@@ -176,7 +177,7 @@ export default function Enquiries() {
                     <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
                       <input
                         aria-label={`Quote amount for ${e.name}`}
-                        placeholder="Quote ₹ (uses the plan picked above)"
+                        placeholder="Quote ₹ — enter the amount"
                         inputMode="numeric"
                         value={quoteAmt[e.id] ?? (e.quoteAmount !== null ? String(e.quoteAmount) : "")}
                         onChange={(ev) => setQuoteAmt((q) => ({ ...q, [e.id]: ev.target.value.replace(/\D/g, "") }))}
@@ -203,7 +204,7 @@ export default function Enquiries() {
                   onChange={(ev) => patch(e.id, { status: ev.target.value as EnquiryDTO["status"] })}
                 >
                   {statuses.map((s) => (
-                    <option key={s} value={s}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
+                    <option key={s} value={s} disabled={s === "CONVERTED"}>{s.charAt(0) + s.slice(1).toLowerCase()}</option>
                   ))}
                 </select>
               </div>

@@ -59,7 +59,7 @@ export default function Invoices() {
       <div className="page-head">
         <p className="page-eyebrow">Owner</p>
         <h1 className="page-title">Invoices</h1>
-        <p className="sub">Bills the club sends out — memberships, corporate clients, events. What is unpaid is what the club is owed.</p>
+        <p className="sub">Bills the club sends out — memberships, corporate clients, events. What is unpaid is what the club is owed. Invoices carry no due date yet — the number shown is the invoice id.</p>
       </div>
 
       <FinanceNav active="invoices" />
@@ -81,10 +81,11 @@ export default function Invoices() {
           ) : (
             <div className="ledger-wrap" style={{ marginTop: 20 }}>
               <table className="ledger">
-                <thead><tr><th>Billed to</th><th className="hide-m">For</th><th className="hide-m">Issued</th><th className="r">Amount</th><th>Status</th><th></th></tr></thead>
+                <thead><tr><th>No.</th><th>Billed to</th><th className="hide-m">For</th><th className="hide-m">Issued</th><th className="r">Amount</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {list.map((i) => (
                     <tr key={i.id} className={i.status === "PAID" ? "row-off" : ""}>
+                      <td className="num">#{i.id}</td>
                       <td style={{ fontWeight: 500 }}>{i.billedTo}</td>
                       <td className="hide-m">{i.detail || "—"}</td>
                       <td className="hide-m num">{i.issuedOn}</td>
@@ -109,6 +110,10 @@ export default function Invoices() {
                 <div>
                   <label htmlFor="inv-amt">Amount ₹</label>
                   <input id="inv-amt" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value.replace(/\D/g, "") })} inputMode="numeric" />
+                </div>
+              </div>
+              <div className="field-row" style={{ marginTop: 16 }}>
+                <div>
                   <label htmlFor="inv-tax">Tax rate % (optional)</label>
                   <input id="inv-tax" value={form.taxRate} onChange={(e) => setForm({ ...form, taxRate: e.target.value.replace(/[^0-9.]/g, "") })} inputMode="decimal" placeholder="e.g. 18" />
                 </div>

@@ -7,6 +7,9 @@ import { todayISO } from "@/lib/format";
 import type { LeaveDTO } from "@/lib/types";
 
 const typeLabel = { ANNUAL: "Annual", SICK: "Sick", UNPAID: "Unpaid", OTHER: "Other" } as const;
+// Inclusive day count: a request from Monday to Wednesday is 3 days.
+const dayCount = (from: string, to: string) =>
+  Math.round((Date.parse(to) - Date.parse(from)) / 86400000) + 1;
 const statusClass = { PENDING: "expiring", APPROVED: "booked", REJECTED: "cancelled" } as const;
 
 export default function Leave() {
@@ -21,6 +24,7 @@ export default function Leave() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [decideBusy, setDecideBusy] = useState<number | null>(null);
+  const [withdrawBusy, setWithdrawBusy] = useState<number | null>(null);
   // The owner files for anyone on the roster; anyone else files for
   // themselves — their id comes from their own session, not the roster
   // (bar and shop staff cannot load the roster at all).
@@ -57,13 +61,27 @@ export default function Leave() {
     }
   }
 
+  async function withdraw(l: LeaveDTO) {
+    if (!window.confirm(`Withdraw your leave request, ${l.fromDate} to ${l.toDate}?`)) return;
+    setWithdrawBusy(l.id);
+    try {
+      await api.withdrawLeave(l.id);
+      setMsg({ ok: true, text: "Leave request withdrawn." });
+      void leaves.reload();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Withdrawing failed. Try again." });
+    } finally {
+      setWithdrawBusy(null);
+    }
+  }
+
   const loading = me.loading || leaves.loading || (isOwner && roster.loading);
   return (
     <main className="wrap page">
       <div className="page-head">
         <p className="page-eyebrow">Staff</p>
         <h1 className="page-title">Leave</h1>
-        <p className="sub">Time off, requested and approved in one place. Approved leave counts against the month&apos;s pay record.</p>
+        <p className="sub">Time off, requested and approved in one place. Ask the owner — leave is recorded here and applied to pay manually.</p>
       </div>
 
       {loading ? (
@@ -89,13 +107,14 @@ export default function Leave() {
           ) : (
             <div className="ledger-wrap">
               <table className="ledger">
-                <thead><tr><th>Staff</th><th>From</th><th>To</th><th className="hide-m">Type</th><th className="hide-m">Reason</th><th>Status</th>{isOwner && <th>Decision</th>}</tr></thead>
+                <thead><tr><th>Staff</th><th>From</th><th>To</th><th className="r">Days</th><th className="hide-m">Type</th><th className="hide-m">Reason</th><th>Status</th>{isOwner && <th>Decision</th>}<th>Withdraw</th></tr></thead>
                 <tbody>
                   {list.map((l) => (
                     <tr key={l.id} className={l.status === "REJECTED" ? "row-off" : ""}>
                       <td style={{ fontWeight: 500 }}>{l.staffName}</td>
                       <td className="num">{l.fromDate}</td>
                       <td className="num">{l.toDate}</td>
+                      <td className="r num">{dayCount(l.fromDate, l.toDate)}d</td>
                       <td className="hide-m">{typeLabel[l.type]}</td>
                       <td className="hide-m">{l.reason || "—"}</td>
                       <td><span className={`status ${statusClass[l.status]}`}>{l.status === "PENDING" ? "Pending" : l.status === "APPROVED" ? "Approved" : "Rejected"}</span></td>
@@ -111,6 +130,13 @@ export default function Leave() {
                           )}
                         </td>
                       )}
+                      <td>
+                        {l.status === "PENDING" && l.staffId === me.data?.staff.id && (
+                          <button className="btn btn-quiet" disabled={withdrawBusy === l.id} onClick={() => withdraw(l)}>
+                            {withdrawBusy === l.id ? "Withdrawing..." : "Withdraw"}
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

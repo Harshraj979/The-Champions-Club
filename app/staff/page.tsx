@@ -13,6 +13,7 @@ const ROLES: StaffDTO["role"][] = ["OWNER", "FRONT_DESK", "STAFF", "BAR", "SHOP"
 export default function StaffPage() {
   const me = useApi(() => api.me(), []);
   const roster = useApi(() => api.staffRoster(), []);
+  const pins = useApi(() => api.staffPins(), []);
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "STAFF" as StaffDTO["role"] });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,6 +21,8 @@ export default function StaffPage() {
 
   const isOwner = me.data?.staff.role === "OWNER";
   const list = roster.data ?? [];
+  // The roster has no email; the pins list (StaffMemberPinDTO) does.
+  const emailById = new Map((pins.data?.staff ?? []).map((s) => [s.id, s.email]));
 
   async function add() {
     if (!form.name.trim()) return setMsg({ ok: false, text: "The staff member needs a name." });
@@ -47,6 +50,7 @@ export default function StaffPage() {
   }
 
   async function remove(id: number, name: string) {
+    if (id === me.data?.staff.id) return;
     if (!window.confirm(`Remove ${name} from the staff? Their sign-in stops working.`)) return;
     setBusyId(id);
     setMsg(null);
@@ -82,16 +86,21 @@ export default function StaffPage() {
           ) : (
             <div className="ledger-wrap">
               <table className="ledger">
-                <thead><tr><th>Name</th><th>Role</th><th></th></tr></thead>
+                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
                 <tbody>
                   {list.map((s) => (
                     <tr key={s.id}>
-                      <td style={{ fontWeight: 500 }}>{s.name}</td>
+                      <td style={{ fontWeight: 500 }}>{s.name}{s.id === me.data?.staff.id ? " (you)" : ""}</td>
+                      <td>{emailById.get(s.id) ?? "—"}</td>
                       <td>{s.role}</td>
                       <td className="r">
-                        <button className="btn btn-quiet" disabled={busyId === s.id} onClick={() => remove(s.id, s.name)}>
-                          {busyId === s.id ? "Removing..." : "Remove"}
-                        </button>
+                        {s.id === me.data?.staff.id ? (
+                          <span className="muted" title="You cannot remove your own account">Cannot remove self</span>
+                        ) : (
+                          <button className="btn btn-quiet" disabled={busyId === s.id} onClick={() => remove(s.id, s.name)}>
+                            {busyId === s.id ? "Removing..." : "Remove"}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

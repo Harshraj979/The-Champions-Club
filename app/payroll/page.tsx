@@ -19,6 +19,15 @@ export default function Payroll() {
   const shown = monthFilter ? list.filter((p) => p.month === monthFilter) : list;
   const monthPrefix = todayISO().slice(0, 7);
   const monthDue = list.filter((p) => p.month === monthPrefix && p.status === "PENDING").reduce((s, p) => s + p.net, 0);
+  // The server's net is salary minus tax (lib/services/finance); leave
+  // days are recorded on the record but no per-day rate is deducted
+  // automatically — the owner applies any leave deduction to pay manually.
+  const previewSalary = Number(form.salary);
+  const previewTax = Number(form.tax) || 0;
+  const previewNet =
+    Number.isInteger(previewSalary) && previewSalary > 0 && previewTax >= 0 && previewTax <= previewSalary
+      ? previewSalary - previewTax
+      : null;
 
   async function add() {
     const salary = Number(form.salary);
@@ -46,7 +55,8 @@ export default function Payroll() {
     }
   }
 
-  async function pay(p: { id: number; staffName: string; net: number }) {
+  async function pay(p: { id: number; staffName: string; month: string; net: number }) {
+    if (!window.confirm(`Mark ${p.staffName}'s pay for ${p.month} as paid? Net pay ${inr(p.net)}.`)) return;
     setMsg(null);
     setBusyId(p.id);
     try {
@@ -151,6 +161,12 @@ export default function Payroll() {
                   <input id="pr-leave" value={form.leaveDays} onChange={(e) => setForm({ ...form, leaveDays: e.target.value.replace(/\D/g, "") })} inputMode="numeric" />
                 </div>
               </div>
+              {previewNet !== null && (
+                <p className="muted" style={{ marginTop: 14 }}>
+                  Net pay preview: <strong className="num">{inr(previewNet)}</strong> (salary {inr(previewSalary)} − tax {inr(previewTax)}).
+                  Leave days ({Number(form.leaveDays) || 0}) are recorded, not deducted — the owner applies any leave deduction to pay manually.
+                </p>
+              )}
               {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status" style={{ marginTop: 14 }}>{msg.text}</div>}
               <button className="btn btn-ink" style={{ marginTop: 16 }} disabled={busy} onClick={add}>Add record</button>
             </div>

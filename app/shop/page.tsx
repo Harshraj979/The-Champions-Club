@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { inr } from "@/lib/format";
@@ -83,8 +82,9 @@ export default function Shop() {
   const discount = Math.round((subtotal * discountPct) / 100);
   const total = subtotal - discount;
   const count = gear.reduce((s, p) => s + (cart[p.id] ?? 0), 0);
-  const set = (id: number, qty: number, stock: number) =>
-    setCart((c) => ({ ...c, [id]: Math.max(0, Math.min(stock, qty)) }));
+  // Stock null means untracked: orderable without a cap, not zero.
+  const set = (id: number, qty: number, stock: number | null) =>
+    setCart((c) => ({ ...c, [id]: stock === null ? Math.max(0, qty) : Math.max(0, Math.min(stock, qty)) }));
 
   async function order() {
     if (!total && !subtotal) return;
@@ -112,7 +112,10 @@ export default function Shop() {
   async function orderOnline() {
     if (!total && !subtotal) return;
     const keyId = payCfg.data?.keyId;
-    if (!keyId) return;
+    if (!keyId) {
+      setMsg({ ok: false, text: "Online payment isn't switched on yet — pay at the counter instead." });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     try {
@@ -136,7 +139,7 @@ export default function Shop() {
     <main className="shop-page">
       <section className="shop-hero">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero.jpg" alt="Padel player on court at Champions Club" className="shop-hero-img" />
+        <img src="/hero.jpg" alt="Tennis player on court at Champions Club" className="shop-hero-img" />
         <div className="shop-hero-shade" />
         <div className="wrap shop-hero-in">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
@@ -145,14 +148,11 @@ export default function Shop() {
               <h1 className="shop-title">Club shop</h1>
               <p className="shop-sub">The same shelf as the counter. What is listed here is what is actually in stock — order from home, collect at the club, or have it delivered.</p>
             </div>
-            <Link className="mini-link" href="/dashboard" style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)", color: "white" }}>
-              👑 Club Owner Dashboard
-            </Link>
           </div>
           <div className="shop-hero-chips">
             <span>Pickup at the front desk</span>
             <span>Delivery to your door</span>
-            <span>Members save up to 15%</span>
+            <span>Members save with their plan</span>
           </div>
         </div>
       </section>
@@ -188,15 +188,15 @@ export default function Shop() {
                 <div className="p-body">
                 <p className="p-name">{p.name}</p>
                 <p className={`stock-line${p.stock === 0 ? " out" : p.stock !== null && p.stock <= p.lowAt ? " low" : ""}`}>
-                  {p.stock === 0 ? "Out of stock" : p.stock !== null && p.stock <= p.lowAt ? `Only ${p.stock} left` : `${p.stock} in stock`}
+                  {p.stock === 0 ? "Out of stock" : p.stock === null ? "In stock" : p.stock <= p.lowAt ? `Only ${p.stock} left` : `${p.stock} in stock`}
                 </p>
                 <p className="p-price">{inr(p.price)}</p>
                 <div className="p-foot">
                   <span className="muted">{(cart[p.id] ?? 0) > 0 ? <><span className="num">{inr((cart[p.id] ?? 0) * p.price)}</span> in your order</> : "Pick a quantity"}</span>
                   <div className="stepper">
-                    <button aria-label={`One less ${p.name}`} disabled={!(cart[p.id] ?? 0)} onClick={() => set(p.id, (cart[p.id] ?? 0) - 1, p.stock ?? 0)}>−</button>
+                    <button aria-label={`One less ${p.name}`} disabled={!(cart[p.id] ?? 0)} onClick={() => set(p.id, (cart[p.id] ?? 0) - 1, p.stock)}>−</button>
                     <b className="num">{cart[p.id] ?? 0}</b>
-                    <button aria-label={`One more ${p.name}`} disabled={p.stock === 0 || (cart[p.id] ?? 0) >= (p.stock ?? 0)} onClick={() => set(p.id, (cart[p.id] ?? 0) + 1, p.stock ?? 0)}>+</button>
+                    <button aria-label={`One more ${p.name}`} disabled={p.stock === 0 || (p.stock !== null && (cart[p.id] ?? 0) >= p.stock)} onClick={() => set(p.id, (cart[p.id] ?? 0) + 1, p.stock)}>+</button>
                   </div>
                 </div>
                 </div>
@@ -286,11 +286,15 @@ export default function Shop() {
                 : fulfilment === "DELIVERY" && address.trim().length < 10 ? "Add the delivery address"
                 : `Order for ${fulfilment === "DELIVERY" ? "delivery" : "pickup"}, ${inr(total)}`}
             </button>
-            {payCfg.data?.enabled && (
+            {payCfg.data && !payCfg.data.keyId ? (
+              <button className="btn btn-quiet" style={{ marginTop: 10 }} disabled title="Online payment isn't switched on yet">
+                Pay online — payment isn&apos;t switched on yet
+              </button>
+            ) : payCfg.data?.enabled ? (
               <button className="btn btn-quiet" style={{ marginTop: 10 }} disabled={!subtotal || !name.trim() || phone.replace(/\D/g, "").length < 10 || (fulfilment === "DELIVERY" && address.trim().length < 10) || busy} onClick={orderOnline}>
                 Pay online (Razorpay test), {inr(total)}
               </button>
-            )}
+            ) : null}
           </div>
         </>
       )}

@@ -17,13 +17,19 @@ export default function Shifts() {
   const [weekStart, setWeekStart] = useState(() => mondayOf(todayISO()));
   const roster = useApi(() => api.staffRoster(), []);
   const shifts = useApi(() => api.shifts(weekStart, addDaysISO(weekStart, 6)), [weekStart]);
+  const leaves = useApi(() => api.leaves(), []);
   const [form, setForm] = useState<{ staffId: number; date: string; part: "MORNING" | "EVENING" }>({ staffId: 0, date: todayISO(), part: "MORNING" });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [busyIds, setBusyIds] = useState<Set<number>>(new Set());
 
   const days = Array.from({ length: 7 }, (_, i) => addDaysISO(weekStart, i));
   const list = shifts.data ?? [];
   const staffId = form.staffId || roster.data?.[0]?.id || 0;
+  // Approved leave covering a day in this week, by staff name — the
+  // rota flags those days so nobody is booked while they are away.
+  const onLeave = (date: string) =>
+    (leaves.data ?? []).filter((l) => l.status === "APPROVED" && l.fromDate <= date && date <= l.toDate);
 
   async function add() {
     if (!staffId) return;
@@ -43,14 +49,18 @@ export default function Shifts() {
 
   async function remove(id: number, label: string) {
     if (!window.confirm(`Remove ${label} from the rota?`)) return;
-    setBusy(true);
+    setBusyIds((prev) => new Set(prev).add(id));
     try {
       await api.removeShift(id);
       void shifts.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Removing failed. Try again." });
     } finally {
-      setBusy(false);
+      setBusyIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     }
   }
 
@@ -60,7 +70,7 @@ export default function Shifts() {
     return rows.map((s) => (
       <span key={s.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, marginRight: 10 }}>
         {s.staffName}
-        <button aria-label={`Remove ${s.staffName} from ${part.toLowerCase()} ${date}`} disabled={busy} onClick={() => remove(s.id, `${s.staffName}, ${part.toLowerCase()} ${date}`)} style={{ fontWeight: 700, lineHeight: 1 }}>×</button>
+        <button aria-label={`Remove ${s.staffName} from ${part.toLowerCase()} ${date}`} disabled={busyIds.has(s.id)} onClick={() => remove(s.id, `${s.staffName}, ${part.toLowerCase()} ${date}`)} style={{ fontWeight: 700, lineHeight: 1 }}>×</button>
       </span>
     ));
   };
@@ -77,10 +87,14 @@ export default function Shifts() {
         <button className="btn btn-quiet" onClick={() => setWeekStart(addDaysISO(weekStart, -7))}>Previous week</button>
         <button className="btn btn-quiet" onClick={() => setWeekStart(mondayOf(todayISO()))}>This week</button>
         <button className="btn btn-quiet" onClick={() => setWeekStart(addDaysISO(weekStart, 7))}>Next week</button>
+        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="muted">Jump to</span>
+          <input type="date" aria-label="Jump to week" onChange={(e) => { if (e.target.value) setWeekStart(mondayOf(e.target.value)); }} />
+        </label>
         <span className="muted">{dayLabel(weekStart)} — {dayLabel(addDaysISO(weekStart, 6))}</span>
       </div>
 
-      {shifts.loading || roster.loading ? (
+      {shifts.loading || roster.loading || leaves.loading ? (
         <Loading />
       ) : roster.error ? (
         <ErrorBox message={`Could not load the staff roster: ${roster.error}`} onRetry={roster.reload} />
@@ -90,13 +104,25 @@ export default function Shifts() {
         <>
           <div className="ledger-wrap">
             <table className="ledger">
-              <thead><tr><th>Day</th><th>Morning</th><th>Evening</th></tr></thead>
+              <thead><tr><th>Day</th><th>Morning</th><th>Evening</th><th>On approved leave</th></tr></thead>
               <tbody>
                 {days.map((d) => (
                   <tr key={d} className={d === todayISO() ? "row-today" : ""}>
                     <td style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{dayLabel(d)}{d === todayISO() ? " · today" : ""}</td>
                     <td>{cell(d, "MORNING")}</td>
                     <td>{cell(d, "EVENING")}</td>
+                    <td>
+                      {(() => {
+                        const off = onLeave(d);
+                        return off.length === 0 ? (
+                          <span className="muted">—</span>
+                        ) : (
+                          off.map((l) => (
+                            <span key={l.id} className="tag" style={{ marginRight: 6 }}>{l.staffName} · on leave</span>
+                          ))
+                        );
+                      })()}
+                    </td>
                   </tr>
                 ))}
               </tbody>

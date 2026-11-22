@@ -74,13 +74,24 @@ export default function OrdersPage() {
           {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status" style={{ marginBottom: 14 }}>{msg.text}</div>}
           <div className="ledger-wrap">
             <table className="ledger">
-              <thead><tr><th>Order</th><th>When</th><th>Buyer</th><th className="r">Total</th><th>Method</th><th>Status</th><th>Fulfilment</th><th></th></tr></thead>
+              <thead><tr><th>Order</th><th>When</th><th>Buyer</th><th>Items</th><th className="r">Total</th><th>Method</th><th>Status</th><th>Fulfilment</th><th></th></tr></thead>
               <tbody>
                 {list.map((o) => (
                   <tr key={o.id} className={o.payState === "PAID" ? "row-off" : ""}>
                     <td className="num">#{o.id}</td>
                     <td style={{ whiteSpace: "nowrap" }}>{fmtWhen(o.createdAt)}</td>
                     <td style={{ fontWeight: 500 }}>{o.name}</td>
+                    <td>
+                      {(o.items ?? []).length === 0 ? (
+                        <span className="muted">—</span>
+                      ) : (
+                        (o.items ?? []).map((i) => (
+                          <span key={i.productId} style={{ display: "block", whiteSpace: "nowrap" }}>
+                            {i.name} × {i.qty} · {inr(i.price)} each
+                          </span>
+                        ))
+                      )}
+                    </td>
                     <td className="r num">{inr(o.total)}</td>
                     <td>{o.payMethod}</td>
                     <td><span className={`status ${o.payState === "PAID" ? "active" : "expiring"}`}>{o.payState === "PAID" ? "Paid" : "Pending"}</span></td>

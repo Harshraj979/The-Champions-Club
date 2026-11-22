@@ -9,6 +9,8 @@ import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
 
 const publicLinks = [
   { href: "/courts", label: "Courts" },
+  { href: "/plans", label: "Plans" },
+  { href: "/trial", label: "Free trial" },
   { href: "/#membership", label: "Membership" },
   { href: "/shop", label: "Shop" },
   { href: "/bar", label: "Bar & Café" },
@@ -18,11 +20,36 @@ const staffLinksFor = (role: StaffDTO["role"]) => {
     { href: "/bookings", label: "Bookings" },
     { href: "/members", label: "Members" },
     { href: "/enquiries", label: "Enquiries" },
+    { href: "/shifts", label: "Rota" },
+    { href: "/leave", label: "Leave" },
   ];
-  if (role === "OWNER") return [{ href: "/dashboard", label: "Dashboard" }, ...desk, { href: "/bar", label: "Bar" }, { href: "/shop", label: "Shop" }];
-  if (role === "FRONT_DESK" || role === "STAFF") return desk;
-  if (role === "BAR") return [{ href: "/bar", label: "Bar & Cafeteria" }];
-  return [{ href: "/shop", label: "Pro Shop" }];
+  if (role === "OWNER")
+    return [
+      { href: "/dashboard", label: "Dashboard" },
+      ...desk,
+      { href: "/invoices", label: "Invoices" },
+      { href: "/expenses", label: "Expenses" },
+      { href: "/payroll", label: "Payroll" },
+      { href: "/staff", label: "Staff" },
+      { href: "/orders", label: "Orders" },
+      { href: "/reports", label: "Reports" },
+      { href: "/plans", label: "Plans" },
+      { href: "/bar", label: "Bar" },
+      { href: "/shop", label: "Shop" },
+    ];
+  if (role === "FRONT_DESK" || role === "STAFF") return [...desk, { href: "/orders", label: "Orders" }];
+  if (role === "BAR")
+    return [
+      { href: "/bar", label: "Bar & Cafeteria" },
+      { href: "/shifts", label: "Rota" },
+      { href: "/leave", label: "Leave" },
+    ];
+  return [
+    { href: "/shop", label: "Pro Shop" },
+    { href: "/orders", label: "Orders" },
+    { href: "/shifts", label: "Rota" },
+    { href: "/leave", label: "Leave" },
+  ];
 };
 const roleLabel: Record<StaffDTO["role"], string> = {
   OWNER: "Owner",

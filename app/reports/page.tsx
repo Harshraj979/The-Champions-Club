@@ -36,7 +36,6 @@ export default function Reports() {
     lines.push(["Invoiced", String(d.invoiced)]);
     lines.push(["Tax charged on invoices", String(d.invoiceTax)]);
     lines.push(["Tax deducted from staff pay", String(d.payrollTax)]);
-    lines.push(["Net tax position", String(d.netTax)]);
     lines.push([]);
     lines.push(["Invoices in window", String(d.invoiceCount)]);
     lines.push(["Payroll records in window", String(d.payrollCount)]);
@@ -55,7 +54,6 @@ export default function Reports() {
         { label: "Invoiced", value: d.invoiced, note: `${d.invoiceCount} invoice${d.invoiceCount === 1 ? "" : "s"} in the window` },
         { label: "Tax charged on invoices", value: d.invoiceTax, note: "From the tax rate recorded on each invoice" },
         { label: "Tax deducted from staff pay", value: d.payrollTax, note: `${d.payrollCount} payroll record${d.payrollCount === 1 ? "" : "s"} in the window` },
-        { label: "Net tax position", value: d.netTax, note: "Invoice tax less payroll tax deducted", total: true },
       ]
     : [];
 
@@ -92,13 +90,17 @@ export default function Reports() {
 
           <div className="figures">
             {figures.map((f) => (
-              <div className={`figure${f.total ? " total" : ""}`} key={f.label}>
+              <div className="figure" key={f.label}>
                 <p className="f-label">{f.label}</p>
                 <p className="f-value num">{inr(f.value)}</p>
                 <p className="sub" style={{ marginTop: 6 }}>{f.note}</p>
               </div>
             ))}
           </div>
+
+          <p className="sub" style={{ marginTop: 14 }}>
+            Invoice tax and payroll tax are separate figures — they are not netted against each other.
+          </p>
 
           <p style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Link className="mini-link" href="/invoices">Invoices</Link>

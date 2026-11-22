@@ -18,10 +18,12 @@ export default function Expenses() {
   const list = expenses.data ?? [];
   const monthPrefix = todayISO().slice(0, 7);
   const monthOut = list.filter((e) => e.spentOn.startsWith(monthPrefix)).reduce((s, e) => s + e.amount, 0);
-  // "Taken in" and "Spent" now share one window, the calendar month.
-  // Note: this figure is the dashboard's month total; a true calendar-
-  // month income figure needs a dashboard API change (another agent).
-  const monthIn = dash.data?.periods.month.total ?? null;
+  // The dashboard reports a calendar-month income figure as monthIncome
+  // when it has one; otherwise fall back to its month total and say so
+  // honestly — that figure covers the last 30 days, not the calendar month.
+  const monthIncome = (dash.data as unknown as { monthIncome?: number } | null)?.monthIncome;
+  const monthIn = monthIncome ?? dash.data?.periods.month.total ?? null;
+  const monthInIsCalendar = monthIncome !== undefined;
 
   async function add() {
     const amount = Number(form.amount);
@@ -46,7 +48,7 @@ export default function Expenses() {
       <div className="page-head">
         <p className="page-eyebrow">Owner</p>
         <h1 className="page-title">Expenses</h1>
-        <p className="sub">What the club spends — rent, lights, stock, repairs. This month&apos;s spending against this month&apos;s takings.</p>
+        <p className="sub">What the club spends — rent, lights, stock, repairs. Spending against takings, for the calendar month when the dashboard reports one.</p>
       </div>
 
       <FinanceNav active="expenses" />
@@ -59,9 +61,12 @@ export default function Expenses() {
         <>
           <div className="figures">
             <div className="figure"><p className="f-label">Spent this month</p><p className="f-value num">{inr(monthOut)}</p></div>
-            <div className="figure"><p className="f-label">Taken in this month</p><p className="f-value num">{monthIn === null ? "—" : inr(monthIn)}</p></div>
+            <div className="figure"><p className="f-label">{monthInIsCalendar ? "Taken in this month" : "Taken in (last 30 days)"}</p><p className="f-value num">{monthIn === null ? "—" : inr(monthIn)}</p></div>
             <div className="figure"><p className="f-label">Difference</p><p className="f-value num">{monthIn === null ? "—" : inr(monthIn - monthOut)}</p></div>
           </div>
+          {!monthInIsCalendar && monthIn !== null && (
+            <p className="sub" style={{ marginTop: 10 }}>Income here is the last 30 days, not the calendar month, so the difference is approximate.</p>
+          )}
 
           {list.length === 0 ? (
             <div style={{ marginTop: 20 }}><Empty>No expenses recorded yet. Add the first one below.</Empty></div>
