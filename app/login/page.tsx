@@ -10,14 +10,13 @@ type RoleOption = {
   label: string;
   category: "General" | "Bar & Café" | "Pro Shop";
   icon: string;
-  defaultPin: string;
 };
 
 const ROLES: RoleOption[] = [
-  { id: "OWNER", label: "Club Owner", category: "General", icon: "👑", defaultPin: "1234" },
-  { id: "FRONT_DESK", label: "Club Staff", category: "General", icon: "📋", defaultPin: "2222" },
-  { id: "BAR", label: "Bar & Cafeteria Staff", category: "Bar & Café", icon: "🍸", defaultPin: "3333" },
-  { id: "SHOP", label: "Pro Shop Staff", category: "Pro Shop", icon: "🛍️", defaultPin: "4444" },
+  { id: "OWNER", label: "Club Owner", category: "General", icon: "👑" },
+  { id: "FRONT_DESK", label: "Club Staff", category: "General", icon: "📋" },
+  { id: "BAR", label: "Bar & Cafeteria Staff", category: "Bar & Café", icon: "🍸" },
+  { id: "SHOP", label: "Pro Shop Staff", category: "Pro Shop", icon: "🛍️" },
 ];
 
 export default function Login() {
@@ -94,16 +93,30 @@ export default function Login() {
   const activeStaffMember = roleStaffMembers.find((s) => s.id === effectiveStaffId);
 
   return (
-    <main className="wrap page login-main" style={{ maxWidth: 460 }}>
-      <div className="page-head" style={{ textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <ClubLogo size={52} variant="light" />
+    <main className="auth-page staff-auth-page">
+      <aside className="auth-aside">
+        <Link className="auth-aside-brand" href="/">
+          <ClubLogo size={48} />
+          <span>The Champions Club</span>
+        </Link>
+        <div className="auth-aside-copy">
+          <p className="auth-eyebrow">Staff portal</p>
+          <h2>Make every club day run smoothly.</h2>
+          <p>Manage bookings, members, service, and the team—right where the game happens.</p>
         </div>
-        <h1 className="page-title">Sign in</h1>
-        <p className="sub">Staff & owner access via secure role PIN.</p>
-      </div>
+        <p className="auth-aside-foot">Courts open daily · 6 AM – 10 PM</p>
+      </aside>
 
-      <div className="panel login-card" style={{ padding: "24px 20px" }}>
+      <section className="auth-main">
+        <div className="auth-content">
+          <div className="auth-mobile-brand"><ClubLogo size={38} variant="light" /></div>
+          <div className="auth-heading">
+            <p className="auth-eyebrow">Welcome back</p>
+            <h1>Staff sign in</h1>
+            <p>Choose your role and enter your assigned PIN.</p>
+          </div>
+
+      <div className="panel login-card auth-card">
         <div style={{ marginBottom: 18 }}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 8, color: "var(--pine)" }}>
             Select your role
@@ -202,12 +215,8 @@ export default function Login() {
               <label htmlFor="l-pin" style={{ fontSize: 13, fontWeight: 600, color: "var(--pine)" }}>
                 {activeStaffMember ? `${activeStaffMember.name}'s PIN` : `${activeRoleObj.label} PIN`}
               </label>
-              <span style={{ fontSize: 12, color: "#666" }}>
-                {activeStaffMember?.hasCustomPin ? (
-                  <span style={{ color: "#166534", fontWeight: 700 }}>Custom PIN</span>
-                ) : (
-                  <>Default: <strong style={{ color: "var(--pine)" }}>{activeRoleObj.defaultPin}</strong></>
-                )}
+              <span className="auth-field-hint">
+                {activeStaffMember?.hasCustomPin ? "Custom PIN" : "Assigned PIN"}
               </span>
             </div>
             <input
@@ -247,57 +256,57 @@ export default function Login() {
           </div>
         </form>
 
-        <div className="demo-box" style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid var(--line)" }}>
-          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#444" }}>
-            <strong>Demo accounts</strong> — one tap each.
-          </p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-ink"
-              onClick={() => goDemo("owner@champions.club", "champions")}
-              disabled={busy}
-              style={{ fontSize: 12, padding: "8px 6px" }}
-            >
-              👑 CLUB OWNER
-            </button>
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() => goDemo("neha@champions.club", "demo1234")}
-              disabled={busy}
-              style={{ fontSize: 12, padding: "8px 6px" }}
-            >
-              📋 CLUB STAFF
-            </button>
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() => goDemo("arjun@champions.club", "demo1234")}
-              disabled={busy}
-              style={{ fontSize: 12, padding: "8px 6px" }}
-            >
-              🍸 BAR STAFF
-            </button>
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() => goDemo("meera@champions.club", "demo1234")}
-              disabled={busy}
-              style={{ fontSize: 12, padding: "8px 6px" }}
-            >
-              🛍️ SHOP STAFF
-            </button>
+        <details className="auth-demo">
+          <summary>Local demo accounts</summary>
+          <div className="auth-demo-content">
+            <p>For local evaluation only.</p>
+            <div className="auth-demo-grid">
+              <button
+                type="button"
+                className="btn btn-ink"
+                onClick={() => goDemo("owner@champions.club", "champions")}
+                disabled={busy}
+                style={{ fontSize: 12, padding: "8px 6px" }}
+              >
+                👑 CLUB OWNER
+              </button>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => goDemo("neha@champions.club", "demo1234")}
+                disabled={busy}
+                style={{ fontSize: 12, padding: "8px 6px" }}
+              >
+                📋 CLUB STAFF
+              </button>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => goDemo("arjun@champions.club", "demo1234")}
+                disabled={busy}
+                style={{ fontSize: 12, padding: "8px 6px" }}
+              >
+                🍸 BAR STAFF
+              </button>
+              <button
+                type="button"
+                className="btn btn-quiet"
+                onClick={() => goDemo("meera@champions.club", "demo1234")}
+                disabled={busy}
+                style={{ fontSize: 12, padding: "8px 6px" }}
+              >
+                🛍️ SHOP STAFF
+              </button>
+            </div>
           </div>
-          <p className="demo-creds" style={{ fontSize: 11, color: "#777", marginTop: 8 }}>
-            One-tap bypass for instant testing & evaluation
-          </p>
-        </div>
+        </details>
       </div>
 
-      <p className="member-link" style={{ textAlign: "center", marginTop: 20 }}>
+      <p className="member-link auth-switch-link">
         A club member? <Link href="/member-login">Member sign in</Link>
       </p>
+        </div>
+      </section>
     </main>
   );
 }

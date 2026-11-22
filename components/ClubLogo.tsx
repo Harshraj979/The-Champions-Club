@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 interface ClubLogoProps {
   size?: number;
@@ -13,6 +13,7 @@ export default function ClubLogo({
   variant = "dark",
   showText = false,
 }: ClubLogoProps) {
+  const shadowId = `club-logo-shadow-${useId().replace(/:/g, "")}`;
   const isLight = variant === "light";
   const bgFill = isLight ? "#163021" : "#0f2115";
   const primaryStroke = "#dfff45";
@@ -31,7 +32,7 @@ export default function ClubLogo({
         aria-label="The Champions Club Crest"
       >
         <defs>
-          <filter id="cc-shadow" x="-10%" y="-10%" width="120%" height="120%">
+          <filter id={shadowId} x="-10%" y="-10%" width="120%" height="120%">
             <feDropShadow dx="0" dy="1" stdDeviation="0.6" floodOpacity="0.35" />
           </filter>
         </defs>
@@ -74,7 +75,7 @@ export default function ClubLogo({
         <circle cx="28.5" cy="9.8" r="0.8" fill={primaryStroke} />
 
         {/* Handcrafted Interlocking CC Monogram */}
-        <g filter="url(#cc-shadow)">
+        <g filter={`url(#${shadowId})`}>
           {/* Left C (Center at 21, span 13..29) */}
           <path
             d="M 28 18.5 A 8.5 9 0 1 0 28 33.5"

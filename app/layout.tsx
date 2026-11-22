@@ -4,7 +4,7 @@ import Chrome from "@/components/Chrome";
 import "./globals.css";
 
 const dm = DM_Sans({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-dm" });
-const barlow = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700", "800"], style: ["normal", "italic"], variable: "--font-display" });
+const hero = Barlow_Condensed({ subsets: ["latin"], weight: ["600", "700", "800"], style: ["normal", "italic"], variable: "--font-hero" });
 export const metadata = {
   title: "The Champions Club",
   description: "Two tennis courts, a cricket court, a gear shop and a bar. One club, open 6 AM to 10 PM.",
@@ -13,7 +13,7 @@ export const metadata = {
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${dm.variable} ${barlow.variable}`}>
+    <html lang="en" className={`${dm.variable} ${hero.variable}`}>
       <body>
         <Chrome>{children}</Chrome>
       </body>

@@ -92,27 +92,35 @@ export default function MemberAuth() {
   }
 
   return (
-    <main className="mx-auto max-w-[500px] px-5 py-12 sm:py-20">
-      <div className="mb-4">
-        <ClubLogo size={46} variant="light" />
-      </div>
-      <div className="mb-3 flex items-center gap-3">
-        <span className="h-px w-8 bg-[#163021]" />
-        <span className="text-[10px] font-bold uppercase tracking-[.25em] text-[#163021]">
-          Member Portal
-        </span>
-      </div>
-      <h1 className="font-display text-5xl font-bold uppercase tracking-tight text-[#163021] sm:text-6xl">
-        {tab === "login" ? "Member sign-in" : "Join the club"}
-      </h1>
-      <p className="mt-3 text-sm text-[#617065] leading-relaxed">
-        {tab === "login"
-          ? "Log in to check live turf availability, manage your bookings, and access member rates."
-          : "Create your membership account to reserve courts, get gear discounts, and play."}
-      </p>
+    <main className="auth-page member-auth-page" data-tab={tab}>
+      <aside className="auth-aside">
+        <Link className="auth-aside-brand" href="/">
+          <ClubLogo size={48} />
+          <span>The Champions Club</span>
+        </Link>
+        <div className="auth-aside-copy">
+          <p className="auth-eyebrow">Member portal</p>
+          <h2>Your court time starts here.</h2>
+          <p>Book a court, keep track of your visits, and get more from every day at the club.</p>
+        </div>
+        <p className="auth-aside-foot">A better game, together.</p>
+      </aside>
 
-      <div className="mt-8 rounded-3xl border border-[#163021]/15 bg-white p-6 shadow-sm sm:p-8">
-        <div className="seg mb-6 flex w-full" role="group" aria-label="Sign-in or register">
+      <section className="auth-main">
+        <div className="auth-content member-auth-content">
+          <div className="auth-mobile-brand"><ClubLogo size={38} variant="light" /></div>
+          <div className="auth-heading">
+            <p className="auth-eyebrow">Member portal</p>
+            <h1>{tab === "login" ? "Welcome back" : "Join the club"}</h1>
+            <p>
+              {tab === "login"
+                ? "Sign in to manage bookings and member rates."
+                : "Create your account and choose a membership."}
+            </p>
+          </div>
+
+      <div className="auth-card member-auth-card">
+        <div className="auth-tabs seg" role="group" aria-label="Sign-in or register">
           <button
             type="button"
             className="flex-1 text-xs uppercase tracking-wider"
@@ -132,10 +140,10 @@ export default function MemberAuth() {
         </div>
 
         {/* GOOGLE AUTH BUTTON */}
-        <div className="mb-5">
+        <div className="auth-google-wrap">
           <a
             href={googleHref}
-            className="flex w-full items-center justify-center gap-3 rounded-full border border-[#163021]/20 bg-white py-3.5 text-xs font-bold uppercase tracking-wider text-[#163021] shadow-sm transition hover:bg-[#f7f6f0] hover:border-[#163021]/40"
+            className="auth-google"
           >
             <span className="flex h-5 w-5 items-center justify-center flex-none">
               <svg width="18" height="18" viewBox="0 0 48 48">
@@ -148,18 +156,18 @@ export default function MemberAuth() {
             <span>{tab === "login" ? "Continue with Google" : "Sign up with Google"}</span>
           </a>
 
-          <div className="relative my-5 flex items-center justify-center">
+          <div className="auth-divider">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-[#163021]/10" />
             </div>
-            <div className="relative bg-white px-3 text-[11px] font-semibold uppercase tracking-wider text-[#617065]">
+            <div>
               Or continue with email
             </div>
           </div>
         </div>
 
         {tab === "login" ? (
-          <form onSubmit={handleLogin} className="form-grid">
+          <form onSubmit={handleLogin} className="form-grid auth-form">
             <div>
               <label htmlFor="m-ident" className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
                 Email or phone number
@@ -198,36 +206,37 @@ export default function MemberAuth() {
               >
                 {busy ? "Signing in..." : "Sign in as Member"}
               </button>
-              <p className="mt-3 text-center text-xs text-[#617065] leading-relaxed">
-                💡 Booked or joined at the Front Desk? Sign in with your email and phone number as your initial password.
+              <p className="auth-help">
+                Booked at the front desk? Use your email and phone number as your initial password.
               </p>
             </div>
 
-            <div className="mt-6 pt-5 border-t border-[#163021]/10 text-center">
-              <p className="text-xs text-[#617065] font-semibold">Test with a demo member account:</p>
-              <div className="mt-3 flex flex-col gap-2">
+            <details className="auth-demo">
+              <summary>Local demo accounts</summary>
+              <div className="auth-demo-content auth-member-demos">
                 <button
                   type="button"
-                  className="rounded-full border border-[#163021]/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#dfff45] transition text-left flex justify-between items-center"
+                  className="auth-demo-member"
                   onClick={() => handleLogin(undefined, "aarav@example.com", "demo1234")}
                 >
                   <span>⚡ Aarav Mehta</span>
-                  <span className="text-[10px] text-[#2e7d32]">Active Gold Plan</span>
+                  <span>Active Gold Plan</span>
                 </button>
                 <button
                   type="button"
-                  className="rounded-full border border-[#163021]/15 px-4 py-2 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#dfff45] transition text-left flex justify-between items-center"
+                  className="auth-demo-member"
                   onClick={() => handleLogin(undefined, "rahul@example.com", "demo1234")}
                 >
                   <span>⚡ Rahul Verma</span>
-                  <span className="text-[10px] text-[#b45309]">No Plan Yet (Free)</span>
+                  <span>No Plan Yet (Free)</span>
                 </button>
               </div>
-            </div>
+            </details>
           </form>
         ) : (
-          <form onSubmit={handleSignup} className="form-grid">
-            <div>
+          <form onSubmit={handleSignup} className="form-grid auth-form">
+            <div className="auth-fields">
+              <div>
               <label htmlFor="reg-name" className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
                 Full Name
               </label>
@@ -238,8 +247,8 @@ export default function MemberAuth() {
                 placeholder="Rohan Patel"
                 required
               />
-            </div>
-            <div>
+              </div>
+              <div>
               <label htmlFor="reg-email" className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
                 Email Address
               </label>
@@ -251,8 +260,8 @@ export default function MemberAuth() {
                 placeholder="rohan@example.com"
                 required
               />
-            </div>
-            <div>
+              </div>
+              <div>
               <label htmlFor="reg-phone" className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
                 10-Digit Phone
               </label>
@@ -263,8 +272,8 @@ export default function MemberAuth() {
                 placeholder="9876543210"
                 required
               />
-            </div>
-            <div>
+              </div>
+              <div>
               <label htmlFor="reg-pass" className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
                 Create Password
               </label>
@@ -276,117 +285,23 @@ export default function MemberAuth() {
                 placeholder="At least 4 characters"
                 required
               />
+              </div>
             </div>
 
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[#163021]">
-                  Choose Membership Tier
-                </label>
-                <span className="text-[10px] uppercase font-bold text-[#617065]">
-                  1-Month Rates &amp; Profits
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
-                {[
-                  {
-                    code: "gold",
-                    name: "Gold Plan",
-                    price: "₹1,500/mo",
-                    tag: "Most Popular",
-                    rates: "Tennis ₹300/hr · Cricket ₹500/hr",
-                    profit: "Net Profit: +₹2,100/mo",
-                    highlight: "Save ₹3,600/mo with 2 free guest passes + 20% café discount",
-                  },
-                  {
-                    code: "silver",
-                    name: "Silver Plan",
-                    price: "₹1,000/mo",
-                    tag: "Regular Player",
-                    rates: "Tennis ₹400/hr · Cricket ₹650/hr",
-                    profit: "Net Profit: +₹650/mo",
-                    highlight: "Save ₹1,650/mo with 1 free guest pass + 10% café discount",
-                  },
-                  {
-                    code: "junior",
-                    name: "Junior Plan",
-                    price: "₹600/mo",
-                    tag: "Youth & Students",
-                    rates: "Tennis ₹250/hr (50% Off) · Cricket ₹400/hr",
-                    profit: "Net Profit: +₹1,900/mo",
-                    highlight: "Save ₹2,500/mo with monthly youth coaching clinic",
-                  },
-                  {
-                    code: "none",
-                    name: "Decide Later",
-                    price: "Free",
-                    tag: "Pay as you go",
-                    rates: "Walk-in baseline rates (₹500/hr)",
-                    profit: "No monthly commitment",
-                    highlight: "Browse courts and schedules first, activate any plan later",
-                  },
-                ].map((p) => {
-                  const isSelected = planCode === p.code;
-                  return (
-                    <button
-                      key={p.code}
-                      type="button"
-                      onClick={() => setPlanCode(p.code)}
-                      className={`relative rounded-2xl border p-3.5 text-left transition ${
-                        isSelected
-                          ? "border-[#163021] bg-[#163021] text-white shadow-md ring-1 ring-[#163021]"
-                          : "border-[#163021]/15 bg-white text-[#163021] hover:border-[#163021]/40 hover:bg-[#fcfbf7]"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <p className="font-bold text-xs uppercase tracking-wide">{p.name}</p>
-                        <span
-                          className={`text-[10px] font-bold rounded-full px-2 py-0.5 ${
-                            isSelected ? "bg-[#dfff45] text-[#163021]" : "bg-[#163021]/10 text-[#163021]"
-                          }`}
-                        >
-                          {p.price}
-                        </span>
-                      </div>
-                      <p className={`text-[11px] font-semibold mt-1.5 ${isSelected ? "text-[#dfff45]" : "text-[#163021]"}`}>
-                        {p.rates}
-                      </p>
-                      <div className="mt-1 flex items-center justify-between text-[10px]">
-                        <span className={isSelected ? "text-white/80 font-medium" : "text-[#2e7d32] font-semibold"}>
-                          {p.profit}
-                        </span>
-                        <span className={isSelected ? "text-white/50" : "text-[#849087]"}>
-                          {p.tag}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Dynamic Selected Tier Summary Box */}
-              {planCode !== "none" ? (
-                <div className="mt-3 rounded-2xl bg-[#dfff45]/15 border border-[#163021]/15 p-3.5 text-xs text-[#163021]">
-                  <div className="flex items-center justify-between font-bold">
-                    <span>
-                      ✨ Selected: {planCode === "gold" ? "Gold Tier (₹1,500/mo)" : planCode === "silver" ? "Silver Tier (₹1,000/mo)" : "Junior Tier (₹600/mo)"}
-                    </span>
-                    <span className="text-[#2e7d32] uppercase font-bold text-[10px] tracking-wider">
-                      {planCode === "gold" ? "Net Profit +₹2,100" : planCode === "silver" ? "Net Profit +₹650" : "Net Profit +₹1,900"}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-[#617065] leading-relaxed">
-                    {planCode === "gold" && "Includes 7-day advance booking, max 4 slots/day, ₹300/hr tennis, ₹500/hr cricket, 2 free guest passes/month, and 20% off all café orders."}
-                    {planCode === "silver" && "Includes 5-day advance booking, max 2 slots/day, ₹400/hr tennis, ₹650/hr cricket, 1 free guest pass/month, and 10% off all café orders."}
-                    {planCode === "junior" && "Subsidized youth tier with max 1 slot/day, 50% discount on court slots (₹250/hr tennis, ₹400/hr cricket) plus monthly skills coaching clinics."}
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-3 rounded-2xl bg-[#f7f6f0] border border-[#163021]/10 p-3 text-xs text-[#617065]">
-                  <span className="font-semibold text-[#163021]">Decide Later (Free):</span> Sign up now to browse live availability. You can activate any membership tier whenever you are ready to book courts.
-                </div>
-              )}
+            <div className="auth-plan-field">
+              <label htmlFor="member-plan">Membership tier</label>
+              <select id="member-plan" value={planCode} onChange={(e) => setPlanCode(e.target.value)}>
+                <option value="gold">Gold — ₹1,500 / month</option>
+                <option value="silver">Silver — ₹1,000 / month</option>
+                <option value="junior">Junior — ₹600 / month</option>
+                <option value="none">Decide later — free</option>
+              </select>
+              <p>
+                {planCode === "gold" && "Member court rates and club discounts."}
+                {planCode === "silver" && "Member court rates and club discounts."}
+                {planCode === "junior" && "Junior membership requires a parent or guardian."}
+                {planCode === "none" && "Choose a membership later."}
+              </p>
             </div>
 
             {planCode === "junior" && (
@@ -454,7 +369,7 @@ export default function MemberAuth() {
 
             {err && <div className="notice err" role="alert">{err}</div>}
 
-            <div className="pt-2">
+            <div>
               <button
                 type="submit"
                 className="w-full rounded-full bg-[#dfff45] py-4 text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-[#163021] hover:text-white disabled:opacity-40"
@@ -475,12 +390,14 @@ export default function MemberAuth() {
         )}
       </div>
 
-      <div className="mt-8 text-center text-xs text-[#617065]">
+      <div className="auth-switch-link">
         Club staff or till operator?{" "}
         <Link href="/login" className="font-semibold text-[#163021] underline hover:text-black">
           Staff sign-in here
         </Link>
       </div>
+        </div>
+      </section>
     </main>
   );
 }

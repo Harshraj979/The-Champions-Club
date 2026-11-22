@@ -12,6 +12,7 @@ import type { StaffDTO } from "@/lib/types";
 export default function Chrome({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const [staff, setStaff] = useState<StaffDTO | null>(null);
+  const isAuthPage = path === "/login" || path === "/member-login";
 
   useEffect(() => {
     api.me()
@@ -27,9 +28,9 @@ export default function Chrome({ children }: { children: React.ReactNode }) {
   const barShop = staff && (staff.role === "BAR" || staff.role === "SHOP");
   return (
     <div className="shell">
-      <Nav />
+      {!isAuthPage && <Nav />}
       {children}
-      {path !== "/login" && (
+      {!isAuthPage && (
       <footer className="footer">
         <div className="wrap footer-in">
           <div>
@@ -62,12 +63,6 @@ export default function Chrome({ children }: { children: React.ReactNode }) {
               {staff.role === "BAR" && <Link href="/bar">Bar &amp; Café</Link>}
               {staff.role === "SHOP" && <Link href="/shop">Shop</Link>}
               {staff.role === "SHOP" && <Link href="/orders">Orders</Link>}
-              <Link href="/shifts">Staff rota</Link>
-            </nav>
-          ) : barShop ? (
-            <nav>
-              {staff.role === "BAR" && <Link href="/bar">Bar &amp; Café</Link>}
-              {staff.role === "SHOP" && <Link href="/shop">Shop</Link>}
               <Link href="/shifts">Staff rota</Link>
             </nav>
           ) : (

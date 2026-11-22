@@ -274,63 +274,36 @@ export default function Dashboard() {
           <h1 className="page-title">Owner Executive Dashboard</h1>
           <p className="sub">Executive club management: court revenue, live bar takings, pro shop turnover, and staff payroll.</p>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="dashboard-tabs" role="group" aria-label="Dashboard sections">
           <button
             type="button"
-            className="mini-link"
+            className="dashboard-tab"
             aria-pressed={viewTab === "overview"}
             onClick={() => setViewTab("overview")}
-            style={{
-              background: viewTab === "overview" ? "#163021" : "#f1f5f9",
-              color: viewTab === "overview" ? "#dfff45" : "#163021",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
           >
             🏛️ Club Overview
           </button>
           <button
             type="button"
-            className="mini-link"
+            className="dashboard-tab"
             aria-pressed={viewTab === "bar"}
             onClick={() => setViewTab("bar")}
-            style={{
-              background: viewTab === "bar" ? "#166534" : "#f0fdf4",
-              color: viewTab === "bar" ? "#dcfce7" : "#166534",
-              borderColor: "#86efac",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
           >
             🍷 Bar &amp; Cafeteria Stats
           </button>
           <button
             type="button"
-            className="mini-link"
+            className="dashboard-tab"
             aria-pressed={viewTab === "shop"}
             onClick={() => setViewTab("shop")}
-            style={{
-              background: viewTab === "shop" ? "#854d0e" : "#fefce8",
-              color: viewTab === "shop" ? "#fef9c3" : "#854d0e",
-              borderColor: "#fde047",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
           >
             🛍️ Pro Shop Stats
           </button>
           <button
             type="button"
-            className="mini-link"
+            className="dashboard-tab"
             aria-pressed={viewTab === "staff"}
             onClick={() => setViewTab("staff")}
-            style={{
-              background: viewTab === "staff" ? "#0b1a30" : "#f8fafc",
-              color: viewTab === "staff" ? "#dfff45" : "#0b1a30",
-              borderColor: "#94a3b8",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
           >
             👥 Staff &amp; Payroll
           </button>

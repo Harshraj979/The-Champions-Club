@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { api } from "@/lib/api";
 import ClubLogo from "@/components/ClubLogo";
 import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
@@ -80,6 +81,10 @@ export default function Nav() {
         { href: "/bar", label: "Bar & Café" },
       ]
     : publicLinks;
+  const isCurrent = (href: string) =>
+    href.startsWith("/#")
+      ? path === "/"
+      : path === href || (href !== "/" && path.startsWith(`${href}/`));
 
   return (
     <header className="nav">
@@ -90,7 +95,7 @@ export default function Nav() {
         </Link>
         <nav className="nav-links" aria-label="Club">
           {links.map((l) => (
-            <Link key={l.href} href={l.href} aria-current={path === l.href ? "page" : undefined}>{l.label}</Link>
+            <Link key={l.href} href={l.href} aria-current={isCurrent(l.href) ? "page" : undefined}>{l.label}</Link>
           ))}
         </nav>
         <div className="nav-end">
@@ -118,15 +123,22 @@ export default function Nav() {
           ) : (
             <Link className="btn btn-ink" href="/member-login?tab=signup">Join the club</Link>
           )}
-          <button className="menu-btn" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
-            {open ? "✕" : "☰"}
+          <button
+            className="menu-btn"
+            type="button"
+            aria-label={open ? "Close menu" : "Open menu"}
+            aria-controls="club-mobile-navigation"
+            aria-expanded={open}
+            onClick={() => setOpen((value) => !value)}
+          >
+            {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
           </button>
         </div>
       </div>
       {open && (
-        <nav className="nav-mobile" aria-label="Club">
+        <nav className="nav-mobile" id="club-mobile-navigation" aria-label="Club">
           {links.map((l) => (
-            <Link key={l.href} href={l.href}>{l.label}</Link>
+            <Link key={l.href} href={l.href} aria-current={isCurrent(l.href) ? "page" : undefined}>{l.label}</Link>
           ))}
           {member ? (
             <Link href="/courts">Book a court</Link>
