@@ -87,6 +87,8 @@ export const api = {
   }) => post<BookingDTO>("/bookings", input),
   bookings: (date?: string) => call<BookingDTO[]>(`/bookings${date ? `?date=${date}` : ""}`),
   cancelBooking: (id: number) => post<BookingDTO>(`/bookings/${id}/cancel`),
+  payBooking: (id: number, payMethod: "CASH" | "CARD" | "UPI" | "ONLINE") =>
+    post<BookingDTO>(`/bookings/${id}/pay`, { payMethod }),
   members: (q?: string) => call<MemberDTO[]>(`/members${q ? `?q=${encodeURIComponent(q)}` : ""}`),
   expiringMembers: () => call<ExpiringDTO[]>("/members/expiring"),
   createMember: (input: {

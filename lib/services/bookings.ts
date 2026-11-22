@@ -39,6 +39,8 @@ export const toBookingDTO = (b: BookingRow): BookingDTO => ({
   type: b.type,
   price: b.price,
   state: b.state,
+  payState: b.payState ?? "UNPAID",
+  payMethod: b.payMethod ?? null,
 });
 
 // The PDF caps every member at two slots a day, whatever the plan.
@@ -265,4 +267,25 @@ export async function cancelBooking(id: number): Promise<BookingDTO> {
     include: { court: true },
   });
   return toBookingDTO(updated);
+}
+
+// Court money is only counted once it is actually taken: staff mark a
+// booking paid (cash/card/UPI/online at the desk) and the dashboard counts
+// only PAID bookings as court revenue. Atomic so two desks cannot both
+// record the same payment.
+export async function markBookingPaid(
+  id: number,
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE",
+): Promise<BookingDTO> {
+  const row = await db.booking.findUnique({ where: { id }, include: { court: true } });
+  if (!row) throw notFound("No such booking");
+  if (row.state !== "BOOKED") throw conflict("Only a booked slot can be marked paid");
+  if (row.payState === "PAID") throw conflict("That booking is already paid");
+  const updated = await db.booking.updateMany({
+    where: { id, state: "BOOKED", payState: "UNPAID" },
+    data: { payState: "PAID", payMethod, paidAt: new Date() },
+  });
+  if (updated.count === 0) throw conflict("That booking is already paid");
+  const fresh = await db.booking.findUnique({ where: { id }, include: { court: true } });
+  return toBookingDTO(fresh!);
 }

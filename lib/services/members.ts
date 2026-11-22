@@ -247,8 +247,9 @@ export async function availMembership(input: {
 // The amount a plan costs to buy or renew. Plan has no membership-fee
 // field yet, so the plan's tennis hourly rate stands in for the fee —
 // the same rate the renewal amount has always used. When Plan.fee
-// lands, switch this to `plan.fee ?? plan.tennisPrice`.
-export const planFee = (plan: { tennisPrice: number }): number => plan.tennisPrice;
+// Plan.fee is the per-term membership fee; falls back to the tennis rate only when unset.
+export const planFee = (plan: { tennisPrice: number; fee?: number | null }): number =>
+  plan.fee && plan.fee > 0 ? plan.fee : plan.tennisPrice;
 
 export type PaymentProof = {
   razorpayOrderId: string;

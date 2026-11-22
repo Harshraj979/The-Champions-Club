@@ -20,6 +20,7 @@ export default function Bookings() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "BOOKED" | "CANCELLED">("all");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [payMethod, setPayMethod] = useState<"CASH" | "CARD" | "UPI" | "ONLINE">("CASH");
   const [showDeskBook, setShowDeskBook] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -74,6 +75,21 @@ export default function Bookings() {
       void bookings.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Cancelling failed. Try again." });
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function markPaid(b: { id: number; who: string; court: string; date: string; price: number }) {
+    if (!window.confirm(`Mark ${b.who}'s booking on ${b.court}, ${fmtDate(b.date)} as paid (${inr(b.price)} by ${payMethod})? It will then count as court revenue.`)) return;
+    setMsg(null);
+    setBusyId(b.id);
+    try {
+      await api.payBooking(b.id, payMethod);
+      setMsg({ ok: true, text: "Booking marked paid. It now counts as court revenue." });
+      void bookings.reload();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Marking paid failed. Try again." });
     } finally {
       setBusyId(null);
     }
@@ -347,6 +363,15 @@ export default function Bookings() {
             </button>
           ))}
         </div>
+        <div>
+          <label htmlFor="b-paymethod">Mark paid by</label>
+          <select id="b-paymethod" value={payMethod} onChange={(e) => setPayMethod(e.target.value as typeof payMethod)}>
+            <option value="CASH">Cash</option>
+            <option value="CARD">Card</option>
+            <option value="UPI">UPI</option>
+            <option value="ONLINE">Online</option>
+          </select>
+        </div>
         {!bookings.loading && !bookings.error && (
           <p className="count-line"><b>{shown.length}</b> {shown.length === 1 ? "booking" : "bookings"}{date ? " that day" : ""}</p>
         )}
@@ -373,7 +398,17 @@ export default function Bookings() {
                   <td className="hide-m">{typeLabel[b.type]}</td>
                   <td className="num hide-m">{b.price ? inr(b.price) : b.type === "TRIAL" ? "Free trial" : "Covered by plan"}</td>
                   <td><span className={`status ${b.state === "BOOKED" ? "booked" : "cancelled"}`}>{b.state === "BOOKED" ? "Booked" : "Cancelled"}</span></td>
-                  <td className="r">{b.state === "BOOKED" && <button className="text-link" disabled={busyId === b.id} onClick={() => cancel(b)}>{busyId === b.id ? "Cancelling..." : "Cancel"}</button>}</td>
+                  <td className="r">
+                    {b.state === "BOOKED" && b.payState !== "PAID" && (
+                      <button className="text-link" disabled={busyId === b.id} onClick={() => markPaid(b)} style={{ marginRight: 12 }}>
+                        {busyId === b.id ? "Saving..." : "Mark paid"}
+                      </button>
+                    )}
+                    {b.state === "BOOKED" && b.payState === "PAID" && (
+                      <span className="muted" style={{ marginRight: 12 }}>Paid{b.payMethod ? ` · ${b.payMethod}` : ""}</span>
+                    )}
+                    {b.state === "BOOKED" && <button className="text-link" disabled={busyId === b.id} onClick={() => cancel(b)}>{busyId === b.id ? "Cancelling..." : "Cancel"}</button>}
+                  </td>
                 </tr>
               ))}
             </tbody>

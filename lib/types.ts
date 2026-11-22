@@ -9,6 +9,7 @@ export type PlanDTO = {
   shopDiscount: number;
   barDiscount: number;
   termDays: number;
+  fee: number;
 };
 
 export type CourtDTO = { id: number; name: string; sport: string; walkinPrice: number };
@@ -50,6 +51,8 @@ export type BookingDTO = {
   type: "REGULAR" | "FRIDAY_SOCIAL" | "TRIAL";
   price: number;
   state: "BOOKED" | "CANCELLED";
+  payState: "PAID" | "UNPAID";
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" | null;
 };
 
 export type MoneySplit = { courts: number; shop: number; bar: number; total: number };
@@ -58,8 +61,9 @@ export type DashboardDTO = {
   date: string;
   totals: MoneySplit;
   periods: { today: MoneySplit; week: MoneySplit; month: MoneySplit };
-  byMethod: { method: "CASH" | "CARD" | "UPI" | "ONLINE"; amount: number }[];
-  // byMethod covers shop + bar only (Booking has no payMethod yet):
+  monthIncome: MoneySplit;
+  byMethod: { method: "CASH" | "CARD" | "UPI" | "ONLINE" | "NOT_RECORDED"; amount: number }[];
+  // byMethod covers shop + bar only (court payMethod is recorded on Booking, but byMethod still covers shop + bar only):
   // byMethodTotal is what byMethod adds up to, courtUnrecorded is the
   // court takings with no recorded method, so total = byMethodTotal + courtUnrecorded.
   byMethodTotal: number;
@@ -79,6 +83,8 @@ export type InvoiceDTO = {
   status: "UNPAID" | "PAID";
   issuedOn: string;
   paidAt: string | null;
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" | null;
+  memberId: number | null;
 };
 
 export type TaxSummaryDTO = {
@@ -89,7 +95,6 @@ export type TaxSummaryDTO = {
   invoiceTax: number;
   payrollTax: number;
   payrollCount: number;
-  netTax: number;
 };
 
 export type ExpenseDTO = {
@@ -110,6 +115,7 @@ export type PayrollDTO = {
   tax: number;
   net: number;
   status: "PENDING" | "PAID";
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" | null;
 };
 
 export type StaffRosterDTO = { id: number; name: string; role: string };
@@ -244,6 +250,7 @@ export type MemberSessionDTO = {
     cricketPrice: number;
     shopDiscount: number;
     barDiscount: number;
+    fee: number;
   } | null;
   state: "active" | "expiring" | "expired" | "none";
   expiresOn: string | null;
