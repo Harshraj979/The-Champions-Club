@@ -2,7 +2,8 @@ import { handle, body } from "@/lib/http";
 import { currentStaff, currentMember, requireRole } from "@/lib/auth";
 import { parse, bookingInput } from "@/lib/validate";
 import { createBooking, listBookings } from "@/lib/services/bookings";
-import { unauthorized, forbidden } from "@/lib/errors";
+import { unauthorized, forbidden, badRequest } from "@/lib/errors";
+import { isISODate } from "@/lib/format";
 
 // The booking list is a staff view — bar and shop staff read it too. Trials are public (the website's
 // free-trial offer); regular bookings can be made by front-desk/owners or
@@ -11,7 +12,9 @@ export const GET = (req: Request) =>
   handle(async () => {
     await requireRole(req, "OWNER", "FRONT_DESK", "STAFF", "BAR", "SHOP");
     const params = new URL(req.url).searchParams;
-    return listBookings(params.get("date") ?? undefined, params.get("state") ?? undefined);
+    const date = params.get("date") ?? undefined;
+    if (date !== undefined && !isISODate(date)) throw badRequest("date must be YYYY-MM-DD");
+    return listBookings(date, params.get("state") ?? undefined);
   });
 
 export const POST = (req: Request) =>
@@ -37,5 +40,6 @@ export const POST = (req: Request) =>
       phone: input.phone ?? "",
       email: input.email || undefined,
       isStaffBooking: !!staffUser,
+      memberId: memberUser?.id,
     });
   }, 201);

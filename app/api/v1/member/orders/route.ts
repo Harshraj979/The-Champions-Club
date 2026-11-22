@@ -12,5 +12,7 @@ export const POST = (req: Request) =>
     const session = await requireMember(req);
     const input = parse(memberOrderInput, await body(req));
     const m = await getMember(session.id);
-    return createOrder({ ...input, name: m.name, phone: m.phone });
+    // Identity comes from the session id, never from the name or phone
+    // on the order.
+    return createOrder({ ...input, name: m.name, phone: m.phone, memberId: m.id });
   }, 201);

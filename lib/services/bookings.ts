@@ -1,5 +1,4 @@
 import type { Prisma } from "@prisma/client";
-import bcrypt from "bcryptjs";
 import { db } from "../db";
 import { badRequest, conflict, forbidden, notFound } from "../errors";
 import { BOOKING_LEN, LAST_START_MIN, OPEN_MIN, SLOT_STEP, fmtTime, isISODate, istMinutesNow, todayISO } from "../format";
@@ -42,11 +41,8 @@ export const toBookingDTO = (b: BookingRow): BookingDTO => ({
   state: b.state,
 });
 
-export function getMaxDailySlotsForPlan(planCode?: string | null): number {
-  const code = planCode?.toLowerCase();
-  if (code === "gold") return 4; // Gold: max 4 slots = 4 hours
-  if (code === "silver") return 2; // Silver: max 2 slots = 2 hours
-  if (code === "junior") return 1; // Junior: max 1 slot = 1 hour
+// The PDF caps every member at two slots a day, whatever the plan.
+export function getMaxDailySlotsForPlan(_planCode?: string | null): number {
   return 2;
 }
 
@@ -78,6 +74,7 @@ export async function listSchedule(date: string): Promise<BookingDTO[]> {
 }
 
 export async function listBookings(date?: string, state?: string): Promise<BookingDTO[]> {
+  if (date !== undefined && !isISODate(date)) throw badRequest("Date must be YYYY-MM-DD");
   if (state !== undefined && state !== "BOOKED" && state !== "CANCELLED")
     throw badRequest("state must be BOOKED or CANCELLED");
   const where: Prisma.BookingWhereInput = {
@@ -104,6 +101,9 @@ export async function createBooking(input: {
   email?: string;
   type: "REGULAR" | "TRIAL" | "FRIDAY_SOCIAL";
   isStaffBooking?: boolean;
+  // When a signed-in member books, their id comes from the session —
+  // never matched back by name, phone or email.
+  memberId?: number;
 }): Promise<BookingDTO> {
   if (!isISODate(input.date)) throw badRequest("Date must be YYYY-MM-DD");
   if (input.date < todayISO()) throw badRequest("That date has already passed");
@@ -122,60 +122,35 @@ export async function createBooking(input: {
   const cleanEmail = input.email?.trim().toLowerCase() || null;
   let member: any = null;
 
-  if (cleanEmail) {
-    member = await db.member.findFirst({
-      where: { email: { equals: cleanEmail, mode: "insensitive" } },
-      include: { plan: true },
-    });
-  }
-
-  if (!member && input.phone) {
-    const cleanPhone = input.phone.replace(/\D/g, "");
-    if (cleanPhone.length >= 10) {
+  // A booking never creates a member and never rewrites a member's
+  // email: memberships are made at the front desk or by sign-up.
+  if (input.memberId) {
+    member = await db.member.findUnique({ where: { id: input.memberId }, include: { plan: true } });
+  } else {
+    if (cleanEmail) {
       member = await db.member.findFirst({
-        where: { phone: cleanPhone },
+        where: { email: { equals: cleanEmail, mode: "insensitive" } },
         include: { plan: true },
       });
-      if (member && cleanEmail && !member.email) {
-        member = await db.member.update({
-          where: { id: member.id },
-          data: { email: cleanEmail },
+    }
+
+    if (!member && input.phone) {
+      const cleanPhone = input.phone.replace(/\D/g, "");
+      if (cleanPhone.length >= 10) {
+        member = await db.member.findFirst({
+          where: { phone: cleanPhone },
           include: { plan: true },
         });
       }
     }
-  }
 
-  if (!member) {
-    member = await findMemberByName(input.name);
-    if (member && cleanEmail && !member.email) {
-      member = await db.member.update({
-        where: { id: member.id },
-        data: { email: cleanEmail },
-        include: { plan: true },
-      });
+    if (!member) {
+      member = await findMemberByName(input.name);
     }
   }
 
-  // If no member exists and an email was provided, auto-register them so they can login later
-  if (!member && cleanEmail) {
-    const phone = input.phone?.trim() || `9811${Math.floor(100000 + Math.random() * 900000)}`;
-    const passwordHash = await bcrypt.hash(phone, 10);
-    member = await db.member.create({
-      data: {
-        name: input.name.trim(),
-        email: cleanEmail,
-        phone,
-        passwordHash,
-        planId: null,
-        joinedOn: null,
-        expiresOn: null,
-      },
-      include: { plan: true },
-    });
-  }
-
-  const hasActivePlan = member?.plan && memberState(member.expiresOn, input.date) !== "expired";
+  const planState = member?.plan ? memberState(member.expiresOn, input.date) : "none";
+  const hasActivePlan = planState === "active" || planState === "expiring";
 
   if (input.type !== "TRIAL") {
     if (!input.isStaffBooking) {
@@ -225,25 +200,21 @@ export async function createBooking(input: {
     }
 
     if (input.type === "REGULAR") {
-      const planCode = member?.plan?.code?.toLowerCase();
-      const maxSlots = getMaxDailySlotsForPlan(planCode);
-      const mine = await tx.booking.count({
-        where: {
-          date: day,
-          state: "BOOKED",
-          type: "REGULAR",
-          who: { equals: member?.name ?? input.name, mode: "insensitive" },
-        },
+      const maxSlots = getMaxDailySlotsForPlan(member?.plan?.code);
+      // Counted by the linked member, falling back to the phone
+      // number — never by the `who` name, which two people can share.
+      const todays = await tx.booking.findMany({
+        where: { date: day, state: "BOOKED", type: "REGULAR" },
+        select: { memberId: true, phone: true },
       });
+      const digits = (input.phone || member?.phone || "").replace(/\D/g, "");
+      const mine = todays.filter(
+        (b) =>
+          (member?.id && b.memberId === member.id) ||
+          (digits.length >= 10 && b.phone.replace(/\D/g, "") === digits),
+      ).length;
       if (mine >= maxSlots) {
-        const tierName = member?.plan?.name || "Standard";
-        if (maxSlots === 1) {
-          throw conflict(`${tierName} tier allows a maximum of 1 slot (1 hour) per day. 1 booking a day is the limit.`);
-        } else if (maxSlots === 2) {
-          throw conflict(`${tierName} tier allows a maximum of 2 slots (2 hours) per day. Two bookings a day is the limit.`);
-        } else {
-          throw conflict(`${tierName} tier allows a maximum of ${maxSlots} slots (${maxSlots} hours) per day. ${maxSlots} bookings a day is the limit.`);
-        }
+        throw conflict("Two bookings a day at most — this member already has 2 bookings on that day.");
       }
     }
 
@@ -265,13 +236,16 @@ export async function createBooking(input: {
   const dto = toBookingDTO(created);
   if (input.type === "TRIAL") {
     // A trial is also a lead: it lands on the enquiries list so the desk
-    // can follow up. Never let a CRM hiccup fail the booking itself.
+    // can follow up. Never let a CRM hiccup fail the booking itself —
+    // but never swallow it silently either: a failed lead is logged.
     await createEnquiry({
       name: dto.who,
       contact: input.phone,
       interest: "Free trial",
       message: `Trial on ${court.name}, ${input.date} at ${fmtTime(input.start)}`,
-    }).catch(() => {});
+    }).catch((e) => {
+      console.error("trial enquiry failed", e);
+    });
   }
   return dto;
 }

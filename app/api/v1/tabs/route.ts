@@ -12,7 +12,7 @@ export const GET = (req: Request) =>
 
 export const POST = (req: Request) =>
   handle(async () => {
-    await requireRole(req, "OWNER", "BAR");
+    await requireRole(req, "OWNER", "BAR", "FRONT_DESK");
     const input = parse(tabOpenInput, await body(req));
     return openTab(input);
   }, 201);

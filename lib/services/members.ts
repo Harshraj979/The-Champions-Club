@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "../db";
 import { badRequest, conflict, notFound } from "../errors";
 import { addDaysISO, todayISO } from "../format";
+import { createRazorpayOrder, verifyRazorpayPayment } from "../razorpay";
 import type { ExpiringDTO, MemberDTO, MemberHomeDTO, MemberState } from "../types";
 import { toBookingDTO } from "./bookings";
 import { toOrderDTO, toTabDTO } from "./sales";
@@ -43,8 +44,18 @@ export async function expiringMembers(withinDays = 14): Promise<ExpiringDTO[]> {
   });
 }
 
-// Membership state is derived from the expiry date, never stored, so it
-// can never disagree with the dates.
+// Junior is for under-18s only: a date of birth is required and the
+// member must be under 18 on the day they join.
+export function assertJuniorEligible(dateOfBirth: string | undefined, planCode?: string | null): void {
+  if (planCode !== "junior") return;
+  if (!dateOfBirth) throw badRequest("Junior is for under-18s — a date of birth is required");
+  const dob = new Date(`${dateOfBirth}T00:00:00.000Z`);
+  const joinedMs = Date.parse(todayISO());
+  let age = new Date(joinedMs).getUTCFullYear() - dob.getUTCFullYear();
+  const mth = new Date(joinedMs).getUTCMonth() - dob.getUTCMonth();
+  if (mth < 0 || (mth === 0 && new Date(joinedMs).getUTCDate() < dob.getUTCDate())) age -= 1;
+  if (age >= 18) throw badRequest("Junior is for under-18s — this member is 18 or older");
+}
 export const memberState = (expiresOn: Date | null | undefined, onISO: string = todayISO()): MemberState | "none" => {
   if (!expiresOn) return "none";
   const exp = expiresOn.toISOString().slice(0, 10);
@@ -60,7 +71,9 @@ export const toMemberDTO = (m: MemberRow): MemberDTO => ({
   email: m.email ?? null,
   plan: m.plan ? m.plan.name : "None",
   planCode: m.plan ? m.plan.code : "none",
-  state: (memberState(m.expiresOn) === "none" ? "expired" : memberState(m.expiresOn)) as MemberState,
+  // A member with no plan reports "none" — never "expired", which
+  // means something else (a plan that ran out).
+  state: memberState(m.expiresOn),
   expiresOn: m.expiresOn ? m.expiresOn.toISOString().slice(0, 10) : "",
   parentName: m.parentName ?? null,
   parentPhone: m.parentPhone ?? null,
@@ -110,49 +123,29 @@ export async function createMember(
 
   const email = input.email?.trim().toLowerCase() || null;
   const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
-  if (input.planCode === "junior") {
-    if (!dob) throw badRequest("Junior is for under-18s — a date of birth is required");
-    const joinedMs = Date.parse(todayISO());
-    let age = new Date(joinedMs).getUTCFullYear() - dob.getUTCFullYear();
-    const mth = new Date(joinedMs).getUTCMonth() - dob.getUTCMonth();
-    if (mth < 0 || (mth === 0 && new Date(joinedMs).getUTCDate() < dob.getUTCDate())) age -= 1;
-    if (age >= 18) throw badRequest("Junior is for under-18s — this member is 18 or older");
-  }
+  assertJuniorEligible(input.dateOfBirth, input.planCode);
 
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
 
-  if (email || input.phone) {
-    const existing = await client.member.findFirst({
-      where: {
-        OR: [
-          ...(email ? [{ email: { equals: email, mode: "insensitive" as const } }] : []),
-          ...(input.phone ? [{ phone: input.phone.trim() }] : []),
-        ],
-      },
-      include: { plan: true },
+  // Creating a member never overwrites an existing one: a duplicate
+  // email, or the same name with the same phone, is a conflict the
+  // desk resolves — silently updating would overwrite the plan,
+  // expiry and password of the wrong person.
+  const phone = input.phone?.trim() || "";
+  if (email) {
+    const byEmail = await client.member.findFirst({
+      where: { email: { equals: email, mode: "insensitive" as const } },
+      select: { id: true },
     });
-    if (existing) {
-      const passwordHash = existing.passwordHash ?? (input.phone ? await bcrypt.hash(input.phone, 10) : null);
-      const updated = await client.member.update({
-        where: { id: existing.id },
-        data: {
-          name: input.name.trim() || existing.name,
-          phone: input.phone.trim() || existing.phone,
-          email: email || existing.email,
-          planId: plan.id,
-          joinedOn: joined,
-          expiresOn: expires,
-          passwordHash,
-          parentName: input.parentName?.trim() || existing.parentName,
-          parentPhone: input.parentPhone?.trim() || existing.parentPhone,
-          parentEmail: input.parentEmail?.trim().toLowerCase() || existing.parentEmail,
-          dateOfBirth: dob || existing.dateOfBirth,
-        },
-        include: { plan: true },
-      });
-      return toMemberDTO(updated);
-    }
+    if (byEmail) throw conflict("A member with that email already exists");
+  }
+  if (phone) {
+    const sameNamePhone = await client.member.findFirst({
+      where: { name: { equals: input.name.trim(), mode: "insensitive" as const }, phone },
+      select: { id: true },
+    });
+    if (sameNamePhone) throw conflict("A member with that name and phone number already exists");
   }
 
   const passwordHash = email
@@ -191,24 +184,25 @@ export async function availMembership(input: {
   if (!plan) throw badRequest("Pick a valid plan (gold, silver, or junior)");
 
   const cleanEmail = input.email.trim().toLowerCase();
+  // A membership needs a real phone number the club can reach: no
+  // generated fake numbers, and no matching by phone — duplicates
+  // are matched by email only.
+  const cleanPhone = input.phone?.trim() || "";
+  if (cleanPhone.replace(/\D/g, "").length < 10)
+    throw badRequest("Add the member's real 10-digit phone number");
+  assertJuniorEligible(input.dateOfBirth, input.planCode);
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
   const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
 
   let member = await db.member.findFirst({
-    where: {
-      OR: [
-        { email: { equals: cleanEmail, mode: "insensitive" } },
-        ...(input.phone ? [{ phone: input.phone.trim() }] : []),
-      ],
-    },
+    where: { email: { equals: cleanEmail, mode: "insensitive" } },
     include: { plan: true },
   });
 
   if (member) {
-    const cleanPhone = input.phone?.trim() || member.phone;
     const cleanName = input.name?.trim() || member.name;
-    const passwordHash = member.passwordHash ?? (await bcrypt.hash(cleanPhone || "demo1234", 10));
+    const passwordHash = member.passwordHash ?? (await bcrypt.hash(cleanPhone, 10));
     const updated = await db.member.update({
       where: { id: member.id },
       data: {
@@ -228,7 +222,6 @@ export async function availMembership(input: {
     });
     return toMemberDTO(updated);
   } else {
-    const cleanPhone = input.phone?.trim() || `9811${Math.floor(100000 + Math.random() * 900000)}`;
     const cleanName = input.name?.trim() || cleanEmail.split("@")[0];
     const passwordHash = await bcrypt.hash(cleanPhone, 10);
     const created = await db.member.create({
@@ -251,22 +244,74 @@ export async function availMembership(input: {
   }
 }
 
+// The amount a plan costs to buy or renew. Plan has no membership-fee
+// field yet, so the plan's tennis hourly rate stands in for the fee —
+// the same rate the renewal amount has always used. When Plan.fee
+// lands, switch this to `plan.fee ?? plan.tennisPrice`.
+export const planFee = (plan: { tennisPrice: number }): number => plan.tennisPrice;
+
+export type PaymentProof = {
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  razorpaySignature: string;
+};
+
+type PlanPaymentOptions = {
+  payMethod?: "CASH" | "CARD" | "UPI" | "ONLINE";
+  proof?: PaymentProof;
+  staffReceipt?: boolean;
+};
+
+// A plan change needs money behind it: either a Razorpay payment
+// verified against the plan amount, or a staff-recorded counter
+// receipt. Anything else is a free plan.
+async function requirePlanPayment(amount: number, opts: PlanPaymentOptions): Promise<"CASH" | "CARD" | "UPI" | "ONLINE"> {
+  if (opts.proof) {
+    const p = opts.proof;
+    if (!p.razorpayOrderId || !p.razorpayPaymentId || !p.razorpaySignature)
+      throw badRequest("Incomplete payment proof — order, payment and signature are all required");
+    await verifyRazorpayPayment(p.razorpayOrderId, p.razorpayPaymentId, p.razorpaySignature, amount);
+    return "ONLINE";
+  }
+  if (opts.staffReceipt) {
+    const method = opts.payMethod ?? "CASH";
+    if (method === "ONLINE") throw badRequest("An online payment needs its Razorpay proof — a staff receipt cannot cover it");
+    return method;
+  }
+  throw badRequest("Payment is required — pay online or ask the front desk to record the payment");
+}
+
+// Mint the Razorpay order a buy/renew checkout starts from. The
+// client pays it, then calls back with the signed proof.
+export async function createPlanPaymentOrder(
+  memberId: number,
+  planCode?: string,
+): Promise<{ razorpayOrderId: string; planCode: string; amount: number }> {
+  const member = await db.member.findUnique({ where: { id: memberId }, include: { plan: true } });
+  if (!member) throw notFound("No such member");
+  const plan = planCode
+    ? await db.plan.findUnique({ where: { code: planCode } })
+    : member.plan;
+  if (!plan) throw badRequest(planCode ? "Pick a plan that exists" : "This member has no plan to renew");
+  const amount = planFee(plan);
+  const razorpayOrderId = await createRazorpayOrder(amount, `plan_${memberId}_${plan.code}_${Date.now()}`);
+  return { razorpayOrderId, planCode: plan.code, amount };
+}
+
 // Renew a plan: the new term starts at the later of today and the
 // current expiry, so renewing early never loses days. The renewal is
 // recorded in MembershipRenewal in the same transaction as the new
 // expiry, so the paper trail and the member record cannot disagree.
-export async function renewMember(
-  id: number,
-  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" = "CASH",
-): Promise<MemberDTO> {
+export async function renewMember(id: number, opts: PlanPaymentOptions = {}): Promise<MemberDTO> {
   const member = await db.member.findUnique({ where: { id }, include: { plan: true } });
   if (!member) throw notFound("No such member");
   if (!member.plan || !member.planId) throw badRequest("Member does not have an active plan to renew");
+  const amount = planFee(member.plan);
+  const payMethod = await requirePlanPayment(amount, opts);
   const today = todayISO();
   const currentExp = member.expiresOn ? member.expiresOn.toISOString().slice(0, 10) : today;
   const from = currentExp > today ? currentExp : today;
   const to = addDaysISO(from, member.plan.termDays);
-  const amount = member.plan.tennisPrice;
   const updated = await db.$transaction(async (tx) => {
     const row = await tx.member.update({
       where: { id },
@@ -294,15 +339,34 @@ export async function getMember(id: number): Promise<MemberDTO> {
   return toMemberDTO(row);
 }
 
-export async function buyPlanForMember(memberId: number, planCode: string): Promise<MemberDTO> {
+export async function buyPlanForMember(
+  memberId: number,
+  planCode: string,
+  opts: PlanPaymentOptions = {},
+): Promise<MemberDTO> {
   const plan = await db.plan.findUnique({ where: { code: planCode } });
   if (!plan) throw badRequest("Pick a plan that exists");
+  const amount = planFee(plan);
+  const payMethod = await requirePlanPayment(amount, opts);
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
   const expires = new Date(joined.getTime() + plan.termDays * 24 * 60 * 60 * 1000);
-  const updated = await db.member.update({
-    where: { id: memberId },
-    data: { planId: plan.id, joinedOn: joined, expiresOn: expires },
-    include: { plan: true },
+  const updated = await db.$transaction(async (tx) => {
+    const row = await tx.member.update({
+      where: { id: memberId },
+      data: { planId: plan.id, joinedOn: joined, expiresOn: expires },
+      include: { plan: true },
+    });
+    await tx.membershipRenewal.create({
+      data: {
+        memberId,
+        planId: plan.id,
+        amount,
+        payMethod,
+        renewedFrom: joined,
+        renewedTo: expires,
+      },
+    });
+    return row;
   });
   return toMemberDTO(updated);
 }
