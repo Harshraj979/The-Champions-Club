@@ -30,6 +30,16 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 const post = <T>(path: string, body?: unknown) =>
   call<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });
 
+// Proof of a verified Razorpay payment, or a staff-recorded counter
+// receipt, for buying or renewing a plan.
+export type PlanPayment = {
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
+  razorpaySignature?: string;
+  staffReceipt?: boolean;
+  payMethod?: "CASH" | "CARD" | "UPI";
+};
+
 export const api = {
   plans: () => call<PlanDTO[]>("/plans"),
   courts: () => call<CourtDTO[]>("/courts"),
@@ -84,7 +94,7 @@ export const api = {
     parentEmail?: string;
     dateOfBirth?: string;
   }) => post<MemberDTO>("/members/avail-plan", input),
-  renewMember: (id: number) => post<MemberDTO>(`/members/${id}/renew`, {}),
+  renewMember: (id: number, extra?: PlanPayment) => post<MemberDTO>(`/members/${id}/renew`, extra ?? {}),
   createOrder: (input: {
     items: { productId: number; qty: number }[];
     name: string;
@@ -145,7 +155,7 @@ export const api = {
   shopStats: (date?: string) => call<any>(`/shop/stats${date ? `?date=${date}` : ""}`),
   login: (email: string, password: string) => post<{ staff: StaffDTO }>("/auth/login", { email, password }),
   pinLogin: (role: string, pin: string, staffId?: number) =>
-    post<{ staff: StaffDTO; token: string }>("/auth/pin-login", { role, pin, staffId }),
+    post<{ staff: StaffDTO }>("/auth/pin-login", { role, pin, staffId }),
   staffProfiles: () =>
     call<{
       ok: boolean;
@@ -155,7 +165,6 @@ export const api = {
         role: string;
         roleLabel: string;
         hasCustomPin: boolean;
-        defaultPin: string;
       }[];
     }>("/auth/staff-profiles"),
   staffPins: () => call<{ roles: RolePinDTO[]; staff: StaffMemberPinDTO[] }>("/staff/pins"),
@@ -173,7 +182,7 @@ export const api = {
   updateStaffRate: (staffId: number, hourlyRate: number) =>
     post<{ ok: boolean; message: string }>("/staff/rate", { staffId, hourlyRate }),
   payStaffSalary: (input: { staffId: number; amount: number; month?: string; paymentRef?: string }) =>
-    post<{ ok: boolean; message: string; paymentRef: string; paidAt: string }>("/staff/pay-salary", input),
+    post<{ ok: boolean; message: string; paymentRef: string | null; paidAt: string }>("/staff/pay-salary", input),
   toggleStaffClock: (staffId?: number) =>
     post<{ ok: boolean; status: string; hours?: number; message: string }>("/staff/clock", { staffId }),
   updateRolePin: (role: string, pin: string) => post<{ ok: boolean; message: string }>("/staff/pins", { role, pin }),
@@ -192,19 +201,29 @@ export const api = {
     dateOfBirth?: string;
   }) =>
     post<{ ok: boolean; member: MemberSessionDTO }>("/auth/member/signup", input),
+  // One member-login route (/member/login). The identifier may be an
+  // email, phone number or name — the server's memberLogin accepts
+  // all three.
   memberLogin: (input: { identifier: string; password: string } | string, password?: string) => {
-    if (typeof input === "string") {
-      return post<{ member: MemberSessionDTO }>("/member/login", { email: input, password });
-    }
-    return post<{ ok: boolean; member: MemberSessionDTO }>("/auth/member/login", input);
+    const email = typeof input === "string" ? input : input.identifier;
+    const pass = typeof input === "string" ? password : input.password;
+    return post<{ member: MemberSessionDTO }>("/member/login", { email, password: pass });
   },
-  googleDemoLogin: (data: { email: string; name?: string; planCode?: string }) =>
-    post<{ ok: boolean; member: MemberSessionDTO; token: string }>("/auth/google/demo", data),
   memberLogout: () => post<{ ok: boolean }>("/auth/member/logout"),
   memberMe: () => call<{ member: MemberSessionDTO | null }>("/auth/member/me"),
   memberHome: () => call<MemberHomeDTO>("/member/me"),
-  buyPlan: (planCode: string) => post<{ ok: boolean; member: MemberDTO }>("/members/buy-plan", { planCode }),
+  // Buying or renewing a plan needs a verified payment: pass the
+  // Razorpay proof, or (staff only) a recorded counter receipt. With
+  // neither, the server mints a Razorpay order first and answers
+  // { needsPayment: true, razorpayOrderId, amount } — call again
+  // with the proof to complete the purchase.
+  buyPlan: (planCode: string, extra?: PlanPayment) =>
+    post<{ ok: boolean; member?: MemberDTO; needsPayment?: boolean; razorpayOrderId?: string; amount?: number }>(
+      "/members/buy-plan",
+      { planCode, ...extra },
+    ),
   memberBook: (input: { courtId: number; date: string; start: number }) => post<BookingDTO>("/member/bookings", input),
-  memberRenew: () => post<MemberDTO>("/member/renew", {}),
+  memberRenew: (extra?: PlanPayment) =>
+    post<MemberDTO & { needsPayment?: boolean; razorpayOrderId?: string; amount?: number }>("/member/renew", extra ?? {}),
   memberOrder: (input: { items: { productId: number; qty: number }[]; payMethod: "CASH" | "CARD" | "UPI"; fulfilment?: "PICKUP" | "DELIVERY"; address?: string; payOnline?: boolean }) => post<OrderDTO & { razorpayOrderId?: string }>("/member/orders", input),
 };

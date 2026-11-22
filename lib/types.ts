@@ -22,7 +22,7 @@ export type ProductDTO = {
   category: "GEAR" | "BAR";
 };
 
-export type MemberState = "active" | "expiring" | "expired";
+export type MemberState = "active" | "expiring" | "expired" | "none";
 
 export type MemberDTO = {
   id: number;
@@ -208,7 +208,6 @@ export type StaffDTO = {
 export type RolePinDTO = {
   role: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
   label: string;
-  defaultPin: string;
   hasCustomPin: boolean;
 };
 
@@ -218,7 +217,6 @@ export type StaffMemberPinDTO = {
   email: string;
   role: "OWNER" | "STAFF" | "FRONT_DESK" | "BAR" | "SHOP";
   roleLabel: string;
-  defaultPin: string;
   hasCustomPin: boolean;
   hourlyRate: number;
   hoursWorked: number;

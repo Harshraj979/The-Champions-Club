@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
   const state = req.nextUrl.searchParams.get("state");
   const code = req.nextUrl.searchParams.get("code");
   const authType = jar.get("cc_gtype")?.value || "member";
-  const planCode = jar.get("cc_gplan")?.value;
   const loginPath = authType === "staff" ? "/login" : "/member-login";
   const defaultDest = authType === "staff" ? "/dashboard" : "/member";
   const next = jar.get("cc_gnext")?.value ?? defaultDest;
@@ -69,22 +68,19 @@ export async function GET(req: NextRequest) {
     });
 
     if (!member) {
-      // Auto-register new member via Google Auth
+      // Auto-register new member via Google Auth. No plan is granted
+      // here: a plan cookie is client-set and forgeable, so Google
+      // sign-in creates a plan-less account and the member buys a
+      // plan (verified payment) afterwards.
       const memberName = String(info.name || cleanEmail.split("@")[0]).trim();
-      let planId: number | null = null;
-      if (planCode && ["gold", "silver", "junior"].includes(planCode.toLowerCase())) {
-        const plan = await db.plan.findUnique({ where: { code: planCode.toLowerCase() } });
-        if (plan) planId = plan.id;
-      }
-      const expiresOn = planId ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null;
       member = await db.member.create({
         data: {
           name: memberName,
           email: cleanEmail,
           phone: "",
-          planId,
+          planId: null,
           joinedOn: new Date(),
-          expiresOn,
+          expiresOn: null,
         },
         include: { plan: true },
       });
@@ -93,7 +89,10 @@ export async function GET(req: NextRequest) {
     const token = await signMemberToken(member.id);
     await setMemberSessionCookie(token);
 
-    const destination = next && next.startsWith("/") && !next.includes("login") ? next : "/member";
+    // The post-login destination must stay on this site, and never
+    // land back on a login page.
+    let destination = safeNextPath(next, "/member");
+    if (destination.includes("login")) destination = "/member";
     return back(destination);
   }
 

@@ -4,23 +4,19 @@ import crypto from "node:crypto";
 import { getGoogleRedirectUri, safeNextPath } from "@/lib/auth";
 
 // Google sign-in / sign-up initiation strictly for club members & users.
-// Staff and Owner access is restricted to secure role PINs.
+// Staff and Owner sign in with email or PIN — there is no staff
+// Google entry point.
 export async function GET(req: NextRequest) {
-  const type = req.nextUrl.searchParams.get("type") || "member";
-  if (type === "staff") {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
   const rawNext = req.nextUrl.searchParams.get("next") ?? "/member";
   const next = safeNextPath(rawNext);
-  const plan = req.nextUrl.searchParams.get("plan");
 
   const id = process.env.GOOGLE_CLIENT_ID?.trim();
   const jar = await cookies();
   const opts = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 600 };
   jar.set("cc_gtype", "member", opts);
   jar.set("cc_gnext", next, opts);
-  if (plan) jar.set("cc_gplan", plan, opts);
+  // No plan cookie is set here: a plan is only ever granted by a
+  // verified payment, never by a client-set cookie.
 
   // If real Google Client ID is configured, proceed with official Google OAuth flow
   if (id) {

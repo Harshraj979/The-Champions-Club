@@ -34,7 +34,11 @@ export const availPlanInput = z.object({
   parentName: z.string().trim().max(80).optional(),
   parentPhone: z.string().trim().max(20).optional(),
   parentEmail: z.string().trim().email().max(120).optional().or(z.literal("")),
-  dateOfBirth: z.string().optional(),
+  // A real calendar date (Feb 30 is rejected by isISODate).
+  dateOfBirth: z
+    .string()
+    .refine((d) => !d || isISODate(d), "That date of birth is not a real date")
+    .optional(),
 });
 
 export const trialInput = bookingInput.extend({
@@ -47,8 +51,28 @@ export const memberBookingInput = bookingInput
   .extend({ type: z.enum(["REGULAR", "FRIDAY_SOCIAL"]).optional().default("REGULAR") });
 
 export const memberLoginInput = z.object({
-  email: z.string().trim().email("That email does not look right").max(120),
+  // The identifier a member signs in with: email, phone or name —
+  // memberLogin accepts all three, so this is not an email-only field.
+  email: z.string().trim().min(1, "Add your email or phone number").max(120),
   password: z.string().min(1, "Add your password").max(200),
+});
+
+export const memberSignupInput = z.object({
+  name: z.string().trim().min(1, "Your name is missing").max(80),
+  email: z.string().trim().email("That email does not look right").max(120),
+  phone: z
+    .string()
+    .trim()
+    .refine((s) => s.replace(/\D/g, "").length >= 10, "Add a phone number with at least 10 digits"),
+  password: z.string().min(8, "Password needs at least 8 characters").max(200),
+  planCode: z.string().min(1).optional(),
+  parentName: z.string().trim().max(80).optional(),
+  parentPhone: z.string().trim().max(20).optional(),
+  parentEmail: z.string().trim().email().max(120).optional().or(z.literal("")),
+  dateOfBirth: z
+    .string()
+    .refine((d) => !d || isISODate(d), "That date of birth is not a real date")
+    .optional(),
 });
 
 export const memberInput = z.object({
@@ -69,7 +93,8 @@ export const memberInput = z.object({
 
 export const itemsInput = z
   .array(z.object({ productId: z.number().int().positive(), qty: z.number().int().min(1).max(99) }))
-  .min(1, "Nothing in the order yet");
+  .min(1, "Nothing in the order yet")
+  .max(50, "At most 50 lines per order");
 
 export const orderInput = z.object({
   items: itemsInput,
@@ -85,7 +110,30 @@ export const memberOrderInput = orderInput.pick({ items: true, payMethod: true, 
 
 export const renewInput = z.object({
   payMethod: z.enum(["CASH", "CARD", "UPI", "ONLINE"]).optional().default("CASH"),
+  // Proof of a verified online payment (all three, or none).
+  razorpayOrderId: z.string().min(1).max(80).optional(),
+  razorpayPaymentId: z.string().min(1).max(80).optional(),
+  razorpaySignature: z.string().min(1).max(200).optional(),
+  // A staff receipt: only honoured with a staff session (see routes).
+  staffReceipt: z.boolean().optional().default(false),
 });
+
+export const buyPlanInput = z.object({
+  planCode: z.string().min(1),
+  payMethod: z.enum(["CASH", "CARD", "UPI"]).optional().default("CASH"),
+  razorpayOrderId: z.string().min(1).max(80).optional(),
+  razorpayPaymentId: z.string().min(1).max(80).optional(),
+  razorpaySignature: z.string().min(1).max(200).optional(),
+  staffReceipt: z.boolean().optional().default(false),
+});
+
+export const pinLoginInput = z
+  .object({
+    role: z.enum(["OWNER", "STAFF", "FRONT_DESK", "BAR", "SHOP"]).optional(),
+    pin: z.string().trim().min(1, "Add your PIN").max(10),
+    staffId: z.number().int().positive("Staff id must be a positive integer").optional(),
+  })
+  .refine((d) => d.role !== undefined || d.staffId !== undefined, "Role or staff member is required");
 
 export const invoiceInput = z.object({
   billedTo: z.string().trim().min(2, "Who is this bill for?").max(80),
@@ -117,6 +165,12 @@ export const leaveInput = z.object({
   to: z.string().refine((d) => isISODate(d), "That end date is not a real date"),
   type: z.enum(["ANNUAL", "SICK", "UNPAID", "OTHER"]).optional().default("ANNUAL"),
   reason: z.string().trim().max(200).optional().default(""),
+});
+
+// Filing leave: staffId is optional — without it, the request is filed
+// for the signed-in staff member (see the route).
+export const leaveRequestInput = leaveInput.extend({
+  staffId: z.number().int().positive().optional(),
 });
 
 export const leaveDecisionInput = z.object({

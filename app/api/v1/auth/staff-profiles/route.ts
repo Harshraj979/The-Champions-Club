@@ -1,9 +1,12 @@
-import { NextResponse } from "next/server";
+import { handle } from "@/lib/http";
+import { requireRole, ROLE_LABELS } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { DEFAULT_ROLE_PINS, ROLE_LABELS } from "@/lib/auth";
 
-export async function GET() {
-  try {
+// Staff profiles are the owner's business: only the owner may list
+// them, and the list never includes a PIN — custom or default.
+export const GET = (req: Request) =>
+  handle(async () => {
+    await requireRole(req, "OWNER");
     const staff = await db.staff.findMany({
       select: {
         id: true,
@@ -13,36 +16,14 @@ export async function GET() {
       },
       orderBy: [{ role: "asc" }, { name: "asc" }],
     });
-
-    let seenOwner = false;
-    const result = [];
-    for (const s of staff) {
-      if (s.role === "OWNER") {
-        if (!seenOwner) {
-          seenOwner = true;
-          result.push({
-            id: s.id,
-            name: "Vikram Rao (Club Owner)",
-            role: s.role,
-            roleLabel: ROLE_LABELS[s.role] || s.role,
-            hasCustomPin: Boolean(s.pinHash),
-            defaultPin: DEFAULT_ROLE_PINS[s.role] || "0000",
-          });
-        }
-      } else {
-        result.push({
-          id: s.id,
-          name: s.name,
-          role: s.role,
-          roleLabel: ROLE_LABELS[s.role] || s.role,
-          hasCustomPin: Boolean(s.pinHash),
-          defaultPin: DEFAULT_ROLE_PINS[s.role] || "0000",
-        });
-      }
-    }
-
-    return NextResponse.json({ ok: true, staff: result });
-  } catch {
-    return NextResponse.json({ ok: false, staff: [] });
-  }
-}
+    return {
+      ok: true,
+      staff: staff.map((s) => ({
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        roleLabel: ROLE_LABELS[s.role] || s.role,
+        hasCustomPin: Boolean(s.pinHash),
+      })),
+    };
+  });

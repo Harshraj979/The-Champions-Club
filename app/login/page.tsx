@@ -1,9 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import ClubLogo from "@/components/ClubLogo";
-import type { StaffMemberPinDTO } from "@/lib/types";
 
 type RoleOption = {
   id: "OWNER" | "FRONT_DESK" | "BAR" | "SHOP";
@@ -24,20 +23,12 @@ export default function Login() {
   const [pin, setPin] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
-  const [staffList, setStaffList] = useState<StaffMemberPinDTO[]>([]);
-  const [selectedStaffId, setSelectedStaffId] = useState<number | null>(null);
 
   // Only a same-site relative path is a safe place to land after
   // sign-in: it must start with "/" but not "//" (protocol-relative)
   // and must not contain "://".
   const safeNext = (n: string | null) =>
     n && n.startsWith("/") && !n.startsWith("//") && !n.includes("://") ? n : null;
-
-  useEffect(() => {
-    api.staffProfiles().then((res) => {
-      setStaffList(res.staff as any || []);
-    }).catch(() => {});
-  }, []);
 
   function getRedirectUrl(role: string) {
     const next = safeNext(new URLSearchParams(window.location.search).get("next"));
@@ -48,7 +39,7 @@ export default function Login() {
     return "/bookings";
   }
 
-  async function handlePinLogin(role: RoleOption["id"], enteredPin: string, staffId?: number | null) {
+  async function handlePinLogin(role: RoleOption["id"], enteredPin: string) {
     setErr("");
     if (!enteredPin.trim()) {
       setErr("Please enter the PIN for " + (ROLES.find((r) => r.id === role)?.label || role));
@@ -56,7 +47,7 @@ export default function Login() {
     }
     setBusy(true);
     try {
-      const { staff } = await api.pinLogin(role, enteredPin.trim(), staffId || undefined);
+      const { staff } = await api.pinLogin(role, enteredPin.trim());
       window.location.href = getRedirectUrl(staff.role);
     } catch (ex) {
       setErr(ex instanceof ApiClientError ? ex.message : "Incorrect PIN. Try again.");
@@ -64,33 +55,7 @@ export default function Login() {
     }
   }
 
-  async function goDemo(e: string, p: string) {
-    setErr("");
-    setBusy(true);
-    try {
-      const { staff } = await api.login(e, p);
-      window.location.href = getRedirectUrl(staff.role);
-    } catch (ex) {
-      setErr(ex instanceof ApiClientError ? ex.message : "Demo sign-in failed. Try again.");
-      setBusy(false);
-    }
-  }
-
   const activeRoleObj = ROLES.find((r) => r.id === selectedRole) || ROLES[0];
-
-  const roleStaffMembers = staffList.filter((s) => {
-    if (selectedRole === "FRONT_DESK") return s.role === "FRONT_DESK" || s.role === "STAFF";
-    if (selectedRole === "BAR") return s.role === "BAR";
-    if (selectedRole === "SHOP") return s.role === "SHOP";
-    if (selectedRole === "OWNER") return s.role === "OWNER";
-    return s.role === selectedRole;
-  });
-
-  const effectiveStaffId = selectedStaffId && roleStaffMembers.some((s) => s.id === selectedStaffId)
-    ? selectedStaffId
-    : roleStaffMembers[0]?.id || null;
-
-  const activeStaffMember = roleStaffMembers.find((s) => s.id === effectiveStaffId);
 
   return (
     <main className="auth-page staff-auth-page">
@@ -160,64 +125,18 @@ export default function Login() {
           </div>
         </div>
 
-        {roleStaffMembers.length > 0 && (
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 700, textTransform: "uppercase", marginBottom: 6, color: "var(--pine)" }}>
-              Staff Profile (Name)
-            </label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {roleStaffMembers.map((s) => {
-                const isSelected = effectiveStaffId === s.id;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedStaffId(s.id);
-                      setPin("");
-                      setErr("");
-                    }}
-                    style={{
-                      padding: "6px 12px",
-                      borderRadius: 999,
-                      border: isSelected ? "2px solid #163021" : "1px solid var(--line)",
-                      background: isSelected ? "#163021" : "var(--surface)",
-                      color: isSelected ? "#dfff45" : "#163021",
-                      fontWeight: isSelected ? 700 : 500,
-                      fontSize: 12,
-                      cursor: "pointer",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>👤 {s.name}</span>
-                    {s.hasCustomPin && (
-                      <span style={{ fontSize: 9, opacity: 0.85 }}>(PIN Set)</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handlePinLogin(selectedRole, pin, effectiveStaffId);
+            handlePinLogin(selectedRole, pin);
           }}
           className="form-grid"
         >
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <label htmlFor="l-pin" style={{ fontSize: 13, fontWeight: 600, color: "var(--pine)" }}>
-                {activeStaffMember ? `${activeStaffMember.name}'s PIN` : `${activeRoleObj.label} PIN`}
+                {`${activeRoleObj.label} PIN`}
               </label>
-              <span className="auth-field-hint">
-                {activeStaffMember?.hasCustomPin ? "Custom PIN" : "Assigned PIN"}
-              </span>
             </div>
             <input
               id="l-pin"
@@ -249,57 +168,10 @@ export default function Login() {
             >
               {busy
                 ? "Authenticating..."
-                : activeStaffMember
-                ? `Sign in as ${activeStaffMember.name}`
                 : `Sign in as ${activeRoleObj.label}`}
             </button>
           </div>
         </form>
-
-        <details className="auth-demo">
-          <summary>Local demo accounts</summary>
-          <div className="auth-demo-content">
-            <p>For local evaluation only.</p>
-            <div className="auth-demo-grid">
-              <button
-                type="button"
-                className="btn btn-ink"
-                onClick={() => goDemo("owner@champions.club", "champions")}
-                disabled={busy}
-                style={{ fontSize: 12, padding: "8px 6px" }}
-              >
-                👑 CLUB OWNER
-              </button>
-              <button
-                type="button"
-                className="btn btn-quiet"
-                onClick={() => goDemo("neha@champions.club", "demo1234")}
-                disabled={busy}
-                style={{ fontSize: 12, padding: "8px 6px" }}
-              >
-                📋 CLUB STAFF
-              </button>
-              <button
-                type="button"
-                className="btn btn-quiet"
-                onClick={() => goDemo("arjun@champions.club", "demo1234")}
-                disabled={busy}
-                style={{ fontSize: 12, padding: "8px 6px" }}
-              >
-                🍸 BAR STAFF
-              </button>
-              <button
-                type="button"
-                className="btn btn-quiet"
-                onClick={() => goDemo("meera@champions.club", "demo1234")}
-                disabled={busy}
-                style={{ fontSize: 12, padding: "8px 6px" }}
-              >
-                🛍️ SHOP STAFF
-              </button>
-            </div>
-          </div>
-        </details>
       </div>
 
       <p className="member-link auth-switch-link">
