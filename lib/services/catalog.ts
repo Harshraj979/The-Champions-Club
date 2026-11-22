@@ -14,6 +14,7 @@ export async function listPlans(): Promise<PlanDTO[]> {
     shopDiscount: p.shopDiscount,
     barDiscount: p.barDiscount,
     termDays: p.termDays,
+    fee: p.fee,
   }));
 }
 
@@ -41,6 +42,7 @@ export async function listProducts(category?: "GEAR" | "BAR"): Promise<ProductDT
 // way to add stock or change the low-stock level after seeding.
 export async function restockProduct(id: number, qty: number, lowAt?: number): Promise<ProductDTO> {
   if (!Number.isInteger(qty) || qty <= 0) throw badRequest("Restock quantity must be a whole number above 0");
+  if (qty > 10000) throw badRequest("Restock quantity cannot be more than 10,000 at a time");
   if (lowAt !== undefined && (!Number.isInteger(lowAt) || lowAt < 0)) throw badRequest("lowAt must be a whole number of 0 or more");
   const product = await db.product.findUnique({ where: { id } });
   if (!product) throw notFound("No such product");

@@ -6,10 +6,11 @@ import { toBookingDTO } from "./bookings";
 import { expiringMembers } from "./members";
 
 // The owner's money in one read: courts + shop + bar for today, the last
-// 7 days and the last 30 days, how the day was paid, who is on court,
-// and what is running low in the shop. Days are IST days; only paid work
-// counts — booked courts, placed orders and SETTLED tabs. An open tab
-// is not revenue yet.
+// 7 days and the current calendar month, how the day was paid, who is on
+// court, and what is running low in the shop. Days are IST days; only
+// paid work counts — PAID bookings, non-pending non-cancelled orders and
+// SETTLED tabs. A booked court nobody paid for yet is a promise, not
+// takings, and an open tab is not revenue yet.
 const day = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
 
 async function sums(fromISO: string, toISO: string): Promise<MoneySplit> {
@@ -19,13 +20,14 @@ async function sums(fromISO: string, toISO: string): Promise<MoneySplit> {
       // [from, to+1), exactly like the orders/tabs windows below.
       // (lte day(to) silently dropped a booking whose date carried
       // a time after UTC midnight on the last day.)
-      where: { date: { gte: day(fromISO), lt: day(addDaysISO(toISO, 1)) }, state: "BOOKED" },
+      // PAID only: the seed's ₹4,200 headline was uncollected money.
+      where: { date: { gte: day(fromISO), lt: day(addDaysISO(toISO, 1)) }, state: "BOOKED", payState: "PAID" },
       _sum: { price: true },
     }),
     db.order.findMany({
       // A pending online order is not money yet; it joins the takings
-      // when its payment confirms.
-      where: { createdAt: { gte: istDayStart(fromISO), lt: istDayStart(addDaysISO(toISO, 1)) }, payState: { not: "PENDING" } },
+      // when its payment confirms. A cancelled order never does.
+      where: { createdAt: { gte: istDayStart(fromISO), lt: istDayStart(addDaysISO(toISO, 1)) }, payState: { not: "PENDING" }, status: { not: "CANCELLED" } },
       select: { total: true },
     }),
     db.tab.findMany({
@@ -45,12 +47,14 @@ async function sums(fromISO: string, toISO: string): Promise<MoneySplit> {
 export async function getDashboard(date: string): Promise<DashboardDTO> {
   if (!isISODate(date)) throw badRequest("Date must be YYYY-MM-DD");
 
+  // "Month" is the calendar month to date, not a rolling 30 days.
+  const monthStart = `${date.slice(0, 7)}-01`;
   const [today, week, month, dayOrders, dayTabs, onCourt, low, expiring] = await Promise.all([
     sums(date, date),
     sums(addDaysISO(date, -6), date),
-    sums(addDaysISO(date, -29), date),
+    sums(monthStart, date),
     db.order.findMany({
-      where: { createdAt: { gte: istDayStart(date), lt: istDayStart(addDaysISO(date, 1)) }, payState: { not: "PENDING" } },
+      where: { createdAt: { gte: istDayStart(date), lt: istDayStart(addDaysISO(date, 1)) }, payState: { not: "PENDING" }, status: { not: "CANCELLED" } },
       select: { total: true, payMethod: true },
     }),
     db.tab.findMany({
@@ -67,8 +71,13 @@ export async function getDashboard(date: string): Promise<DashboardDTO> {
   ]);
 
   const byMethodMap = new Map<string, number>();
-  for (const r of [...dayOrders, ...dayTabs])
-    if (r.payMethod) byMethodMap.set(r.payMethod, (byMethodMap.get(r.payMethod) ?? 0) + r.total);
+  for (const r of dayOrders) byMethodMap.set(r.payMethod, (byMethodMap.get(r.payMethod) ?? 0) + r.total);
+  for (const t of dayTabs) {
+    // A settled tab with no method recorded still counts — under its own
+    // bucket, instead of vanishing from the breakdown.
+    const key = t.payMethod ?? "NOT_RECORDED";
+    byMethodMap.set(key, (byMethodMap.get(key) ?? 0) + t.total);
+  }
 
   const byMethodTotal = [...byMethodMap.values()].reduce((s, a) => s + a, 0);
 
@@ -85,12 +94,14 @@ export async function getDashboard(date: string): Promise<DashboardDTO> {
       .filter((p) => p.stock !== null && p.stock <= p.lowAt)
       .map((p) => ({ id: p.id, name: p.name, price: p.price, stock: p.stock, lowAt: p.lowAt, category: p.category })),
     expiring,
-    // Courts have no payMethod recorded (Booking has no payMethod
-    // field), so byMethod never adds up to totals.total. These two
-    // fields make the gap explicit instead of hiding it: the page
-    // can show byMethodTotal against the total, and how much of the
-    // total is court money with no method recorded.
+    // Courts have no per-method split here, so byMethod never adds up
+    // to totals.total. These two fields make the gap explicit instead
+    // of hiding it: the page can show byMethodTotal against the total,
+    // and how much of the total is court money with no method recorded.
     byMethodTotal,
     courtUnrecorded: today.courts,
-  } as DashboardDTO & { byMethodTotal: number; courtUnrecorded: number };
+    // Calendar-month income at the top level for the expenses page
+    // (the same figure as periods.month).
+    monthIncome: month,
+  } as DashboardDTO & { monthIncome: MoneySplit };
 }

@@ -53,6 +53,56 @@ enum PayMethod {
   ONLINE // Razorpay checkout (test mode)
 }
 
+enum BookingPayState {
+  UNPAID
+  PAID
+}
+
+enum OrderStatus {
+  PLACED
+  PACKED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderPayState {
+  PENDING
+  PAID
+}
+
+enum OrderFulfilment {
+  PICKUP
+  DELIVERY
+}
+
+enum InvoiceStatus {
+  UNPAID
+  PAID
+}
+
+enum PayrollStatus {
+  PENDING
+  PAID
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  UNPAID
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ShiftPart {
+  MORNING
+  EVENING
+}
+
 model Plan {
   id           Int      @id @default(autoincrement())
   code         String   @unique
@@ -62,6 +112,7 @@ model Plan {
   shopDiscount Int // percent
   barDiscount  Int // percent
   termDays     Int
+  fee          Int @default(0) // rupees per term — the membership fee renewals and purchases charge
   members      Member[]
   renewals     MembershipRenewal[]
 }
@@ -92,6 +143,7 @@ model Member {
   orders       Order[]
   tabs         Tab[]
   renewals     MembershipRenewal[]
+  invoices     Invoice[]
   createdAt    DateTime            @default(now())
 
   @@index([name])
@@ -110,8 +162,8 @@ model Booking {
   type      BookingType  @default(REGULAR)
   price     Int // rupees, set from the plan or the walk-in rate at booking time
   state     BookingState @default(BOOKED)
-  payMethod String? // how the court was paid — CASH | CARD | UPI | ONLINE; null when not recorded
-  payState  String? @default("UNPAID") // UNPAID | PAID
+  payMethod PayMethod? // how the court was paid; null when not recorded
+  payState  BookingPayState? @default(UNPAID) // only PAID bookings count as court revenue
   paidAt    DateTime?
   createdAt DateTime     @default(now())
 
@@ -142,10 +194,10 @@ model Order {
   discount  Int         @default(0)
   total     Int
   payMethod PayMethod
-  fulfilment String     @default("PICKUP") // PICKUP | DELIVERY
+  fulfilment OrderFulfilment @default(PICKUP)
   address   String? // delivery address, set only for DELIVERY
-  payState  String      @default("PAID") // PENDING | PAID — online orders start PENDING
-  status    String      @default("PLACED") // PLACED | PACKED | DELIVERED | CANCELLED
+  payState  OrderPayState @default(PENDING) // online orders start PENDING until payment confirms
+  status    OrderStatus @default(PLACED)
   deliveredAt DateTime?
   razorpayOrderId   String?
   razorpayPaymentId String?
@@ -184,6 +236,8 @@ model Tab {
   settledAt   DateTime?
   items       TabItem[]
 
+  // One open tab per table is enforced by a partial unique index in the
+  // migration (Prisma has no syntax for a partial index).
   @@index([settledAt])
   @@index([memberId])
 }
@@ -194,13 +248,17 @@ model Invoice {
   id       Int       @id @default(autoincrement())
   billedTo String // member or business client
   detail   String    @default("") // what it is for
-  amount   Int // rupees
-  status   String    @default("UNPAID") // UNPAID | PAID
+  amount   Int // rupees, pre-tax — the tax on top is taxAmount, so the total due is amount + taxAmount
+  status   InvoiceStatus @default(UNPAID)
   issuedOn DateTime  @default(now())
   paidAt   DateTime?
+  payMethod PayMethod? // how it was paid, recorded when marked paid
   taxRate   Int? // percent charged on this invoice, if any
-  taxAmount Int? // rupees of tax included in amount
+  taxAmount Int? // rupees of tax charged on top of amount (tax-exclusive, never included in amount)
   memberId  Int? // member this bill is for, when it is one
+  member    Member? @relation(fields: [memberId], references: [id])
+
+  @@index([memberId])
 }
 
 model Expense {
@@ -220,10 +278,12 @@ model Payroll {
   salary     Int // rupees for the month
   leaveDays  Int       @default(0)
   tax        Int       @default(0) // tax deducted, rupees
-  status     String    @default("PENDING") // PENDING | PAID
+  status     PayrollStatus @default(PENDING)
   paymentRef String?
   paidAt     DateTime?
+  payMethod  PayMethod? // how it was paid, recorded when marked paid
   staffId    Int? // Staff row this pay belongs to (set from the roster name)
+  staff      Staff? @relation(fields: [staffId], references: [id])
   createdAt  DateTime  @default(now())
 
   @@unique([staffId, month])
@@ -271,6 +331,7 @@ model Staff {
   shifts       Shift[]
   workLogs     StaffWorkLog[]
   leaves       Leave[]
+  payrolls     Payroll[]
 }
 
 model StaffWorkLog {
@@ -291,8 +352,8 @@ model Shift {
   id        Int      @id @default(autoincrement())
   staffId   Int
   staff     Staff    @relation(fields: [staffId], references: [id])
-  date      DateTime // the day (UTC date)
-  part      String // MORNING | EVENING
+  date      DateTime @db.Date // the day, date-only like Booking.date
+  part      ShiftPart
   createdAt DateTime @default(now())
 
   @@unique([staffId, date, part])
@@ -307,9 +368,9 @@ model Leave {
   staff     Staff    @relation(fields: [staffId], references: [id])
   fromDate  DateTime @db.Date
   toDate    DateTime @db.Date
-  type      String // ANNUAL | SICK | UNPAID | OTHER
+  type      LeaveType
   reason    String?
-  status    String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  status    LeaveStatus @default(PENDING)
   decidedBy String?
   decidedAt DateTime?
   createdAt DateTime @default(now())
@@ -327,7 +388,7 @@ model MembershipRenewal {
   planId      Int
   plan        Plan     @relation(fields: [planId], references: [id])
   amount      Int // rupees paid for the renewal
-  payMethod   String // CASH | CARD | UPI | ONLINE
+  payMethod   PayMethod
   renewedFrom DateTime @db.Date
   renewedTo   DateTime @db.Date
   createdAt   DateTime @default(now())

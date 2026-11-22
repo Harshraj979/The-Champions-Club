@@ -47,6 +47,7 @@ export async function getShopDashboard(date: string = todayISO()): Promise<ShopD
       where: {
         createdAt: { gte: istDayStart(date), lt: istDayStart(addDaysISO(date, 1)) },
         payState: { not: "PENDING" },
+        status: { not: "CANCELLED" },
       },
       include: { items: { include: { product: true } } },
     }),
@@ -54,6 +55,7 @@ export async function getShopDashboard(date: string = todayISO()): Promise<ShopD
       where: {
         createdAt: { gte: istDayStart(addDaysISO(date, -6)), lt: istDayStart(addDaysISO(date, 1)) },
         payState: { not: "PENDING" },
+        status: { not: "CANCELLED" },
       },
       select: { total: true },
     }),
@@ -61,6 +63,7 @@ export async function getShopDashboard(date: string = todayISO()): Promise<ShopD
       where: {
         createdAt: { gte: istDayStart(addDaysISO(date, -29)), lt: istDayStart(addDaysISO(date, 1)) },
         payState: { not: "PENDING" },
+        status: { not: "CANCELLED" },
       },
       select: { total: true },
     }),
@@ -69,6 +72,12 @@ export async function getShopDashboard(date: string = todayISO()): Promise<ShopD
       orderBy: { stock: "asc" },
     }),
     db.order.findMany({
+      // Recent means the selected day, not the global latest 10.
+      where: {
+        createdAt: { gte: istDayStart(date), lt: istDayStart(addDaysISO(date, 1)) },
+        payState: { not: "PENDING" },
+        status: { not: "CANCELLED" },
+      },
       include: { items: { include: { product: true } } },
       orderBy: { createdAt: "desc" },
       take: 10,
@@ -125,7 +134,7 @@ export async function getShopDashboard(date: string = todayISO()): Promise<ShopD
   }
 
   const methodLabels: Record<string, string> = {
-    ONLINE: "Demo Razorpay",
+    ONLINE: "Online (Razorpay)",
     UPI: "UPI",
     CASH: "Cash",
     CARD: "Card",

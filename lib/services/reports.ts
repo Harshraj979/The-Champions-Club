@@ -1,13 +1,16 @@
 import { db } from "../db";
 import { badRequest } from "../errors";
-import { addDaysISO, isISODate, todayISO } from "../format";
+import { addDaysISO, isISODate, istDayStart, todayISO } from "../format";
 import type { TaxSummaryDTO } from "../types";
 
-// Tax reporting for the owner: what was billed and what tax was
-// charged on invoices in the window, against the tax deducted from
-// staff pay in the same window. Invoices count by the day they were
-// issued; payroll counts by month (a YYYY-MM string, so the months
-// overlapping the window are compared as strings).
+// Tax reporting for the owner: output tax (charged on invoices, on top
+// of the pre-tax amount) and withheld tax (deducted from staff pay) as
+// SEPARATE figures. They are different positions — output tax is owed to
+// the tax office, withheld tax was already paid on the staff's behalf —
+// so they are never netted into one number. Invoices count by the IST
+// day they were issued; payroll counts by whole months overlapping the
+// window (a YYYY-MM string has no day, so a month counts whole when it
+// overlaps the window).
 export function defaultTaxWindow(): { from: string; to: string } {
   const first = `${todayISO().slice(0, 7)}-01`;
   const [y, m] = first.split("-").map(Number);
@@ -16,13 +19,15 @@ export function defaultTaxWindow(): { from: string; to: string } {
 }
 
 export async function taxSummary(input: { from?: string; to?: string }): Promise<TaxSummaryDTO> {
-  // Both dates must be given together; a half-open window falls back
-  // to the current month rather than silently mixing windows.
+  // Both dates together, or neither for the current month. A half-open
+  // window is a 400, not a silent fallback to a different window.
+  if ((input.from && !input.to) || (!input.from && input.to))
+    throw badRequest("Give both from and to, or neither for the current month");
   const w = input.from && input.to ? { from: input.from, to: input.to } : defaultTaxWindow();
   if (!isISODate(w.from) || !isISODate(w.to)) throw badRequest("Dates must be real YYYY-MM-DD dates");
   if (w.from > w.to) throw badRequest("The start date cannot be after the end date");
-  const fromDay = new Date(`${w.from}T00:00:00.000Z`);
-  const toDay = new Date(`${addDaysISO(w.to, 1)}T00:00:00.000Z`);
+  const fromDay = istDayStart(w.from);
+  const toDay = istDayStart(addDaysISO(w.to, 1));
   const [invoices, payroll] = await Promise.all([
     db.invoice.aggregate({
       where: { issuedOn: { gte: fromDay, lt: toDay } },
@@ -40,6 +45,9 @@ export async function taxSummary(input: { from?: string; to?: string }): Promise
   // with no tax rate — null counts as no tax, never as an error.
   const invoiceTax = invoices._sum.taxAmount ?? 0;
   const payrollTax = payroll._sum.tax ?? 0;
+  // invoiced is pre-tax; invoiceTax is the tax on top of it. The two
+  // are reported side by side, never added into one "with tax" total,
+  // and never netted against payrollTax.
   return {
     from: w.from,
     to: w.to,
@@ -48,7 +56,5 @@ export async function taxSummary(input: { from?: string; to?: string }): Promise
     invoiceTax,
     payrollTax,
     payrollCount: payroll._count,
-    // Tax charged to clients less tax already deducted from staff pay.
-    netTax: invoiceTax - payrollTax,
-  };
+  } as TaxSummaryDTO;
 }

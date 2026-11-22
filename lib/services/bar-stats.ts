@@ -63,7 +63,11 @@ export async function getBarDashboard(date: string = todayISO()): Promise<BarDas
       select: { subtotal: true, tableNo: true },
     }),
     db.tab.findMany({
-      where: { status: "SETTLED" },
+      // Recent means the selected day, not the global latest 10.
+      where: {
+        status: "SETTLED",
+        settledAt: { gte: istDayStart(date), lt: istDayStart(addDaysISO(date, 1)) },
+      },
       include: { items: { include: { product: true } } },
       orderBy: { settledAt: "desc" },
       take: 10,
@@ -107,7 +111,7 @@ export async function getBarDashboard(date: string = todayISO()): Promise<BarDas
   }
 
   const methodLabels: Record<string, string> = {
-    ONLINE: "Demo Razorpay",
+    ONLINE: "Online (Razorpay)",
     UPI: "UPI",
     CASH: "Cash",
     CARD: "Card",

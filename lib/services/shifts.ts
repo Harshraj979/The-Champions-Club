@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { db } from "../db";
-import { todayISO } from "../format";
+import { isISODate, todayISO } from "../format";
 import { badRequest, conflict, notFound } from "../errors";
 import type { ShiftDTO, StaffDTO, StaffRosterDTO } from "../types";
 
@@ -56,6 +56,7 @@ export async function removeStaff(id: number): Promise<{ ok: true }> {
 }
 
 export async function listShifts(fromISO: string, toISO: string): Promise<ShiftDTO[]> {
+  if (!isISODate(fromISO) || !isISODate(toISO)) throw badRequest("Dates must be real YYYY-MM-DD dates");
   const rows = await db.shift.findMany({
     where: { date: { gte: day(fromISO), lte: day(toISO) } },
     include: { staff: true },
@@ -77,11 +78,17 @@ export async function listShifts(fromISO: string, toISO: string): Promise<ShiftD
 export async function assignShift(input: { staffId: number; date: string; part: "MORNING" | "EVENING" }): Promise<ShiftDTO> {
   const staff = await db.staff.findUnique({ where: { id: input.staffId } });
   if (!staff) throw badRequest("Pick a staff member who exists");
+  if (!isISODate(input.date)) throw badRequest("Date must be a real YYYY-MM-DD date");
   if (input.date < todayISO()) throw badRequest("Cannot assign a shift in the past");
   try {
     // Check-then-create inside one transaction, so two simultaneous
     // assigns cannot both pass the check and create a double shift.
     const r = await db.$transaction(async (tx) => {
+      // Approved leave wins over the rota: no shift on a leave day.
+      const onLeave = await tx.leave.findFirst({
+        where: { staffId: input.staffId, status: "APPROVED", fromDate: { lte: day(input.date) }, toDate: { gte: day(input.date) } },
+      });
+      if (onLeave) throw conflict(`${staff.name} is on approved leave on ${input.date}`);
       const existing = await tx.shift.findFirst({
         where: { staffId: input.staffId, date: day(input.date), part: input.part },
       });
