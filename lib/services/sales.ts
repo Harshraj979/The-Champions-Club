@@ -40,10 +40,10 @@ export async function createOrder(input: {
   fulfilment?: "PICKUP" | "DELIVERY";
   address?: string;
   payOnline?: boolean;
-  // True only when a signed-in staff member takes the order at the
-  // counter. Public orders are PENDING until paid — never PAID on
-  // the caller's word alone.
-  paidAtCounter?: boolean;
+  // When a signed-in member orders, their id comes from the session
+  // — never matched back by name or phone (an empty phone can match
+  // the wrong member).
+  memberId?: number;
 }) {
   const fulfilment = input.fulfilment ?? "PICKUP";
   const address = fulfilment === "DELIVERY" ? (input.address ?? "").trim() : "";
@@ -62,8 +62,11 @@ export async function createOrder(input: {
   // Merging happens before validation, so 99 + 99 of one product
   // cannot slip past the 99-per-line cap as 198.
   if (items.some((i) => i.qty > 99)) throw badRequest("At most 99 of one product per order");
-  const member = await findMemberByName(input.name);
-  const active = member && member.plan && memberState(member.expiresOn) !== "expired";
+  const member = input.memberId
+    ? await db.member.findUnique({ where: { id: input.memberId }, include: { plan: true } })
+    : await findMemberByName(input.name);
+  const planState = member?.plan ? memberState(member.expiresOn) : "none";
+  const active = planState === "active" || planState === "expiring";
   const discountPct = active && member?.plan ? member.plan.shopDiscount : 0;
 
   const created = await db.$transaction(async (tx) => {
@@ -87,7 +90,10 @@ export async function createOrder(input: {
         discount,
         total: subtotal - discount,
         payMethod: input.payOnline ? "ONLINE" : input.payMethod,
-        payState: input.payOnline || !input.paidAtCounter ? "PENDING" : "PAID",
+        // Every order starts PENDING: it becomes PAID only through a
+        // verified Razorpay confirm, or the desk marking it paid via
+        // /orders/[id]/pay once the money is taken.
+        payState: "PENDING",
         fulfilment,
         address: address || null,
         items: {
@@ -109,10 +115,10 @@ export async function createOrder(input: {
   });
 
   if (!input.payOnline) return toOrderDTO(created as OrderRow);
-  // Online: open the Razorpay order (or generate demo order id in test mode)
-  const razorpayOrderId = razorpayConfigured()
-    ? await createRazorpayOrder(created.id, created.total)
-    : `order_demo_${created.id}_${Date.now()}`;
+  // Online: open the real Razorpay order. payOnline already requires
+  // Razorpay to be configured (checked above), so there is no demo
+  // order id and no unpaid path to PAID.
+  const razorpayOrderId = await createRazorpayOrder(created.total, `order_${created.id}`);
   const withRp = await db.order.update({
     where: { id: created.id },
     data: { razorpayOrderId },
@@ -132,11 +138,11 @@ export async function confirmPayment(
     include: { items: { include: { product: true } } },
   });
   if (!order) throw notFound("No such order");
-  // The signature is checked first: a forged confirm for an
-  // already-paid order used to return success without any check.
+  // The signature is checked first, for every order: a forged confirm
+  // for an already-paid order used to return success without any check.
   if (order.razorpayOrderId !== proof.razorpayOrderId)
     throw badRequest("That payment does not belong to this order");
-  if (!order.razorpayOrderId?.startsWith("order_demo_") && !verifyPaymentSignature(proof.razorpayOrderId, proof.paymentId, proof.signature))
+  if (!verifyPaymentSignature(proof.razorpayOrderId, proof.paymentId, proof.signature))
     throw forbidden("Payment could not be verified");
   if (order.payState === "PAID") return toOrderDTO(order as OrderRow);
   const updated = await db.order.update({
@@ -178,8 +184,11 @@ export const toOrderDTO = (o: OrderRow): OrderDTO => ({
 });
 
 // Order history: no dates means today (the staff default); from/to
-// open any window, page is 1-based, 50 rows a page.
+// open any window, page is 1-based, 50 rows a page. Listing also
+// sweeps up abandoned online checkouts (see expireUnpaidOrders), so
+// a dead checkout never holds stock past its window.
 export async function listOrders(opts: { from?: string; to?: string; page?: number } = {}): Promise<OrderDTO[]> {
+  await expireUnpaidOrders();
   const page = Math.max(1, opts.page ?? 1);
   const from = opts.from ? istDayStart(opts.from) : istDayStart(todayISO());
   const to = opts.to ? istDayStart(addDaysISO(opts.to, 1)) : istDayStart(addDaysISO(todayISO(), 1));
@@ -191,6 +200,35 @@ export async function listOrders(opts: { from?: string; to?: string; page?: numb
     skip: (page - 1) * 50,
   });
   return rows.map(toOrderDTO);
+}
+
+// Online orders hold stock from the moment they are placed, but an
+// abandoned checkout must not hold it forever: a PENDING online order
+// older than `ageMinutes` (30 by default) is cancelled and its stock
+// is put back on the shelf. Counter orders are never touched — the
+// desk settles those by hand.
+export async function expireUnpaidOrders(ageMinutes = 30): Promise<number> {
+  const cutoff = new Date(Date.now() - ageMinutes * 60 * 1000);
+  const stale = await db.order.findMany({
+    where: { payMethod: "ONLINE", payState: "PENDING", status: "PLACED", createdAt: { lt: cutoff } },
+    include: { items: true },
+  });
+  if (!stale.length) return 0;
+  await db.$transaction(async (tx) => {
+    for (const o of stale) {
+      for (const item of o.items) {
+        const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
+        if (product?.stock !== null && product?.stock !== undefined) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.qty } },
+          });
+        }
+      }
+      await tx.order.update({ where: { id: o.id }, data: { status: "CANCELLED" } });
+    }
+  });
+  return stale.length;
 }
 
 // A PENDING counter order becomes PAID when the desk takes the money.
@@ -260,7 +298,11 @@ export async function openTab(input: { who: string; tableNo?: number }): Promise
   if (input.tableNo !== undefined && (input.tableNo < 1 || input.tableNo > 8))
     throw badRequest("Tables run T1 to T8");
   const member = await findMemberByName(input.who);
-  const isExpired = member && memberState(member.expiresOn) === "expired";
+  // The discount snapshot is taken here, at open time: a member with
+  // an active plan gets their plan code, everyone else is a walk-in.
+  // Settle later uses this snapshot, never a fresh expiry check.
+  const planState = member?.plan ? memberState(member.expiresOn) : "none";
+  const hasActivePlan = planState === "active" || planState === "expiring";
   // The occupied-table check and the create run in one transaction,
   // so two requests racing for the same table cannot both open a tab.
   const tab = await db.$transaction(async (tx) => {
@@ -274,7 +316,7 @@ export async function openTab(input: { who: string; tableNo?: number }): Promise
         memberId: member?.id,
         tableNo: input.tableNo,
         status: "OPEN",
-        planCode: isExpired ? "walkin" : (member?.plan?.code ?? "walkin"),
+        planCode: hasActivePlan ? member!.plan!.code : "walkin",
       },
       include: tabInclude,
     });
@@ -342,21 +384,17 @@ export async function addTabItems(id: number, items: Item[]): Promise<TabDTO> {
 }
 
 export async function settleTab(id: number, payMethod: "CASH" | "CARD" | "UPI" | "ONLINE"): Promise<TabDTO> {
-  const tab = await db.tab.findUnique({
-    where: { id },
-    include: { member: { include: { plan: true } } },
-  });
+  const tab = await db.tab.findUnique({ where: { id } });
   if (!tab) throw notFound("No such tab");
   if (tab.status !== "OPEN") throw conflict("That tab is already settled");
   // The discount comes from the plan snapshotted on the tab when it
-  // was opened (tab.planCode), not the member's current plan: a plan
-  // change between open and settle must not change the discount.
+  // was opened (tab.planCode), not the member's current plan and not
+  // a fresh expiry check: a plan change or an expiry between open
+  // and settle must not change the discount.
   // Nobody types a discount, and nobody can inflate one.
   const plan =
     tab.planCode === "walkin" ? null : await db.plan.findUnique({ where: { code: tab.planCode } });
-  const member = tab.member;
-  const discountPct =
-    plan && member && memberState(member.expiresOn) !== "expired" ? plan.barDiscount : 0;
+  const discountPct = plan ? plan.barDiscount : 0;
   const discount = Math.round((tab.subtotal * discountPct) / 100);
   // Atomic settle: only an OPEN tab flips to SETTLED. Two settles
   // racing each other cannot both win — the loser updates 0 rows.

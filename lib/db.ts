@@ -7,7 +7,16 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 function createClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+  // Fail fast with a clear error instead of a cryptic Prisma auth
+  // failure on the first query: without DATABASE_URL there is no
+  // database to talk to at all.
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set — the app cannot reach its database. Set it in .env (local) or Vercel → Settings → Environment Variables.",
+    );
+  }
+  const adapter = new PrismaPg({ connectionString: url });
   return new PrismaClient({ adapter });
 }
 

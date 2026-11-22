@@ -2,7 +2,9 @@ import { api } from "./api";
 
 // Runs Razorpay checkout (test mode) for an order placed with
 // payOnline, then confirms the signed proof with our own API —
-// only the server's signature check marks the order PAID.
+// only the server's signature check marks the order PAID. There is
+// no demo path: a payment window that fails to load, or a checkout
+// that throws, is an error the shopper sees — never a silent "paid".
 declare global {
   interface Window {
     Razorpay?: any;
@@ -14,40 +16,22 @@ export async function payOnlineWithRazorpay(
   keyId: string,
 ): Promise<"paid" | "closed"> {
   if (!order.razorpayOrderId) throw new Error("Online payment was not started for this order");
+  if (!keyId || keyId.includes("demo"))
+    throw new Error("Online payment is not switched on yet. Pay at the counter instead.");
 
-  // In demo mode or with simulated order ID, simulate payment confirmation directly
-  if (keyId.includes("demo") || order.razorpayOrderId.startsWith("order_demo_")) {
-    await new Promise((r) => setTimeout(r, 600));
-    await api.confirmPayment(order.id, {
-      razorpayOrderId: order.razorpayOrderId,
-      paymentId: "pay_demo_" + Math.random().toString(36).substring(2, 10),
-      signature: "sig_demo_" + Math.random().toString(36).substring(2, 10),
-    });
-    return "paid";
-  }
-
-  try {
-    await new Promise<void>((resolve, reject) => {
-      if (window.Razorpay) return resolve();
-      const s = document.createElement("script");
-      s.src = "https://checkout.razorpay.com/v1/checkout.js";
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error("Could not load the payment window"));
-      document.body.appendChild(s);
-    });
-  } catch {
-    // If external script fails to load, complete via demo confirmation
-    await api.confirmPayment(order.id, {
-      razorpayOrderId: order.razorpayOrderId,
-      paymentId: "pay_demo_" + Math.random().toString(36).substring(2, 10),
-      signature: "sig_demo",
-    });
-    return "paid";
-  }
+  await new Promise<void>((resolve, reject) => {
+    if (window.Razorpay) return resolve();
+    const s = document.createElement("script");
+    s.src = "https://checkout.razorpay.com/v1/checkout.js";
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Could not load the payment window. Check your connection and try again."));
+    document.body.appendChild(s);
+  });
 
   return new Promise<"paid" | "closed">((resolve, reject) => {
+    let rzp: any;
     try {
-      const rzp = new window.Razorpay({
+      rzp = new window.Razorpay({
         key: keyId,
         order_id: order.razorpayOrderId,
         amount: order.total * 100,
@@ -68,14 +52,10 @@ export async function payOnlineWithRazorpay(
         },
         modal: { ondismiss: () => resolve("closed") },
       });
-      rzp.open();
     } catch {
-      // If window.Razorpay throws, complete via demo confirmation
-      api.confirmPayment(order.id, {
-        razorpayOrderId: order.razorpayOrderId!,
-        paymentId: "pay_demo_" + Math.random().toString(36).substring(2, 10),
-        signature: "sig_demo",
-      }).then(() => resolve("paid")).catch(reject);
+      reject(new Error("The payment window could not be opened. Pay at the counter instead."));
+      return;
     }
+    rzp.open();
   });
 }
