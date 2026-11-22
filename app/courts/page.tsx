@@ -51,6 +51,12 @@ export default function Courts() {
     refreshAuth();
   }, []);
 
+  const lookup = useApi(
+    () => (!member && name.trim().length >= 3 ? api.lookupMember(name.trim()) : Promise.resolve({ member: null })),
+    [name, member],
+  );
+  const lookedUpMember = lookup.data?.member ?? null;
+
   // Default to the first court that actually loaded, not a hard-coded id.
   useEffect(() => {
     if (courtId === null && courts.data && courts.data.length > 0) setCourtId(courts.data[0].id);
@@ -62,19 +68,24 @@ export default function Courts() {
 
   const court = courts.data?.find((c) => c.id === courtId);
   const isStaff = !!staff && (staff.role === "OWNER" || staff.role === "FRONT_DESK" || staff.role === "STAFF");
-  const isMemberActive = !!member && (member.state === "active" || member.state === "expiring") && !!member.plan;
+  const isMemberActive = (!!member && (member.state === "active" || member.state === "expiring") && !!member.plan) || (!!lookedUpMember && lookedUpMember.state === "active");
   const canBook = isStaff || isMemberActive;
 
   // A booking runs a full hour, so it blocks starts within 60 mins
   const taken = avail.data?.taken ?? [];
   const free = (t: number) =>
-    !taken.some((b) => Math.abs(b - t) < 60) && (date !== today || t + 60 > istMinutesNow());
+    !taken.some((b: any) => {
+      const bStart = typeof b === "number" ? b : b.start;
+      const bType = typeof b === "object" && b ? b.type : "REGULAR";
+      return Math.abs(bStart - t) < 60 && (social || bType !== "FRIDAY_SOCIAL");
+    }) &&
+    (date !== today || t > istMinutesNow());
 
   const memberPrice =
-    member?.plan && court
+    court
       ? court.sport === "Cricket"
-        ? member.plan.cricketPrice
-        : member.plan.tennisPrice
+        ? (member?.plan?.cricketPrice ?? lookedUpMember?.cricketPrice ?? null)
+        : (member?.plan?.tennisPrice ?? lookedUpMember?.tennisPrice ?? null)
       : null;
 
   const price =
@@ -83,6 +94,17 @@ export default function Courts() {
       : isMemberActive && memberPrice !== null
       ? memberPrice
       : court.walkinPrice;
+
+  const todaysCount =
+    (member?.name || name.trim().length >= 3)
+      ? (todays.data ?? []).filter(
+          (b) =>
+            b.date === date &&
+            b.state === "BOOKED" &&
+            b.type === "REGULAR" &&
+            b.who.toLowerCase() === (member?.name ?? name.trim()).toLowerCase(),
+        ).length
+      : 0;
 
   useEffect(() => {
     setSlot(null);
@@ -157,6 +179,7 @@ export default function Courts() {
       }
       setSlot(null);
       void avail.reload();
+      void todays.reload();
       void todays.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError || e instanceof Error ? e.message : "Booking failed. Try again." });
@@ -411,7 +434,7 @@ export default function Courts() {
                   <div className="mb-4 text-sm text-[#163021]">
                     Booking as <strong>{member.name}</strong> ({member.plan?.name} Member).
                   </div>
-                ) : (
+                ) : isStaff ? (
                   <div className="mb-5 rounded-2xl border border-[#163021]/15 bg-white p-5 shadow-sm">
                     <p className="text-xs font-bold uppercase tracking-wider text-[#163021] mb-3">
                       Front Desk Booking &amp; Member Account Sync
@@ -473,6 +496,30 @@ export default function Courts() {
                       💡 When booked with an email, the customer can later log in using that email to view this booking and active membership in their portal.
                     </p>
                   </div>
+                ) : (
+                  <div style={{ maxWidth: 420 }}>
+                    <label htmlFor="name">Your name</label>
+                    <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Members: your registered name" />
+                  </div>
+                )}
+                {lookedUpMember && (
+                  <p className={`member-strip${lookedUpMember.state === "expired" ? " warn" : ""}`} role="status">
+                    {lookedUpMember.state === "expired"
+                      ? `${lookedUpMember.name}, ${lookedUpMember.plan} plan, expired. Bookings are paused until it is renewed.`
+                      : `${lookedUpMember.name}, ${lookedUpMember.plan} plan, this court at ${inr(court?.sport === "Cricket" ? lookedUpMember.cricketPrice : lookedUpMember.tennisPrice)} an hour.`}
+                  </p>
+                )}
+                {name.trim().length >= 3 && !lookup.loading && !lookedUpMember && !member && (
+                  <p className="muted" style={{ marginTop: 8 }} role="status">
+                    No member found under that name. Walk-in rate applies.
+                  </p>
+                )}
+                {(member || name.trim().length >= 3) && todays.data && (
+                  <p className="muted" style={{ marginTop: 8 }} role="status">
+                    {todaysCount === 0
+                      ? `${member?.name ?? name.trim()} has no bookings on ${date === today ? "today" : date} yet.`
+                      : `${member?.name ?? name.trim()} already has ${todaysCount} booking${todaysCount > 1 ? "s" : ""} on ${date === today ? "today" : date}.`}
+                  </p>
                 )}
 
                 {msg && <div className={`notice ${msg.ok ? "ok" : "err"}`} role="status">{msg.text}</div>}

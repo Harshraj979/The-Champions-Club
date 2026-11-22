@@ -38,7 +38,7 @@ export async function expiringMembers(withinDays = 14): Promise<ExpiringDTO[]> {
   });
   return rows.map((m) => {
     const exp = m.expiresOn ? m.expiresOn.toISOString().slice(0, 10) : "";
-    const daysLeft = Math.round((Date.parse(exp) - Date.parse(today)) / 86400000);
+    const daysLeft = exp ? Math.round((Date.parse(exp) - Date.parse(today)) / 86400000) : 0;
     return { id: m.id, name: m.name, phone: m.phone, planName: m.plan?.name ?? "No plan", expiresOn: exp, daysLeft };
   });
 }
@@ -111,13 +111,12 @@ export async function createMember(
   const email = input.email?.trim().toLowerCase() || null;
   const dob = input.dateOfBirth ? new Date(`${input.dateOfBirth}T00:00:00.000Z`) : null;
   if (input.planCode === "junior") {
-    if (dob) {
-      const joinedMs = Date.parse(todayISO());
-      let age = new Date(joinedMs).getUTCFullYear() - dob.getUTCFullYear();
-      const mth = new Date(joinedMs).getUTCMonth() - dob.getUTCMonth();
-      if (mth < 0 || (mth === 0 && new Date(joinedMs).getUTCDate() < dob.getUTCDate())) age -= 1;
-      if (age >= 18) throw badRequest("Junior is for under-18s — this member is 18 or older");
-    }
+    if (!dob) throw badRequest("Junior is for under-18s — a date of birth is required");
+    const joinedMs = Date.parse(todayISO());
+    let age = new Date(joinedMs).getUTCFullYear() - dob.getUTCFullYear();
+    const mth = new Date(joinedMs).getUTCMonth() - dob.getUTCMonth();
+    if (mth < 0 || (mth === 0 && new Date(joinedMs).getUTCDate() < dob.getUTCDate())) age -= 1;
+    if (age >= 18) throw badRequest("Junior is for under-18s — this member is 18 or older");
   }
 
   const joined = new Date(`${todayISO()}T00:00:00.000Z`);
@@ -250,6 +249,43 @@ export async function availMembership(input: {
     });
     return toMemberDTO(created);
   }
+}
+
+// Renew a plan: the new term starts at the later of today and the
+// current expiry, so renewing early never loses days. The renewal is
+// recorded in MembershipRenewal in the same transaction as the new
+// expiry, so the paper trail and the member record cannot disagree.
+export async function renewMember(
+  id: number,
+  payMethod: "CASH" | "CARD" | "UPI" | "ONLINE" = "CASH",
+): Promise<MemberDTO> {
+  const member = await db.member.findUnique({ where: { id }, include: { plan: true } });
+  if (!member) throw notFound("No such member");
+  if (!member.plan || !member.planId) throw badRequest("Member does not have an active plan to renew");
+  const today = todayISO();
+  const currentExp = member.expiresOn ? member.expiresOn.toISOString().slice(0, 10) : today;
+  const from = currentExp > today ? currentExp : today;
+  const to = addDaysISO(from, member.plan.termDays);
+  const amount = member.plan.tennisPrice;
+  const updated = await db.$transaction(async (tx) => {
+    const row = await tx.member.update({
+      where: { id },
+      data: { expiresOn: new Date(`${to}T00:00:00.000Z`) },
+      include: { plan: true },
+    });
+    await tx.membershipRenewal.create({
+      data: {
+        memberId: id,
+        planId: member.planId!,
+        amount,
+        payMethod,
+        renewedFrom: new Date(`${from}T00:00:00.000Z`),
+        renewedTo: new Date(`${to}T00:00:00.000Z`),
+      },
+    });
+    return row;
+  });
+  return toMemberDTO(updated);
 }
 
 export async function getMember(id: number): Promise<MemberDTO> {

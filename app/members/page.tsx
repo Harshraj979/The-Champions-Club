@@ -24,6 +24,7 @@ export default function Members() {
   });
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [renewBusy, setRenewBusy] = useState<number | null>(null);
 
   // Demo Razorpay Modal
   const [razorpayModal, setRazorpayModal] = useState<{
@@ -62,6 +63,9 @@ export default function Members() {
     }
     if (form.phone && form.phone.replace(/\D/g, "").length < 10) {
       return setMsg({ ok: false, text: "Phone number looks short. Provide at least 10 digits." });
+    }
+    if (form.email.trim() && !form.email.includes("@")) {
+      return setMsg({ ok: false, text: "That email does not look right. Check it and try again." });
     }
     if (form.planCode === "junior") {
       if (!form.parentName.trim()) {
@@ -126,6 +130,22 @@ export default function Members() {
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }
 
+  async function renew(m: MemberDTO) {
+    const base = m.expiresOn > todayISO() ? "the current end date" : "today";
+    if (!window.confirm(`Renew ${m.name}'s ${m.plan} plan for another term? The new term runs from ${base}, so no days are lost.`)) return;
+    setRenewBusy(m.id);
+    setMsg(null);
+    try {
+      const updated = await api.renewMember(m.id);
+      setMsg({ ok: true, text: `${updated.name} renewed — ${updated.plan} now runs until ${updated.expiresOn}.` });
+      void members.reload();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Renewal failed. Try again." });
+    } finally {
+      setRenewBusy(null);
+    }
+  }
+
   return (
     <main className="wrap page">
       <div className="page-head">
@@ -172,7 +192,7 @@ export default function Members() {
                 <th className="hide-m">Phone</th>
                 <th className="hide-m">Plan ends</th>
                 <th>Status</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -203,13 +223,18 @@ export default function Members() {
                   <td className="num hide-m">{m.expiresOn || <span className="muted">—</span>}</td>
                   <td><span className={`status ${m.state}`}>{stateLabel[m.state]}</span></td>
                   <td>
-                    <button
-                      type="button"
-                      className="text-link"
-                      onClick={() => openAvailFor(m)}
-                    >
-                      ⚡ Avail / Renew Plan
-                    </button>
+                    <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <button className="btn btn-quiet" disabled={renewBusy !== null} onClick={() => renew(m)}>
+                        {renewBusy === m.id ? "Renewing..." : "Renew"}
+                      </button>
+                      <button
+                        type="button"
+                        className="text-link"
+                        onClick={() => openAvailFor(m)}
+                      >
+                        ⚡ Avail / Upgrade
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -393,7 +393,6 @@ export default function Bar() {
         </>
       )}
       </div>
-
       {tab && (
         <DemoRazorpayModal
           isOpen={showRazorpay}

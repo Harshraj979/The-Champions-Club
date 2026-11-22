@@ -53,7 +53,6 @@ export default function Bookings() {
 
   const rows = bookings.data ?? [];
   const shown = statusFilter === "all" ? rows : rows.filter((b) => b.state === statusFilter);
-
   async function cancel(b: { id: number; who: string; court: string; date: string }) {
     if (!window.confirm(`Cancel ${b.who}'s booking on ${b.court}, ${fmtDate(b.date)}? The slot will be free again.`)) return;
     setMsg(null);

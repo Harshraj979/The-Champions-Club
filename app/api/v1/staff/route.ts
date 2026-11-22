@@ -9,11 +9,10 @@ export const GET = (req: Request) =>
     return listStaff();
   });
 
-// Add a new staff member (Owner only)
+// Only the owner adds staff: a new account can sign in, so this is not a front-desk job.
 export const POST = (req: Request) =>
   handle(async () => {
     await requireRole(req, "OWNER");
     const payload = await body(req);
     return createStaffMember(payload as any);
-  });
-
+  }, 201);

@@ -16,7 +16,6 @@ export async function GET(req: NextRequest) {
   const id = process.env.GOOGLE_CLIENT_ID?.trim();
   const jar = await cookies();
   const opts = { httpOnly: true, sameSite: "lax" as const, path: "/", maxAge: 600 };
-
   jar.set("cc_gtype", type, opts);
   jar.set("cc_gnext", next, opts);
   if (plan) jar.set("cc_gplan", plan, opts);
