@@ -9,8 +9,9 @@ import bcrypt from "bcryptjs";
 // real, different numbers, Tennis 1
 // free at 18:00, Priya Nair already at her 2-booking limit, Ananya Iyer
 // expired, Gym Towel low, Water Bottle out, and Aarav Mehta's ₹400 tab
-// open on Table 3 (not revenue until settled). Re-run it on the morning
-// of the demo so rehearsals leave no trace.
+// open on Table 3 — ₹320 after his Gold 20% bar discount (not revenue
+// until settled). Re-run it on the morning of the demo so rehearsals
+// leave no trace.
 const db = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
@@ -33,9 +34,9 @@ async function main() {
 
   await db.plan.createMany({
     data: [
-      { code: "gold", name: "Gold", tennisPrice: 300, cricketPrice: 500, shopDiscount: 15, barDiscount: 20, termDays: 365 },
-      { code: "silver", name: "Silver", tennisPrice: 400, cricketPrice: 650, shopDiscount: 10, barDiscount: 10, termDays: 180 },
-      { code: "junior", name: "Junior", tennisPrice: 250, cricketPrice: 400, shopDiscount: 5, barDiscount: 0, termDays: 365 },
+      { code: "gold", name: "Gold", tennisPrice: 300, cricketPrice: 500, shopDiscount: 15, barDiscount: 20, termDays: 365, fee: 1500 },
+      { code: "silver", name: "Silver", tennisPrice: 400, cricketPrice: 650, shopDiscount: 10, barDiscount: 10, termDays: 180, fee: 1000 },
+      { code: "junior", name: "Junior", tennisPrice: 250, cricketPrice: 400, shopDiscount: 5, barDiscount: 0, termDays: 365, fee: 600 },
     ],
   });
   await db.court.createMany({
@@ -72,25 +73,27 @@ async function main() {
 
   const plans = await db.plan.findMany();
   const planId = (code: string) => plans.find((p) => p.code === code)!.id;
-  const demoMemberHash = await bcrypt.hash("demo1234", 10);
-  const member = (name: string, phone: string, email: string, code: string, expiresInDays: number) => ({
-    name,
-    phone,
-    email,
-    passwordHash: demoMemberHash,
-    planId: planId(code),
-    joinedOn: plus(today, -90),
-    expiresOn: plus(today, expiresInDays),
-  });
-  // Portal passwords start as demo1234 / phone number.
-  const memberRows = [
-    member("Aarav Mehta", "9811000001", "aarav@example.com", "gold", 240),
-    member("Priya Nair", "9811000002", "priya@example.com", "gold", 300),
-    member("Rohan Shah", "9811000003", "rohan@example.com", "silver", 120),
-    member("Sneha Kulkarni", "9811000004", "sneha@example.com", "silver", 3), // renews this week
-    member("Kabir Singh", "9811000005", "kabir@example.com", "junior", 200),
-    member("Ananya Iyer", "9811000006", "ananya@example.com", "junior", -5), // already expired
+  // Portal passwords start as the member's phone number (createMember's
+  // first-password rule) — one hash per member, not a shared password.
+  const memberDefs = [
+    { name: "Aarav Mehta", phone: "9811000001", email: "aarav@example.com", code: "gold", expiresInDays: 240 },
+    { name: "Priya Nair", phone: "9811000002", email: "priya@example.com", code: "gold", expiresInDays: 300 },
+    { name: "Rohan Shah", phone: "9811000003", email: "rohan@example.com", code: "silver", expiresInDays: 120 },
+    { name: "Sneha Kulkarni", phone: "9811000004", email: "sneha@example.com", code: "silver", expiresInDays: 3 }, // renews this week
+    { name: "Kabir Singh", phone: "9811000005", email: "kabir@example.com", code: "junior", expiresInDays: 200 },
+    { name: "Ananya Iyer", phone: "9811000006", email: "ananya@example.com", code: "junior", expiresInDays: -5 }, // already expired
   ];
+  const memberRows = await Promise.all(
+    memberDefs.map(async (m) => ({
+      name: m.name,
+      phone: m.phone,
+      email: m.email,
+      passwordHash: await bcrypt.hash(m.phone, 10),
+      planId: planId(m.code),
+      joinedOn: plus(today, -90),
+      expiresOn: plus(today, m.expiresInDays),
+    })),
+  );
   await db.member.createMany({
     data: [
       ...memberRows,
@@ -98,7 +101,7 @@ async function main() {
         name: "Rahul Verma",
         email: "rahul@example.com",
         phone: "9811000007",
-        passwordHash: demoMemberHash,
+        passwordHash: await bcrypt.hash("9811000007", 10),
         planId: null,
         joinedOn: null,
         expiresOn: null,
@@ -110,6 +113,8 @@ async function main() {
   const courtId = (name: string) => courts.find((c) => c.name === name)!.id;
   const members = await db.member.findMany();
   const memberId = (name: string) => members.find((m) => m.name === name)?.id;
+  // Paid at the counter (CASH): court revenue counts PAID bookings only,
+  // so these carry their payment — the ₹4,200 demo baseline depends on it.
   const booking = (court: string, start: number, who: string, price: number) => ({
     courtId: courtId(court),
     memberId: memberId(who),
@@ -118,6 +123,9 @@ async function main() {
     start,
     type: "REGULAR" as const,
     price,
+    payState: "PAID" as const,
+    payMethod: "CASH" as const,
+    paidAt: new Date(today.getTime() + 12 * 60 * 60 * 1000),
   });
   await db.booking.createMany({
     data: [
@@ -133,7 +141,8 @@ async function main() {
     ],
   });
 
-  // Aarav's open tab on Table 3: ₹400, unpaid, not revenue yet.
+  // Aarav's open tab on Table 3: ₹400, Gold 20% bar discount, ₹320 to
+  // pay — unpaid, not revenue yet.
   const bar = await db.product.findMany({ where: { category: "BAR" } });
   const barId = (name: string) => bar.find((p) => p.name === name)!;
   await db.tab.create({
@@ -143,8 +152,9 @@ async function main() {
       tableNo: 3,
       status: "OPEN",
       planCode: "gold",
+      discountPct: 20,
       subtotal: 400,
-      total: 400,
+      total: 320,
       items: {
         create: [
           { productId: barId("Protein Shake").id, qty: 1, price: 250 },
@@ -167,6 +177,9 @@ async function main() {
     start,
     type: "REGULAR" as const,
     price,
+    payState: "PAID" as const,
+    payMethod: "CASH" as const,
+    paidAt: past(daysAgo),
   });
   await db.booking.createMany({
     data: [
@@ -185,19 +198,19 @@ async function main() {
   const gearId = (name: string) => gear.find((p) => p.name === name)!;
   await db.order.create({
     data: {
-      name: "Dev Malhotra", phone: "9812000011", subtotal: 700, discount: 0, total: 700, payMethod: "CASH", createdAt: past(1),
+      name: "Dev Malhotra", phone: "9812000011", subtotal: 700, discount: 0, total: 700, payMethod: "CASH", payState: "PAID", createdAt: past(1),
       items: { create: [{ productId: gearId("Tennis Balls (can of 3)").id, qty: 2, price: 350 }] },
     },
   });
   await db.order.create({
     data: {
-      memberId: memberId("Priya Nair"), name: "Priya Nair", phone: "9811000002", subtotal: 800, discount: 120, total: 680, payMethod: "UPI", createdAt: past(4),
+      memberId: memberId("Priya Nair"), name: "Priya Nair", phone: "9811000002", subtotal: 800, discount: 120, total: 680, payMethod: "UPI", payState: "PAID", createdAt: past(4),
       items: { create: [{ productId: gearId("Club T-Shirt").id, qty: 1, price: 800 }] },
     },
   });
   await db.order.create({
     data: {
-      name: "Walk-in", phone: "", subtotal: 3000, discount: 0, total: 3000, payMethod: "CARD", createdAt: past(15),
+      name: "Walk-in", phone: "", subtotal: 3000, discount: 0, total: 3000, payMethod: "CARD", payState: "PAID", createdAt: past(15),
       items: { create: [{ productId: gearId("Court Shoes").id, qty: 1, price: 3000 }] },
     },
   });
