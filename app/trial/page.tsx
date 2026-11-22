@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
-import { allStarts, fmtTime, istMinutesNow, todayISO } from "@/lib/format";
+import { addDaysISO, allStarts, fmtTime, istMinutesNow, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
 
 const starts = allStarts();
@@ -20,14 +20,19 @@ export default function Trial() {
   const [qMsg, setQMsg] = useState("");
   const [qBusy, setQBusy] = useState(false);
 
+  // Whichever contact validates wins — a valid email beats an invalid phone.
+  const validPhone = f.phone.replace(/\D/g, "").length >= 10;
+  const validEmail = f.email.includes("@");
+  const contact = validPhone ? f.phone.trim() : f.email.trim();
+
   async function ask() {
     if (!f.name.trim()) return setQMsg("Add your name so we know who is asking.");
-    if (f.phone.replace(/\D/g, "").length < 10 && !f.phone.includes("@") && !f.email.includes("@")) return setQMsg("Add a phone number or email so we can reply.");
+    if (!validPhone && !validEmail) return setQMsg("Add a phone number or email so we can reply.");
     if (!q.message.trim()) return setQMsg("Please write your question first.");
     setQBusy(true);
     setQMsg("");
     try {
-      await api.createEnquiry({ name: f.name.trim(), contact: f.phone.trim() || f.email.trim(), interest: q.interest, message: q.message.trim() });
+      await api.createEnquiry({ name: f.name.trim(), contact, interest: q.interest, message: q.message.trim() });
       setQ({ interest: "Membership", message: "" });
       setQMsg("Sent. The front desk will get back to you.");
     } catch (e) {
@@ -41,7 +46,7 @@ export default function Trial() {
   const avail = useApi(() => api.availability(f.courtId, f.date), [f.courtId, f.date]);
   const taken = avail.data?.taken ?? [];
   const freeSlots = starts.filter(
-    (t) => !taken.some((b: any) => Math.abs((typeof b === "number" ? b : b.start) - t) < 60) && (f.date !== today || t > istMinutesNow()),
+    (t) => !taken.some((b: any) => Math.abs((typeof b === "number" ? b : b.start) - t) < 60) && (f.date !== today || t + 60 > istMinutesNow()),
   );
   const court = courts.data?.find((c) => c.id === f.courtId);
 
@@ -57,13 +62,11 @@ export default function Trial() {
   async function submit() {
     setErr("");
     if (!f.name.trim()) return setErr("Your name is missing.");
-    const hasPhone = f.phone.replace(/\D/g, "").length >= 10;
-    const hasEmail = f.email.includes("@");
-    if (!hasPhone && !hasEmail) return setErr("Add a 10-digit phone number or an email the desk can reach you on.");
+    if (!validPhone && !validEmail) return setErr("Add a 10-digit phone number or an email the desk can reach you on.");
     if (!freeSlots.includes(f.startTime)) return setErr("That time was just taken. Pick another slot.");
     setBusy(true);
     try {
-      await api.createBooking({ courtId: f.courtId, date: f.date, start: f.startTime, name: f.name.trim(), phone: f.phone.trim() || f.email.trim(), type: "TRIAL" });
+      await api.createBooking({ courtId: f.courtId, date: f.date, start: f.startTime, name: f.name.trim(), phone: contact, type: "TRIAL" });
       setDone(true);
     } catch (e) {
       setErr(e instanceof ApiClientError ? e.message : "Booking failed. Try again.");
@@ -130,7 +133,7 @@ export default function Trial() {
           <div className="field-row">
             <div>
               <label htmlFor="t-date">Date</label>
-              <input id="t-date" type="date" value={f.date} min={today} onChange={(e) => setF({ ...f, date: e.target.value })} />
+              <input id="t-date" type="date" value={f.date} min={today} max={addDaysISO(today, 30)} onChange={(e) => setF({ ...f, date: e.target.value })} />
             </div>
             <div>
               <label htmlFor="t-time">Start time</label>

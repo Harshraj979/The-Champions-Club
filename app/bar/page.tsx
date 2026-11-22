@@ -5,14 +5,12 @@ import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { inr } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
-import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { TabDTO } from "@/lib/types";
 
 const methods = [
   { code: "CASH", label: "Cash" },
   { code: "CARD", label: "Card" },
   { code: "UPI", label: "UPI" },
-  { code: "ONLINE", label: "Demo Razorpay" },
 ] as const;
 
 const isAlcoholItem = (name: string) => {
@@ -63,8 +61,7 @@ export default function Bar() {
   const [tableNo, setTableNo] = useState<number | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [draft, setDraft] = useState<Record<number, number>>({});
-  const [payMethod, setPayMethod] = useState<"CASH" | "CARD" | "UPI" | "ONLINE">("CASH");
-  const [showRazorpay, setShowRazorpay] = useState(false);
+  const [payMethod, setPayMethod] = useState<"CASH" | "CARD" | "UPI">("CASH");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [category, setCategory] = useState<(typeof barCategories)[number]>("All");
   const [query, setQuery] = useState("");
@@ -137,14 +134,10 @@ export default function Bar() {
 
   async function handleSettleClick() {
     if (!tab) return;
-    if (payMethod === "ONLINE") {
-      setShowRazorpay(true);
-      return;
-    }
     await executeSettle(payMethod);
   }
 
-  async function executeSettle(method: "CASH" | "CARD" | "UPI" | "ONLINE", paymentId?: string) {
+  async function executeSettle(method: "CASH" | "CARD" | "UPI") {
     if (!tab) return;
     setBusy(true);
     setMsg(null);
@@ -153,10 +146,9 @@ export default function Bar() {
       const off = t.subtotal - t.total;
       setMsg({
         ok: true,
-        text: `Settled ${t.who}'s tab, ${inr(t.total)} by ${method === "ONLINE" ? `Demo Razorpay (${paymentId || "authorized"})` : method.toLowerCase()}${off ? `, plan discount ${inr(off)} applied` : ""}.`,
+        text: `Settled ${t.who}'s tab, ${inr(t.total)} by ${method.toLowerCase()}${off ? `, plan discount ${inr(off)} applied` : ""}.`,
       });
       setSelected(null);
-      setShowRazorpay(false);
       await loadTabs();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Settling failed. Try again." });
@@ -178,14 +170,11 @@ export default function Bar() {
               <h1 className="shop-title">Bar &amp; Café</h1>
               <p className="shop-sub">Open a tab, add as they order, settle before they leave. The member&apos;s plan discount applies itself at settle — no asking, no maths at the table.</p>
             </div>
-            <Link className="mini-link" href="/dashboard" style={{ background: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.3)", color: "white" }}>
-              👑 Club Owner Dashboard
-            </Link>
           </div>
           <div className="shop-hero-chips">
             <span>Run a tab, settle before you leave</span>
-            <span>Members save up to 20%</span>
-            <span>Cash · Card · UPI · Demo Razorpay</span>
+            <span>{plans.data?.length ? `Members save up to ${Math.max(...plans.data.map((p) => p.barDiscount))}%` : "Member discounts apply at settle"}</span>
+            <span>Cash · Card · UPI</span>
           </div>
         </div>
       </section>
@@ -290,8 +279,11 @@ export default function Bar() {
                     {tab.tableNo ? `, table ${tab.tableNo}` : ""}
                     {plan ? `, ${plan.name} plan${plan.barDiscount ? `, ${plan.barDiscount}% off at settle` : ""}` : ", walk-in"}
                   </p>
-                  <span className="s-price num">{inr(tab.subtotal)}</span>
+                  <span className="s-price num">{inr(tab.total)}</span>
                 </div>
+                {tab.total !== tab.subtotal && (
+                  <p className="muted" style={{ marginTop: 6 }}>Subtotal {inr(tab.subtotal)} — plan discount applied at settle.</p>
+                )}
                 {isJuniorTab && (
                   <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 12, background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e", fontSize: 13, display: "flex", alignItems: "center", gap: 10 }}>
                     <span style={{ fontSize: 20 }}>🛡️</span>
@@ -323,7 +315,7 @@ export default function Bar() {
                     </div>
                   </div>
                   <button className="btn btn-ink" disabled={busy || tab.items.length === 0} onClick={handleSettleClick}>
-                    {busy ? "Settling..." : tab.items.length === 0 ? "No items on tab" : `Settle tab, ${inr(tab.subtotal)}`}
+                    {busy ? "Settling..." : tab.items.length === 0 ? "No items on tab" : `Settle tab, ${inr(tab.total)}`}
                   </button>
                 </div>
               </div>
@@ -393,17 +385,6 @@ export default function Bar() {
         </>
       )}
       </div>
-      {tab && (
-        <DemoRazorpayModal
-          isOpen={showRazorpay}
-          onClose={() => setShowRazorpay(false)}
-          onSuccess={(details) => executeSettle("ONLINE", details.paymentId)}
-          amount={tab.subtotal - Math.round((tab.subtotal * (plan?.barDiscount ?? 0)) / 100)}
-          title={`Bar Tab #${tab.id}`}
-          description={`${tab.who}${tab.tableNo ? ` · Table ${tab.tableNo}` : ""}`}
-          customerName={tab.who}
-        />
-      )}
     </main>
   );
 }

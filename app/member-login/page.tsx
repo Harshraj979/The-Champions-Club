@@ -2,6 +2,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api, ApiClientError } from "@/lib/api";
+import { useApi } from "@/lib/use-api";
+import { inr } from "@/lib/format";
 import ClubLogo from "@/components/ClubLogo";
 
 export default function MemberAuth() {
@@ -18,6 +20,10 @@ export default function MemberAuth() {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
+  const plans = useApi(() => api.plans(), []);
+  const selectedPlan = plans.data?.find((pl) => pl.code === planCode);
+  const selectedFee = (selectedPlan as any)?.fee as number | undefined;
 
   // Google Auth state
   const [googleHref, setGoogleHref] = useState("/api/v1/auth/google?type=member");
@@ -34,19 +40,19 @@ export default function MemberAuth() {
     } else if (q.get("error") === "gtoken") {
       setErr("Google authorization token exchange failed. Please try again.");
     } else if (q.get("error") === "google_config") {
-      setErr("Google OAuth credentials are not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your .env file to enable real Google sign-in.");
+      setErr("Google sign-in is not set up yet — ask the front desk.");
     }
 
     const next = q.get("next") ?? (q.get("tab") === "signup" ? "/courts" : "/member");
     setGoogleHref(`/api/v1/auth/google?type=member&next=${encodeURIComponent(next)}&plan=${encodeURIComponent(p || "gold")}`);
   }, []);
 
-  async function handleLogin(e?: React.FormEvent, customIdent?: string, customPass?: string) {
+  async function handleLogin(e?: React.FormEvent) {
     if (e) e.preventDefault();
     setErr("");
     setBusy(true);
-    const idVal = customIdent ?? identifier.trim();
-    const passVal = customPass ?? password;
+    const idVal = identifier.trim();
+    const passVal = password;
     try {
       await api.memberLogin({ identifier: idVal, password: passVal });
       const next = new URLSearchParams(window.location.search).get("next") ?? "/member";
@@ -63,7 +69,7 @@ export default function MemberAuth() {
     if (!name.trim()) return setErr("Please enter your name.");
     if (!email.trim() || !email.includes("@")) return setErr("Please enter a valid email address.");
     if (phone.replace(/\D/g, "").length < 10) return setErr("Please enter a 10-digit phone number.");
-    if (password.length < 4) return setErr("Password should be at least 4 characters.");
+    if (password.length < 8) return setErr("Password should be at least 8 characters.");
 
     if (planCode === "junior") {
       if (!parentName.trim()) return setErr("Parent or guardian full name is required for Junior membership.");
@@ -83,12 +89,51 @@ export default function MemberAuth() {
         parentEmail: planCode === "junior" && parentEmail.trim() ? parentEmail.trim() : undefined,
         dateOfBirth: planCode === "junior" && dateOfBirth ? dateOfBirth : undefined,
       });
+      if (planCode !== "none") {
+        const paid = await payForPlan(planCode);
+        if (paid === "dismissed") {
+          // Account exists, plan does not: say so plainly and point at
+          // the member portal, where payment can be completed.
+          setPendingPlan(planCode);
+          setBusy(false);
+          return;
+        }
+        if (paid === "unavailable") {
+          setPendingPlan(planCode);
+          setBusy(false);
+          return;
+        }
+      }
       const next = new URLSearchParams(window.location.search).get("next") ?? "/courts";
       window.location.href = next.startsWith("/") ? next : "/courts";
     } catch (ex) {
       setErr(ex instanceof ApiClientError ? ex.message : "Registration failed. Try again.");
       setBusy(false);
     }
+  }
+
+  // Real two-step plan purchase. Returns "dismissed" when the member
+  // closes the checkout, "unavailable" when online payment is not
+  // switched on, and true once the plan is granted.
+  async function payForPlan(code: string): Promise<true | "dismissed" | "unavailable"> {
+    const first = (await api.buyPlan(code)) as unknown as
+      | { ok: boolean; member: unknown }
+      | { razorpayOrderId: string; amount: number };
+    if ("ok" in first) return true;
+    const cfg = await api.payConfig();
+    if (!cfg.keyId) {
+      setErr("Online payment isn't switched on yet — your account is created without a plan. Ask the front desk to activate it, or complete payment from the member portal once it is on.");
+      return "unavailable";
+    }
+    const proof = await api.openRazorpayCheckout({
+      keyId: cfg.keyId,
+      orderId: first.razorpayOrderId,
+      amount: first.amount,
+      description: `${code} membership`,
+    });
+    if (!proof) return "dismissed";
+    await api.buyPlan(code, proof);
+    return true;
   }
 
   return (
@@ -211,27 +256,6 @@ export default function MemberAuth() {
               </p>
             </div>
 
-            <details className="auth-demo">
-              <summary>Local demo accounts</summary>
-              <div className="auth-demo-content auth-member-demos">
-                <button
-                  type="button"
-                  className="auth-demo-member"
-                  onClick={() => handleLogin(undefined, "aarav@example.com", "demo1234")}
-                >
-                  <span>⚡ Aarav Mehta</span>
-                  <span>Active Gold Plan</span>
-                </button>
-                <button
-                  type="button"
-                  className="auth-demo-member"
-                  onClick={() => handleLogin(undefined, "rahul@example.com", "demo1234")}
-                >
-                  <span>⚡ Rahul Verma</span>
-                  <span>No Plan Yet (Free)</span>
-                </button>
-              </div>
-            </details>
           </form>
         ) : (
           <form onSubmit={handleSignup} className="form-grid auth-form">
@@ -282,7 +306,7 @@ export default function MemberAuth() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 4 characters"
+                placeholder="At least 8 characters"
                 required
               />
               </div>
@@ -291,9 +315,14 @@ export default function MemberAuth() {
             <div className="auth-plan-field">
               <label htmlFor="member-plan">Membership tier</label>
               <select id="member-plan" value={planCode} onChange={(e) => setPlanCode(e.target.value)}>
-                <option value="gold">Gold — ₹1,500 / month</option>
-                <option value="silver">Silver — ₹1,000 / month</option>
-                <option value="junior">Junior — ₹600 / month</option>
+                {(plans.data ?? []).map((pl) => {
+                  const fee = (pl as any).fee as number | undefined;
+                  return (
+                    <option key={pl.code} value={pl.code}>
+                      {pl.name} — {fee ? `${inr(fee)} / ${pl.termDays} days` : `Tennis ${inr(pl.tennisPrice)} / Cricket ${inr(pl.cricketPrice)}`}
+                    </option>
+                  );
+                })}
                 <option value="none">Decide later — free</option>
               </select>
               <p>
@@ -369,6 +398,40 @@ export default function MemberAuth() {
 
             {err && <div className="notice err" role="alert">{err}</div>}
 
+            {pendingPlan && (
+              <div className="notice" role="status">
+                Your account is created, but your plan isn&apos;t active yet — payment wasn&apos;t completed.
+                Complete payment from the member portal, or try again now.
+                <span style={{ display: "flex", gap: 12, marginTop: 10, flexWrap: "wrap" }}>
+                  <Link className="text-link" href="/member">Go to the member portal</Link>
+                  <button
+                    type="button"
+                    className="text-link"
+                    disabled={busy}
+                    onClick={async () => {
+                      setErr("");
+                      setBusy(true);
+                      try {
+                        const paid = await payForPlan(pendingPlan);
+                        if (paid === true) {
+                          const next = new URLSearchParams(window.location.search).get("next") ?? "/courts";
+                          window.location.href = next.startsWith("/") ? next : "/courts";
+                        } else if (paid === "dismissed") {
+                          setErr("Payment not completed — your plan was not activated.");
+                        }
+                      } catch (ex) {
+                        setErr(ex instanceof ApiClientError ? ex.message : "Payment failed. Try again.");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Try payment again
+                  </button>
+                </span>
+              </div>
+            )}
+
             <div>
               <button
                 type="submit"
@@ -377,13 +440,9 @@ export default function MemberAuth() {
               >
                 {busy
                   ? "Creating account..."
-                  : planCode === "gold"
-                  ? "Join Gold & Create Account (₹1,500/mo)"
-                  : planCode === "silver"
-                  ? "Join Silver & Create Account (₹1,000/mo)"
-                  : planCode === "junior"
-                  ? "Join Junior & Create Account (₹600/mo)"
-                  : "Create Free Member Account"}
+                  : planCode === "none"
+                  ? "Create Free Member Account"
+                  : `Join ${selectedPlan?.name ?? planCode} & Create Account${selectedFee ? ` (${inr(selectedFee)})` : ""}`}
               </button>
             </div>
           </form>

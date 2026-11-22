@@ -6,13 +6,12 @@ import { useApi } from "@/lib/use-api";
 import { fmtTime, inr, todayISO } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
 import NumberTicker from "@/components/NumberTicker";
-import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { RolePinDTO, StaffMemberPinDTO } from "@/lib/types";
 import type { BarDashboardDTO } from "@/lib/services/bar-stats";
 import type { ShopDashboardDTO } from "@/lib/services/shop-stats";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
-const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Demo Razorpay" } as const;
+const methodLabel = { CASH: "Cash", CARD: "Card", UPI: "UPI", ONLINE: "Online" } as const;
 
 const periods = [
   { code: "today", label: "Today" },
@@ -24,6 +23,10 @@ export default function Dashboard() {
   const today = todayISO();
   const dash = useApi(() => api.dashboard(today), [today]);
   const barDash = useApi<BarDashboardDTO>(() => api.barStats(today), [today]);
+  const tabsData = useApi(() => api.tabs(), []);
+  // The tables the club actually has, from the tabs on record — no
+  // hard-coded total.
+  const tableNos = [...new Set((tabsData.data ?? []).map((tb) => tb.tableNo).filter((n): n is number => n !== null))].sort((a, b) => a - b);
   const shopDash = useApi<ShopDashboardDTO>(() => api.shopStats(today), [today]);
   const d = dash.data;
   const [period, setPeriod] = useState<(typeof periods)[number]["code"]>("today");
@@ -36,17 +39,6 @@ export default function Dashboard() {
   const [editingRate, setEditingRate] = useState<Record<number, boolean>>({});
   const [staffMsg, setStaffMsg] = useState<{ staffId: number; text: string; ok: boolean } | null>(null);
   const [staffBusy, setStaffBusy] = useState<number | null>(null);
-
-  // Demo Razorpay Modal for Salary Payout
-  const [salaryModal, setSalaryModal] = useState<{
-    isOpen: boolean;
-    staff: StaffMemberPinDTO | null;
-    amount: number;
-  }>({
-    isOpen: false,
-    staff: null,
-    amount: 0,
-  });
 
   // Add Staff Modal State
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
@@ -207,19 +199,15 @@ export default function Dashboard() {
     }
   }
 
-  async function executeSalaryPayout(paymentRef?: string) {
-    if (!salaryModal.staff) return;
-    const staff = salaryModal.staff;
-    const amount = salaryModal.amount;
+  // A salary payout is recorded in payroll — there is no gateway
+  // payment for staff pay, so nothing here pretends one happened. The
+  // actual transfer is made separately; this records it.
+  async function executeSalaryPayout(staff: StaffMemberPinDTO, amount: number) {
+    if (!window.confirm(`Record a salary payout of ${inr(amount)} to ${staff.name}? This records the payout in payroll — transfer the money separately.`)) return;
     setStaffBusy(staff.id);
     try {
-      const res = await api.payStaffSalary({
-        staffId: staff.id,
-        amount,
-        paymentRef,
-      });
-      setStaffMsg({ staffId: staff.id, text: `✓ Salary paid: ${res.message} (Ref: ${res.paymentRef})`, ok: true });
-      setSalaryModal({ isOpen: false, staff: null, amount: 0 });
+      const res = await api.payStaffSalary({ staffId: staff.id, amount });
+      setStaffMsg({ staffId: staff.id, text: `✓ Salary payout recorded: ${res.message}${res.paymentRef ? ` (Ref: ${res.paymentRef})` : ""}`, ok: true });
       await loadStaffData();
       void dash.reload();
     } catch (err: any) {
@@ -372,13 +360,14 @@ export default function Dashboard() {
               {/* Table Status Grid */}
               <div className="panel" style={{ padding: 20, borderRadius: 16, marginTop: 20 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Live Tables Status (T1 - T8)</h3>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Live Tables Status</h3>
                   <span className="muted" style={{ fontSize: 12 }}>
-                    {barDash.data?.metrics?.activeTables?.length ?? 0} / 8 Tables Occupied
+                    {barDash.data?.metrics?.activeTables?.length ?? 0} {barDash.data?.metrics?.activeTables?.length === 1 ? "table" : "tables"} occupied
                   </span>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))", gap: 10 }}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((tableNum) => {
+                  {tableNos.length === 0 && <p className="muted">No tables have tabs yet.</p>}
+                  {tableNos.map((tableNum) => {
                     const isOccupied = barDash.data?.metrics?.activeTables?.includes(tableNum);
                     return (
                       <div
@@ -529,7 +518,7 @@ export default function Dashboard() {
                     </div>
                     <div style={{ padding: "8px 6px", background: "#f0fdf4", borderRadius: 8 }}>
                       <div className="muted" style={{ fontSize: 11 }}>Active Tables</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>{barDash.data?.metrics?.activeTables?.length ?? 0} / 8</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#166534" }}>{barDash.data?.metrics?.activeTables?.length ?? 0}</div>
                     </div>
                   </div>
                 </div>
@@ -640,10 +629,14 @@ export default function Dashboard() {
                   <Link className="mini-link" href="/members">Members</Link>
                   <Link className="mini-link" href="/bar">Bar tabs</Link>
                   <Link className="mini-link" href="/shop">Shop</Link>
+                  <Link className="mini-link" href="/orders">Orders</Link>
                   <Link className="mini-link" href="/invoices">Invoices</Link>
                   <Link className="mini-link" href="/expenses">Expenses</Link>
                   <Link className="mini-link" href="/payroll">Payroll</Link>
                   <Link className="mini-link" href="/shifts">Staff rota</Link>
+                  <Link className="mini-link" href="/leave">Leave</Link>
+                  <Link className="mini-link" href="/reports">Reports</Link>
+                  <Link className="mini-link" href="/staff">Staff</Link>
                 </p>
               </section>
             </>
@@ -656,7 +649,7 @@ export default function Dashboard() {
               <div>
                 <h2>Staff Team, Security PINs &amp; Direct Salary Payout</h2>
                 <p className="sub" style={{ margin: "4px 0 0" }}>
-                  Owner controls: Configure personal security PINs for each staff member by name, track their worked hours, and pay their salary directly via Demo Razorpay.
+                  Owner controls: Configure personal security PINs for each staff member by name, track their worked hours, and record salary payouts for the month.
                 </p>
               </div>
               <button
@@ -997,13 +990,7 @@ export default function Dashboard() {
                             <button
                               type="button"
                               disabled={isBusy || s.salaryDue <= 0}
-                              onClick={() =>
-                                setSalaryModal({
-                                  isOpen: true,
-                                  staff: s,
-                                  amount: s.salaryDue,
-                                })
-                              }
+                              onClick={() => void executeSalaryPayout(s, s.salaryDue)}
                               style={{
                                 width: "100%",
                                 minHeight: 44,
@@ -1028,7 +1015,7 @@ export default function Dashboard() {
                             >
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                                 <span style={{ fontSize: 14 }}>💳</span>
-                                <span>Pay via Demo Razorpay</span>
+                                <span>Record salary payout</span>
                               </span>
                               <span
                                 style={{
@@ -1071,19 +1058,6 @@ export default function Dashboard() {
             </div>
           </section>
         )}
-
-          {/* Salary Payout Demo Razorpay Modal */}
-          {salaryModal.staff && (
-            <DemoRazorpayModal
-              isOpen={salaryModal.isOpen}
-              amount={salaryModal.amount}
-              title={`Staff Salary Payout — ${salaryModal.staff.name}`}
-              description={`Payment for ${salaryModal.staff.hoursWorked} hrs worked as ${salaryModal.staff.roleLabel} (@ ₹${salaryModal.staff.hourlyRate}/hr)`}
-              customerName={salaryModal.staff.name}
-              onClose={() => setSalaryModal((prev) => ({ ...prev, isOpen: false }))}
-              onSuccess={(details) => executeSalaryPayout(details.paymentId)}
-            />
-          )}
 
           {/* Add Staff Modal */}
           {showAddStaffModal && (

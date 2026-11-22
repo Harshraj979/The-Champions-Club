@@ -5,7 +5,6 @@ import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { addDaysISO, allStarts, fmtTime, inr, istMinutesNow, todayISO } from "@/lib/format";
 import { Loading, ErrorBox } from "@/components/States";
-import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import type { MemberSessionDTO, StaffDTO } from "@/lib/types";
 
 const starts = allStarts();
@@ -25,6 +24,7 @@ export default function Courts() {
   const [buyingPlan, setBuyingPlan] = useState(false);
 
   const courts = useApi(() => api.courts());
+  const plans = useApi(() => api.plans());
   const avail = useApi(() => (courtId === null ? Promise.resolve({ taken: [] }) : api.availability(courtId, date)), [courtId, date]);
   const [staff, setStaff] = useState<StaffDTO | null>(null);
   const [member, setMember] = useState<MemberSessionDTO | null>(null);
@@ -79,7 +79,7 @@ export default function Courts() {
       const bType = typeof b === "object" && b ? b.type : "REGULAR";
       return Math.abs(bStart - t) < 60 && (social || bType !== "FRIDAY_SOCIAL");
     }) &&
-    (date !== today || t > istMinutesNow());
+    (date !== today || t + 60 > istMinutesNow());
 
   const memberPrice =
     court
@@ -111,22 +111,7 @@ export default function Courts() {
     setSocial(false);
   }, [courtId, date]);
 
-  const [razorpayModal, setRazorpayModal] = useState<{
-    isOpen: boolean;
-    amount: number;
-    title: string;
-    description: string;
-    type: "booking" | "plan";
-    planCode?: string;
-  }>({
-    isOpen: false,
-    amount: 0,
-    title: "",
-    description: "",
-    type: "booking",
-  });
-
-  async function book(paidOnline = false) {
+  async function book() {
     const bookerName = member?.name ?? name.trim();
     if (slot === null || !bookerName || !court || courtId === null) return;
     setBusy(true);
@@ -165,9 +150,7 @@ export default function Courts() {
         setMsg({
           ok: true,
           text: `Court booked! ${court.name}, ${date === today ? "today" : date} at ${fmtTime(slot)}${
-            paidOnline
-              ? " · Paid online via Demo Razorpay"
-              : b.price
+            b.price
               ? `, ${inr(b.price)} at the desk`
               : ", covered by plan"
           }.${
@@ -180,7 +163,6 @@ export default function Courts() {
       setSlot(null);
       void avail.reload();
       void todays.reload();
-      void todays.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError || e instanceof Error ? e.message : "Booking failed. Try again." });
       void avail.reload();
@@ -189,24 +171,33 @@ export default function Courts() {
     }
   }
 
-  function handleBuyPlan(planCode: string, planAmount: number, planName: string) {
-    setRazorpayModal({
-      isOpen: true,
-      amount: planAmount,
-      title: `${planName} Membership`,
-      description: `1 Month Active Membership Tier`,
-      type: "plan",
-      planCode,
-    });
-  }
-
+  // A plan is only granted after a real Razorpay payment: the server
+  // returns an order, the real checkout runs, and the signed proof is
+  // confirmed with a second call. A dismissed checkout activates nothing.
   async function executeBuyPlan(planCode: string) {
     setBuyingPlan(true);
     setMsg(null);
     try {
-      await api.buyPlan(planCode);
+      const first = (await api.buyPlan(planCode)) as unknown as
+        | { ok: boolean; member: unknown }
+        | { razorpayOrderId: string; amount: number };
+      if (!("ok" in first)) {
+        const cfg = await api.payConfig();
+        if (!cfg.keyId) throw new Error("Online payment isn't switched on yet — ask the front desk.");
+        const proof = await api.openRazorpayCheckout({
+          keyId: cfg.keyId,
+          orderId: first.razorpayOrderId,
+          amount: first.amount,
+          description: `${planCode} membership`,
+        });
+        if (!proof) {
+          setMsg({ ok: false, text: "Payment not completed — your plan was not activated." });
+          return;
+        }
+        await api.buyPlan(planCode, proof);
+      }
       await refreshAuth();
-      setMsg({ ok: true, text: `Plan activated via Demo Razorpay! You can now pick a slot and book your court directly.` });
+      setMsg({ ok: true, text: "Plan activated! You can now pick a slot and book your court directly." });
     } catch (e: any) {
       setMsg({ ok: false, text: e.message || "Failed to activate plan" });
     } finally {
@@ -228,6 +219,7 @@ export default function Courts() {
         </h1>
         <p className="mt-3 text-sm text-[#617065] sm:text-base leading-relaxed">
           Real-time court and turf schedule. Active club members book directly at special member rates.
+          Visitors can view availability here; booking is for members, or at the front desk.
         </p>
       </div>
 
@@ -323,7 +315,7 @@ export default function Courts() {
               <span className="step-n">2</span>
               <h3>Date and time</h3>
               <span className="step-hint">
-                60-minute slots (Gold: max 4 hrs · Silver: max 2 hrs · Junior: max 1 hr daily); crossed-out slots are taken
+                60-minute slots (at most 2 bookings a day, every plan); crossed-out slots are taken
               </span>
             </div>
             <div style={{ maxWidth: 300 }}>
@@ -347,7 +339,7 @@ export default function Courts() {
             ) : (
               <div className="slots" role="group" aria-label="Start times">
                 {starts.map((t) => (
-                  <button key={t} className={`slot num${date === today && t <= istMinutesNow() ? " past" : ""}`} disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
+                  <button key={t} className={`slot num${date === today && t + 60 <= istMinutesNow() ? " past" : ""}`} disabled={!free(t)} aria-pressed={slot === t} onClick={() => setSlot(t)}>
                     {fmtTime(t)}
                   </button>
                 ))}
@@ -398,35 +390,43 @@ export default function Courts() {
                   <span className="font-bold text-sm uppercase tracking-wider">⚡ Membership Plan Required</span>
                 </div>
                 <p className="mt-2 text-xs text-[#617065] leading-relaxed">
-                  Hi <strong>{member.name}</strong>, your account does not have an active membership plan. You must have an active Gold, Silver, or Junior membership to reserve club courts. Select a plan below to activate it instantly:
+                  Hi <strong>{member.name}</strong>, your account does not have an active membership plan. You need an active membership to reserve club courts. Select a plan below — payment is taken securely online before it activates:
                 </p>
 
+                {plans.loading ? (
+                  <p className="muted" style={{ marginTop: 16 }}>Loading plans…</p>
+                ) : plans.error || !plans.data?.length ? (
+                  <p className="muted" style={{ marginTop: 16 }}>
+                    Membership prices are live from the club —{" "}
+                    <Link className="text-link" href="/plans">see the current plans</Link>.
+                  </p>
+                ) : (
                 <div className="grid sm:grid-cols-3 gap-3 mt-4">
-                  {[
-                    { code: "gold", name: "Gold Tier", price: "₹1,500/mo", profit: "+₹2,100 net profit", tennis: "₹300/hr", cricket: "₹500/hr", discount: "15% shop · 20% bar" },
-                    { code: "silver", name: "Silver Tier", price: "₹1,000/mo", profit: "+₹650 net profit", tennis: "₹400/hr", cricket: "₹650/hr", discount: "10% shop · 10% bar" },
-                    { code: "junior", name: "Junior Tier", price: "₹600/mo", profit: "+₹1,900 net profit", tennis: "₹250/hr", cricket: "₹400/hr", discount: "5% shop · Under 18" },
-                  ].map((p) => (
-                    <div key={p.code} className="rounded-xl border p-4 flex flex-col justify-between border-[#163021]/15 bg-white shadow-sm">
-                      <div>
-                        <div className="flex items-center justify-between">
-                          <p className="font-display text-xl font-bold uppercase text-[#163021]">{p.name}</p>
-                          <span className="text-xs font-bold text-[#163021] bg-[#163021]/10 px-2 py-0.5 rounded-full">{p.price}</span>
+                  {plans.data.map((p) => {
+                    const fee = (p as any).fee as number | undefined;
+                    return (
+                      <div key={p.code} className="rounded-xl border p-4 flex flex-col justify-between border-[#163021]/15 bg-white shadow-sm">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <p className="font-display text-xl font-bold uppercase text-[#163021]">{p.name}</p>
+                            {fee && <span className="text-xs font-bold text-[#163021] bg-[#163021]/10 px-2 py-0.5 rounded-full">{inr(fee)}</span>}
+                          </div>
+                          <p className="text-xs font-semibold text-[#163021] mt-1.5">Tennis {inr(p.tennisPrice)}/hr · Cricket {inr(p.cricketPrice)}/hr</p>
+                          <p className="text-[11px] text-[#617065] mt-1">{p.shopDiscount}% shop · {p.barDiscount}% bar · {p.termDays} days</p>
+                          {!fee && <p className="text-[11px] text-[#617065] mt-1">From {inr(Math.min(p.tennisPrice, p.cricketPrice))} a session</p>}
                         </div>
-                        <p className="text-xs font-semibold text-[#163021] mt-1.5">Tennis {p.tennis} · Cricket {p.cricket}</p>
-                        <p className="text-[11px] text-[#617065] mt-1">{p.discount}</p>
-                        <p className="text-[10px] font-bold text-[#2e7d32] mt-1.5">📊 {p.profit}</p>
+                        <button
+                          onClick={() => void executeBuyPlan(p.code)}
+                          disabled={buyingPlan}
+                          className="mt-4 w-full rounded-full bg-[#dfff45] py-2.5 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#163021] hover:text-white transition disabled:opacity-40"
+                        >
+                          {buyingPlan ? "Activating..." : `Activate ${p.name}`}
+                        </button>
                       </div>
-                      <button
-                        onClick={() => handleBuyPlan(p.code, p.code === "gold" ? 1500 : p.code === "silver" ? 1000 : 600, p.name)}
-                        disabled={buyingPlan}
-                        className="mt-4 w-full rounded-full bg-[#dfff45] py-2.5 text-xs font-bold uppercase tracking-wider text-[#163021] hover:bg-[#163021] hover:text-white transition disabled:opacity-40"
-                      >
-                        {buyingPlan ? "Activating..." : `Activate ${p.name.split(" ")[0]} (${p.price})`}
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                )}
               </div>
             ) : (
               <div>
@@ -486,9 +486,11 @@ export default function Courts() {
                           onChange={(e) => setStaffAvailPlan(e.target.value)}
                         >
                           <option value="none">None (Regular Walk-in rate)</option>
-                          <option value="gold">Gold Plan (₹1,500/mo · ₹300 tennis / ₹500 cricket)</option>
-                          <option value="silver">Silver Plan (₹1,000/mo · ₹400 tennis / ₹650 cricket)</option>
-                          <option value="junior">Junior Plan (₹600/mo · Under 18)</option>
+                          {(plans.data ?? []).map((p) => (
+                            <option key={p.code} value={p.code}>
+                              {p.name} — Tennis {inr(p.tennisPrice)}/hr · Cricket {inr(p.cricketPrice)}/hr
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -541,34 +543,11 @@ export default function Courts() {
                     <button
                       className="btn btn-ink"
                       disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
-                      onClick={() => book(false)}
+                      onClick={() => book()}
                     >
                       {busy ? "Booking..." : slot === null || !court ? "Pick a slot first" : social ? `Book Social Play (${price ? `${inr(price)} at desk` : "Covered by plan"})` : `Book (${price ? `${inr(price)} at desk` : "Covered by plan"})`}
                     </button>
-                    {price !== null && price > 0 && (
-                      <button
-                        type="button"
-                        className="btn btn-quiet"
-                        disabled={!canBook || slot === null || (!member && !name.trim()) || busy}
-                        onClick={() =>
-                          setRazorpayModal({
-                            isOpen: true,
-                            amount: price,
-                            title: `Court Booking - ${court?.name}`,
-                            description: `${date === today ? "Today" : date} at ${fmtTime(slot!)} (60 min)`,
-                            type: "booking",
-                          })
-                        }
-                        style={{
-                          background: "#0b1a30",
-                          color: "#dfff45",
-                          border: "1px solid #3395ff",
-                          fontWeight: 700,
-                        }}
-                      >
-                        🔒 Pay with Demo Razorpay ({inr(price)})
-                      </button>
-                    )}
+
                   </div>
                 </div>
               </div>
@@ -578,27 +557,9 @@ export default function Courts() {
       )}
 
       <p className="muted" style={{ marginTop: 28, maxWidth: 680 }}>
-        Court guidelines: Every slot is 60 minutes (1 hour) — booking 6:00 PM covers until 7:00 PM, and 6:30 PM covers until 7:30 PM. Daily tier allowances: <strong>Gold</strong> allows up to <strong>4 slots (4 hrs/day)</strong>, <strong>Silver</strong> allows up to <strong>2 slots (2 hrs/day)</strong>, and <strong>Junior</strong> allows up to <strong>1 slot (1 hr/day)</strong>. Friday Social Play is open shared play from 7 PM.
+        Court guidelines: Every slot is 60 minutes (1 hour) — booking 6:00 PM covers until 7:00 PM, and 6:30 PM covers until 7:30 PM. Every plan allows at most 2 bookings a day. Friday Social Play is open shared play all Friday. Visitors can view availability here; booking is for members, or at the front desk.
       </p>
 
-      <DemoRazorpayModal
-        isOpen={razorpayModal.isOpen}
-        onClose={() => setRazorpayModal((prev) => ({ ...prev, isOpen: false }))}
-        onSuccess={async () => {
-          if (razorpayModal.type === "plan" && razorpayModal.planCode) {
-            setRazorpayModal((prev) => ({ ...prev, isOpen: false }));
-            await executeBuyPlan(razorpayModal.planCode);
-          } else {
-            setRazorpayModal((prev) => ({ ...prev, isOpen: false }));
-            await book(true);
-          }
-        }}
-        amount={razorpayModal.amount}
-        title={razorpayModal.title}
-        description={razorpayModal.description}
-        customerName={member?.name ?? name.trim() ?? "Club Guest"}
-        customerPhone={member?.phone ?? ""}
-      />
     </main>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
-import { allStarts, fmtTime, inr, todayISO } from "@/lib/format";
+import { addDaysISO, allStarts, fmtTime, inr, istMinutesNow, todayISO } from "@/lib/format";
 import { Loading, ErrorBox, Empty } from "@/components/States";
-import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 
 const typeLabel = { REGULAR: "Regular", FRIDAY_SOCIAL: "Social Play", TRIAL: "Trial" } as const;
 const starts = allStarts();
@@ -25,7 +24,7 @@ export default function Bookings() {
   const [busy, setBusy] = useState(false);
 
   // Desk Booking Form state
-  const [bookCourtId, setBookCourtId] = useState(1);
+  const [bookCourtId, setBookCourtId] = useState(0);
   const [bookDate, setBookDate] = useState(today);
   const [bookSlot, setBookSlot] = useState(starts[4] || 480); // 8:00 AM default
   const [custName, setCustName] = useState("");
@@ -33,23 +32,35 @@ export default function Bookings() {
   const [custPhone, setCustPhone] = useState("");
   const [custParentName, setCustParentName] = useState("");
   const [custParentPhone, setCustParentPhone] = useState("");
+  const [custParentEmail, setCustParentEmail] = useState("");
+  const [custDob, setCustDob] = useState("");
   const [availPlan, setAvailPlan] = useState<string>("none");
 
-  // Demo Razorpay Modal
-  const [razorpayModal, setRazorpayModal] = useState<{
-    isOpen: boolean;
-    amount: number;
-    title: string;
-    description: string;
-  }>({
-    isOpen: false,
-    amount: 0,
-    title: "",
-    description: "",
-  });
   const bookings = useApi(() => api.bookings(date || undefined), [date]);
   const courts = useApi(() => api.courts());
   const plans = useApi(() => api.plans());
+
+  // Default to the first court that actually loaded, not a hard-coded id.
+  useEffect(() => {
+    if (bookCourtId === 0 && courts.data && courts.data.length > 0) setBookCourtId(courts.data[0].id);
+  }, [courts.data, bookCourtId]);
+
+  // Same availability slot grid as /courts: taken slots disabled, and a
+  // start is bookable while its hour has not ended (t + 60 > now).
+  const bookAvail = useApi(
+    () => (bookCourtId ? api.availability(bookCourtId, bookDate) : Promise.resolve({ taken: [] })),
+    [bookCourtId, bookDate],
+  );
+  const bookedTaken = bookAvail.data?.taken ?? [];
+  const freeBooked = (t: number) =>
+    !bookedTaken.some((b: any) => Math.abs((typeof b === "number" ? b : b.start) - t) < 60) &&
+    (bookDate !== today || t + 60 > istMinutesNow());
+  const freeBookedSlots = starts.filter(freeBooked);
+  // Only move the pick if the chosen slot is no longer free — and say so.
+  useEffect(() => {
+    if (freeBookedSlots.length && !freeBookedSlots.includes(bookSlot)) setBookSlot(freeBookedSlots[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookAvail.data]);
 
   const rows = bookings.data ?? [];
   const shown = statusFilter === "all" ? rows : rows.filter((b) => b.state === statusFilter);
@@ -68,9 +79,17 @@ export default function Bookings() {
     }
   }
 
-  async function executeDeskBooking(paidOnline = false) {
+  async function executeDeskBooking() {
     if (!custName.trim()) {
       setMsg({ ok: false, text: "Please enter the customer name." });
+      return;
+    }
+    if (!bookCourtId) {
+      setMsg({ ok: false, text: "Pick a court first." });
+      return;
+    }
+    if (!freeBooked(bookSlot)) {
+      setMsg({ ok: false, text: "That time was just taken. Pick another slot." });
       return;
     }
     setBusy(true);
@@ -85,6 +104,8 @@ export default function Bookings() {
           planCode: availPlan,
           parentName: availPlan === "junior" ? custParentName.trim() || undefined : undefined,
           parentPhone: availPlan === "junior" ? custParentPhone.trim() || undefined : undefined,
+          parentEmail: availPlan === "junior" && custParentEmail.trim() ? custParentEmail.trim() : undefined,
+          dateOfBirth: availPlan === "junior" && custDob ? custDob : undefined,
         });
       }
 
@@ -103,7 +124,7 @@ export default function Bookings() {
       setMsg({
         ok: true,
         text: `Court booked! ${courtObj?.name || "Court"} on ${bookDate} at ${fmtTime(bookSlot)}${
-          paidOnline ? " · Paid online via Demo Razorpay" : b.price ? ` · ${inr(b.price)} at the desk` : " · Covered by plan"
+          b.price ? ` · ${inr(b.price)} at the desk` : " · Covered by plan"
         }.${
           custEmail.trim()
             ? ` Linked to ${custEmail.trim()} — customer can log in to the Member Portal with this email to see this booking and membership.`
@@ -113,6 +134,10 @@ export default function Bookings() {
       setCustName("");
       setCustEmail("");
       setCustPhone("");
+      setCustParentName("");
+      setCustParentPhone("");
+      setCustParentEmail("");
+      setCustDob("");
       setAvailPlan("none");
       setShowDeskBook(false);
       void bookings.reload();
@@ -131,7 +156,7 @@ export default function Bookings() {
       ? courtSelected.sport === "Cricket"
         ? planSelected.cricketPrice
         : planSelected.tennisPrice
-      : courtSelected?.walkinPrice ?? 500;
+      : courtSelected?.walkinPrice ?? 0;
 
   return (
     <main className="wrap page">
@@ -175,28 +200,31 @@ export default function Bookings() {
               </div>
               <div>
                 <label htmlFor="db-date">Date</label>
-                <input id="db-date" type="date" min={today} value={bookDate} onChange={(e) => setBookDate(e.target.value)} />
+                <input id="db-date" type="date" min={today} max={addDaysISO(today, 30)} value={bookDate} onChange={(e) => setBookDate(e.target.value)} />
               </div>
             </div>
 
             <div className="field-row">
               <div>
-                <label htmlFor="db-slot">Time Slot (60 min)</label>
-                <select id="db-slot" value={bookSlot} onChange={(e) => setBookSlot(Number(e.target.value))}>
+                <label>Time Slot (60 min)</label>
+                <div className="slots" role="group" aria-label="Start times">
                   {starts.map((s) => (
-                    <option key={s} value={s}>
-                      {fmtTime(s)} – {fmtTime(s + 60)}
-                    </option>
+                    <button key={s} type="button" className={`slot num${bookDate === today && s + 60 <= istMinutesNow() ? " past" : ""}`} disabled={!freeBooked(s)} aria-pressed={bookSlot === s} onClick={() => setBookSlot(s)}>
+                      {fmtTime(s)}
+                    </button>
                   ))}
-                </select>
+                </div>
+                {bookAvail.loading && <p className="muted" style={{ marginTop: 8 }}>Checking availability…</p>}
               </div>
               <div>
                 <label htmlFor="db-plan">Avail Membership Plan (Optional)</label>
                 <select id="db-plan" value={availPlan} onChange={(e) => setAvailPlan(e.target.value)}>
                   <option value="none">None (Regular Walk-in rate)</option>
-                  <option value="gold">Gold Plan (₹1,500/mo · Tennis ₹300, Cricket ₹500)</option>
-                  <option value="silver">Silver Plan (₹1,000/mo · Tennis ₹400, Cricket ₹650)</option>
-                  <option value="junior">Junior Plan (₹600/mo · Under 18)</option>
+                  {(plans.data ?? []).map((p) => (
+                    <option key={p.code} value={p.code}>
+                      {p.name} — Tennis {inr(p.tennisPrice)}/hr · Cricket {inr(p.cricketPrice)}/hr, {p.termDays} days
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -213,7 +241,7 @@ export default function Bookings() {
                 />
               </div>
               <div>
-                <label htmlFor="db-email">Customer Email (Links to Member Portal) *</label>
+                <label htmlFor="db-email">Customer Email (Links to Member Portal)</label>
                 <input
                   id="db-email"
                   type="email"
@@ -262,6 +290,28 @@ export default function Bookings() {
                     />
                   </div>
                 </div>
+                <div className="field-row" style={{ marginTop: 12 }}>
+                  <div>
+                    <label htmlFor="db-pemail">Parent Email</label>
+                    <input
+                      id="db-pemail"
+                      type="email"
+                      value={custParentEmail}
+                      onChange={(e) => setCustParentEmail(e.target.value)}
+                      placeholder="parent@example.com"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="db-dob">Minor Date of Birth</label>
+                    <input
+                      id="db-dob"
+                      type="date"
+                      max={today}
+                      value={custDob}
+                      onChange={(e) => setCustDob(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 
@@ -269,27 +319,12 @@ export default function Bookings() {
               <button
                 type="button"
                 className="btn btn-ink"
-                onClick={() => executeDeskBooking(false)}
+                onClick={() => executeDeskBooking()}
                 disabled={busy || !custName.trim()}
               >
                   {busy ? "Booking..." : `Confirm Booking (${inr(previewPrice)} at desk)`}
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-quiet"
-                  onClick={() =>
-                    setRazorpayModal({
-                      isOpen: true,
-                      amount: previewPrice,
-                      title: `Court Booking - ${courtSelected?.name || "Court"}`,
-                      description: `${bookDate} at ${fmtTime(bookSlot)} for ${custName || "Customer"}`,
-                    })
-                  }
-                  disabled={busy || !custName.trim()}
-                  style={{ background: "#0b1a30", color: "#dfff45", border: "1px solid #3395ff", fontWeight: 700 }}
-                >
-                  💳 Pay Online ({inr(previewPrice)})
-                </button>
+
               </div>
             </div>
         </section>
@@ -336,7 +371,7 @@ export default function Bookings() {
                   <td>{b.court}</td>
                   <td>{b.who}{b.type === "TRIAL" && b.phone ? <span className="muted"> · {b.phone}</span> : null}</td>
                   <td className="hide-m">{typeLabel[b.type]}</td>
-                  <td className="num hide-m">{b.price ? inr(b.price) : "Plan"}</td>
+                  <td className="num hide-m">{b.price ? inr(b.price) : b.type === "TRIAL" ? "Free trial" : "Covered by plan"}</td>
                   <td><span className={`status ${b.state === "BOOKED" ? "booked" : "cancelled"}`}>{b.state === "BOOKED" ? "Booked" : "Cancelled"}</span></td>
                   <td className="r">{b.state === "BOOKED" && <button className="text-link" disabled={busyId === b.id} onClick={() => cancel(b)}>{busyId === b.id ? "Cancelling..." : "Cancel"}</button>}</td>
                 </tr>
@@ -346,18 +381,6 @@ export default function Bookings() {
         </div>
       )}
 
-      {/* Demo Razorpay modal */}
-      <DemoRazorpayModal
-        isOpen={razorpayModal.isOpen}
-        amount={razorpayModal.amount}
-        title={razorpayModal.title}
-        description={razorpayModal.description}
-        onClose={() => setRazorpayModal((prev) => ({ ...prev, isOpen: false }))}
-        onSuccess={() => {
-          setRazorpayModal((prev) => ({ ...prev, isOpen: false }));
-          void executeDeskBooking(true);
-        }}
-      />
     </main>
   );
 }

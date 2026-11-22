@@ -5,7 +5,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import DemoRazorpayModal from "@/components/DemoRazorpayModal";
+import { useApi } from "@/lib/use-api";
+import { inr } from "@/lib/format";
 import ClubLogo from "@/components/ClubLogo";
 import type { MemberSessionDTO } from "@/lib/types";
 
@@ -38,6 +39,7 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [member, setMember] = useState<MemberSessionDTO | null>(null);
   const [activating, setActivating] = useState<string | null>(null);
+  const plans = useApi(() => api.plans(), []);
 
   useEffect(() => {
     api.memberMe()
@@ -52,46 +54,49 @@ export default function Home() {
     window.setTimeout(() => setNotice(""), 2000);
   }
 
-  const [razorpayPlan, setRazorpayPlan] = useState<{
-    isOpen: boolean;
-    planCode: string;
-    amount: number;
-    title: string;
-  }>({
-    isOpen: false,
-    planCode: "",
-    amount: 0,
-    title: "",
-  });
-
+  // A plan is only granted after a real Razorpay payment. First call
+  // asks the server for an order; if it returns one, the real checkout
+  // runs and the signed proof is confirmed with a second call. A
+  // dismissed checkout never activates anything.
   async function handleSelectPlan(planCode: string) {
     if (!member) {
       window.location.href = `/member-login?tab=signup&plan=${planCode}`;
       return;
     }
-    const amounts: Record<string, number> = { gold: 1500, silver: 1000, junior: 600 };
-    const titles: Record<string, string> = { gold: "Gold Tier", silver: "Silver Tier", junior: "Junior Tier" };
-    setRazorpayPlan({
-      isOpen: true,
-      planCode,
-      amount: amounts[planCode] ?? 1000,
-      title: titles[planCode] ?? "Club Membership",
-    });
-  }
-
-  async function executePlanPayment(planCode: string) {
+    if (activating) return;
     setActivating(planCode);
-    setRazorpayPlan((p) => ({ ...p, isOpen: false }));
+    const done = (msg: string) => {
+      setNotice(msg);
+      window.setTimeout(() => setNotice(""), 4000);
+    };
     try {
-      await api.buyPlan(planCode);
+      const first = (await api.buyPlan(planCode)) as unknown as
+        | { ok: boolean; member: unknown }
+        | { razorpayOrderId: string; amount: number };
+      if (!("ok" in first)) {
+        const cfg = await api.payConfig();
+        if (!cfg.keyId) {
+          done("Online payment isn't switched on yet — ask the front desk.");
+          return;
+        }
+        const proof = await api.openRazorpayCheckout({
+          keyId: cfg.keyId,
+          orderId: first.razorpayOrderId,
+          amount: first.amount,
+          description: `${planCode} membership`,
+        });
+        if (!proof) {
+          done("Payment not completed — your plan was not activated.");
+          return;
+        }
+        await api.buyPlan(planCode, proof);
+      }
       const res = await api.memberMe();
       setMember(res.member);
-      setNotice(`Activated ${planCode.toUpperCase()} membership via Demo Razorpay!`);
-      window.setTimeout(() => setNotice(""), 2500);
+      done(`Activated ${planCode.toUpperCase()} membership!`);
       window.location.href = "/courts";
     } catch {
-      setNotice("Failed to activate plan");
-      window.setTimeout(() => setNotice(""), 2500);
+      done("Failed to activate plan");
     } finally {
       setActivating(null);
     }
@@ -268,278 +273,107 @@ export default function Home() {
                 Make Champions<br /><span className="text-[#7c887e]">your home court.</span>
               </h2>
               <p className="mt-6 text-sm sm:text-base leading-7 text-[#68746b]">
-                Priority court booking, exclusive member rates, and guaranteed player savings.
-                Explore the 1-month profits below—every plan pays for itself in just a few visits.
+                Priority court booking and exclusive member rates. Prices below are live from the club.
               </p>
             </div>
 
             {/* 3 Membership Cards */}
+            {/* Membership cards — every price and perk comes live from GET /plans. */}
+            {plans.loading ? (
+              <p className="muted" style={{ textAlign: "center", marginTop: 64 }}>Loading memberships…</p>
+            ) : plans.error || !plans.data?.length ? (
+              <p className="muted" style={{ textAlign: "center", marginTop: 64 }}>
+                Membership prices are live from the club —{" "}
+                <Link className="text-link" href="/plans">see the current plans</Link>.
+              </p>
+            ) : (
             <div className="mt-16 grid gap-8 lg:grid-cols-3 items-stretch">
-              {/* CARD 1: GOLD */}
-              <div className="relative flex flex-col justify-between rounded-3xl bg-[#163021] p-7 text-white shadow-xl sm:p-9 ring-2 ring-[#dfff45]">
-                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#dfff45] px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-[#163021] shadow">
-                  ⭐ Most Popular · Max Savings
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between">
+              {plans.data.map((p) => {
+                const gold = p.code === "gold";
+                const fee = (p as any).fee as number | undefined;
+                const current = member?.plan?.code === p.code;
+                const cardCls = gold
+                  ? "relative flex flex-col justify-between rounded-3xl bg-[#163021] p-7 text-white shadow-xl sm:p-9 ring-2 ring-[#dfff45]"
+                  : "flex flex-col justify-between rounded-3xl bg-white p-7 text-[#163021] border border-[#163021]/15 shadow-sm sm:p-9";
+                const subCls = gold ? "text-xs text-white/60 mt-1" : "text-xs text-[#617065] mt-1";
+                const ruleCls = gold ? "mt-6 border-b border-white/15 pb-6" : "mt-6 border-b border-[#163021]/10 pb-6";
+                const bigCls = gold ? "font-display text-5xl font-bold text-[#dfff45]" : "font-display text-5xl font-bold text-[#163021]";
+                const rowCls = gold ? "flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5" : "flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5";
+                const rowMuted = gold ? "text-white/80" : "text-[#617065]";
+                const btnCls = gold
+                  ? "w-full rounded-full bg-[#dfff45] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white"
+                  : "w-full rounded-full bg-[#163021] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021]";
+                return (
+                  <div key={p.code} className={cardCls}>
+                    {gold && (
+                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-[#dfff45] px-4 py-1 text-[10px] font-bold uppercase tracking-widest text-[#163021] shadow">
+                        ⭐ Most popular
+                      </div>
+                    )}
                     <div>
-                      <h3 className="font-display text-3xl font-bold uppercase text-white">Gold Tier</h3>
-                      <p className="text-xs text-white/60 mt-1">For regular players &amp; active teams</p>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-display text-3xl font-bold uppercase">{p.name}</h3>
+                          <p className={subCls}>{p.code === "junior" ? "For players under 18" : "Member rates on court"}</p>
+                        </div>
+                      </div>
+                      <div className={ruleCls}>
+                        {fee ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className={bigCls}>{inr(fee)}</span>
+                            <span className="text-sm font-semibold uppercase tracking-wider opacity-60">/ {p.termDays} days</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-baseline gap-2">
+                            <span className={bigCls}>{inr(Math.min(p.tennisPrice, p.cricketPrice))}</span>
+                            <span className="text-sm font-semibold uppercase tracking-wider opacity-60">a session from</span>
+                          </div>
+                        )}
+                        <p className="mt-1 text-[11px] opacity-60">{p.termDays} days of membership</p>
+                      </div>
+                      <div className="mt-6 space-y-3 text-xs">
+                        <div className={rowCls}>
+                          <span className={rowMuted}>🎾 Tennis Court</span>
+                          <span className="font-bold">{inr(p.tennisPrice)}/hr</span>
+                        </div>
+                        <div className={rowCls}>
+                          <span className={rowMuted}>🏏 Cricket Turf</span>
+                          <span className="font-bold">{inr(p.cricketPrice)}/hr</span>
+                        </div>
+                        <div className={rowCls}>
+                          <span className={rowMuted}>☕ Clubhouse Bar &amp; Café</span>
+                          <span className="font-bold">{p.barDiscount}% OFF</span>
+                        </div>
+                        <div className={rowCls}>
+                          <span className={rowMuted}>🛍️ Pro Shop &amp; Gear</span>
+                          <span className="font-bold">{p.shopDiscount}% OFF</span>
+                        </div>
+                        <div className={rowCls}>
+                          <span className={rowMuted}>⏱️ Daily Court Limit</span>
+                          <span className="font-bold">At most 2 bookings a day</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#dfff45]">
-                      All-Access
-                    </span>
-                  </div>
-
-                  <div className="mt-6 border-b border-white/15 pb-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-display text-5xl font-bold text-[#dfff45]">₹1,500</span>
-                      <span className="text-sm font-semibold uppercase tracking-wider text-white/60">/ month</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-white/50">or ₹15,000 / year (save ₹3,000 yearly)</p>
-                  </div>
-
-                  {/* Hourly Rates & Benefits */}
-                  <div className="mt-6 space-y-3 text-xs">
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">🎾 Tennis Court</span>
-                      <span className="font-bold text-[#dfff45]">₹300/hr <span className="font-normal text-white/40 line-through text-[10px]">₹500</span></span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">🏏 Cricket Turf</span>
-                      <span className="font-bold text-[#dfff45]">₹500/hr <span className="font-normal text-white/40 line-through text-[10px]">₹800</span></span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">☕ Clubhouse Bar &amp; Café</span>
-                      <span className="font-bold text-white">20% OFF Everything</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">🛍️ Pro Shop &amp; Gear</span>
-                      <span className="font-bold text-white">15% OFF Equipment</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">📅 Booking Window</span>
-                      <span className="font-bold text-white">7 Days in Advance</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">⏱️ Daily Court Limit</span>
-                      <span className="font-bold text-[#dfff45]">Up to 4 Slots (4 hrs / day)</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-white/5 px-3.5 py-2.5">
-                      <span className="text-white/80">🎟️ Free Guest Passes</span>
-                      <span className="font-bold text-[#dfff45]">2 Passes / Month</span>
-                    </div>
-                  </div>
-
-                  {/* 1-Month Profit Box */}
-                  <div className="mt-7 rounded-2xl bg-[#dfff45]/10 border border-[#dfff45]/25 p-4 text-left">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#dfff45]">
-                      📊 1-Month Member Profits:
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-white">
-                      Save ₹3,600/mo <span className="text-[#dfff45]">(Net Profit +₹2,100)</span>
-                    </p>
-                    <ul className="mt-2.5 space-y-1.5 text-[11px] text-white/70">
-                      <li className="flex items-center gap-2">✓ 4 Tennis matches: Save ₹800</li>
-                      <li className="flex items-center gap-2">✓ 2 Cricket games: Save ₹600</li>
-                      <li className="flex items-center gap-2">✓ 2 Free guest passes: Worth ₹1,000</li>
-                      <li className="flex items-center gap-2">✓ Café &amp; Shop discount: Save ~₹1,200</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  {member?.plan?.code === "gold" ? (
-                    <div className="w-full rounded-full bg-white/20 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white">
-                      Current Plan ✓
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleSelectPlan("gold")}
-                      disabled={activating === "gold"}
-                      className="w-full rounded-full bg-[#dfff45] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021] transition hover:bg-white"
-                    >
-                      {activating === "gold" ? "Activating..." : member ? "Activate Gold (₹1,500/mo)" : "Join Gold Membership"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* CARD 2: SILVER */}
-              <div className="flex flex-col justify-between rounded-3xl bg-white p-7 text-[#163021] border border-[#163021]/15 shadow-sm sm:p-9">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-display text-3xl font-bold uppercase text-[#163021]">Silver Tier</h3>
-                      <p className="text-xs text-[#617065] mt-1">For regular weekly players</p>
-                    </div>
-                    <span className="rounded-full bg-[#163021]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#163021]">
-                      Club Favourite
-                    </span>
-                  </div>
-
-                  <div className="mt-6 border-b border-[#163021]/10 pb-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-display text-5xl font-bold text-[#163021]">₹1,000</span>
-                      <span className="text-sm font-semibold uppercase tracking-wider text-[#617065]">/ month</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-[#849087]">or ₹10,000 / year (save ₹2,000 yearly)</p>
-                  </div>
-
-                  {/* Hourly Rates & Benefits */}
-                  <div className="mt-6 space-y-3 text-xs">
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🎾 Tennis Court</span>
-                      <span className="font-bold text-[#163021]">₹400/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹500</span></span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🏏 Cricket Turf</span>
-                      <span className="font-bold text-[#163021]">₹650/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹800</span></span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">☕ Clubhouse Bar &amp; Café</span>
-                      <span className="font-bold text-[#163021]">10% OFF Everything</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🛍️ Pro Shop &amp; Gear</span>
-                      <span className="font-bold text-[#163021]">10% OFF Equipment</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">📅 Booking Window</span>
-                      <span className="font-bold text-[#163021]">5 Days in Advance</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">⏱️ Daily Court Limit</span>
-                      <span className="font-bold text-[#163021]">Up to 2 Slots (2 hrs / day)</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🎟️ Free Guest Passes</span>
-                      <span className="font-bold text-[#163021]">1 Pass / Month</span>
+                    <div className="mt-8">
+                      {current ? (
+                        <div className="w-full rounded-full bg-white/20 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white">
+                          Current Plan ✓
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleSelectPlan(p.code)}
+                          disabled={activating === p.code}
+                          className={btnCls}
+                        >
+                          {activating === p.code ? "Activating..." : member ? `Activate ${p.name}` : `Join ${p.name}`}
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  {/* 1-Month Profit Box */}
-                  <div className="mt-7 rounded-2xl bg-[#163021]/5 border border-[#163021]/10 p-4 text-left">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#163021]">
-                      📊 1-Month Member Profits:
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-[#163021]">
-                      Save ₹1,650/mo <span className="text-[#2e7d32]">(Net Profit +₹650)</span>
-                    </p>
-                    <ul className="mt-2.5 space-y-1.5 text-[11px] text-[#617065]">
-                      <li className="flex items-center gap-2">✓ 4 Tennis matches: Save ₹400</li>
-                      <li className="flex items-center gap-2">✓ 1 Cricket match: Save ₹150</li>
-                      <li className="flex items-center gap-2">✓ 1 Free guest pass: Worth ₹500</li>
-                      <li className="flex items-center gap-2">✓ Café &amp; Shop discount: Save ~₹600</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  {member?.plan?.code === "silver" ? (
-                    <div className="w-full rounded-full bg-[#163021]/15 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021]">
-                      Current Plan ✓
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleSelectPlan("silver")}
-                      disabled={activating === "silver"}
-                      className="w-full rounded-full bg-[#163021] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021]"
-                    >
-                      {activating === "silver" ? "Activating..." : member ? "Activate Silver (₹1,000/mo)" : "Join Silver Membership"}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* CARD 3: JUNIOR */}
-              <div className="flex flex-col justify-between rounded-3xl bg-white p-7 text-[#163021] border border-[#163021]/15 shadow-sm sm:p-9">
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-display text-3xl font-bold uppercase text-[#163021]">Junior Tier</h3>
-                      <p className="text-xs text-[#617065] mt-1">Under 18, Students &amp; Youth</p>
-                    </div>
-                    <span className="rounded-full bg-[#163021]/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-[#163021]">
-                      Youth 50% Off
-                    </span>
-                  </div>
-
-                  <div className="mt-6 border-b border-[#163021]/10 pb-6">
-                    <div className="flex items-baseline gap-2">
-                      <span className="font-display text-5xl font-bold text-[#163021]">₹600</span>
-                      <span className="text-sm font-semibold uppercase tracking-wider text-[#617065]">/ month</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-[#849087]">or ₹6,000 / year (save ₹1,200 yearly)</p>
-                  </div>
-
-                  {/* Hourly Rates & Benefits */}
-                  <div className="mt-6 space-y-3 text-xs">
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🎾 Tennis Court</span>
-                      <span className="font-bold text-[#2e7d32]">₹250/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹500</span> (50% Off)</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🏏 Cricket Turf</span>
-                      <span className="font-bold text-[#2e7d32]">₹400/hr <span className="font-normal text-[#849087] line-through text-[10px]">₹800</span> (50% Off)</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🛍️ Pro Shop Gear</span>
-                      <span className="font-bold text-[#163021]">5% OFF Training Gear</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">🏆 Skills Workshop</span>
-                      <span className="font-bold text-[#163021]">Free Monthly Clinic</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">📅 Booking Window</span>
-                      <span className="font-bold text-[#163021]">3 Days in Advance</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">⏱️ Daily Court Limit</span>
-                      <span className="font-bold text-[#2e7d32]">1 Slot (1 hr / day)</span>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl bg-[#f7f6f0] px-3.5 py-2.5">
-                      <span className="text-[#617065]">⏰ Afternoon Priority</span>
-                      <span className="font-bold text-[#163021]">2 PM – 6 PM Slots</span>
-                    </div>
-                  </div>
-
-                  {/* 1-Month Profit Box */}
-                  <div className="mt-7 rounded-2xl bg-[#163021]/5 border border-[#163021]/10 p-4 text-left">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-[#163021]">
-                      📊 1-Month Member Profits:
-                    </p>
-                    <p className="mt-1 text-sm font-bold text-[#163021]">
-                      Save ₹2,500/mo <span className="text-[#2e7d32]">(Net Profit +₹1,900)</span>
-                    </p>
-                    <ul className="mt-2.5 space-y-1.5 text-[11px] text-[#617065]">
-                      <li className="flex items-center gap-2">✓ 6 Tennis practice hrs: Save ₹1,500</li>
-                      <li className="flex items-center gap-2">✓ 1 Cricket turf game: Save ₹400</li>
-                      <li className="flex items-center gap-2">✓ Free monthly skills clinic: Worth ₹600</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  {member?.plan?.code === "junior" ? (
-                    <div className="w-full rounded-full bg-[#163021]/15 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-[#163021]">
-                      Current Plan ✓
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleSelectPlan("junior")}
-                      disabled={activating === "junior"}
-                      className="w-full rounded-full bg-[#163021] py-3.5 text-center text-xs font-bold uppercase tracking-wider text-white transition hover:bg-[#dfff45] hover:text-[#163021]"
-                    >
-                      {activating === "junior" ? "Activating..." : member ? "Activate Junior (₹600/mo)" : "Join Junior Membership"}
-                    </button>
-                  )}
-                </div>
-              </div>
+                );
+              })}
             </div>
-
+            )}
             {/* Custom / Corporate Enquiry Bar */}
             <div className="mt-20 rounded-3xl border border-[#163021]/15 bg-white p-8 sm:p-12 text-center max-w-3xl mx-auto shadow-sm">
               <p className="eyebrow">Corporate &amp; Family Plans</p>
@@ -596,16 +430,6 @@ export default function Home() {
 
       {notice && <div className="make-toast fixed bottom-5 right-5 z-50 rounded-full bg-white px-5 py-3 text-xs font-bold text-[#173021] shadow-2xl">{notice}</div>}
 
-      <DemoRazorpayModal
-        isOpen={razorpayPlan.isOpen}
-        onClose={() => setRazorpayPlan((p) => ({ ...p, isOpen: false }))}
-        onSuccess={() => executePlanPayment(razorpayPlan.planCode)}
-        amount={razorpayPlan.amount}
-        title={razorpayPlan.title}
-        description="1 Month Full Membership Subscription"
-        customerName={member?.name ?? "Club Member"}
-        customerPhone={member?.phone ?? ""}
-      />
     </div>
   );
 }

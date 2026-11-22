@@ -1,25 +1,19 @@
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { currentMember } from "@/lib/auth";
-import { memberHome, renewMember } from "@/lib/services/members";
-import { fmtTime, inr } from "@/lib/format";
+import { memberHome } from "@/lib/services/members";
+import { inr } from "@/lib/format";
 import MemberBar from "@/components/MemberBar";
 import MemberActions from "@/components/MemberActions";
 
 // The member's own page: plan and expiry up top, then their bookings,
 // shop orders and bar tabs. Reads are server-rendered off the member
-// record; booking and ordering post back to the member routes.
-// Renewing from the portal is a server action, not a fetch: the page
-// is server-rendered and the member's identity comes from the session.
-// It calls the same renewMember service as the desk and member routes.
-async function renewPlan() {
-  "use server";
-  const session = await currentMember();
-  if (!session) redirect("/member-login");
-  await renewMember(session.id);
-  revalidatePath("/member");
-  redirect("/member?renewed=1");
-}
+// record; booking, cancelling and renewing run in the client component
+// below, where renewal collects a real Razorpay payment first —
+// renewing must never be a free server action.
+const fmtDate = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+};
 
 export default async function MemberHome({ searchParams }: { searchParams?: Promise<{ renewed?: string }> }) {
   const session = await currentMember();
@@ -54,8 +48,8 @@ export default async function MemberHome({ searchParams }: { searchParams?: Prom
         {m.state !== "active" && (
           <p className="notice" style={{ marginTop: 14 }}>
             {m.state === "expired"
-              ? "Your plan has expired — the front desk can renew it in a minute, and bookings open up again straight away."
-              : "Your plan runs out soon — a quick word with the front desk keeps everything running."}
+              ? "Your plan has expired — renew it below and bookings open up again straight away."
+              : "Your plan runs out soon — renew it below to keep everything running."}
           </p>
         )}
         {(m.planCode === "junior" || m.parentName) && (
@@ -99,37 +93,9 @@ export default async function MemberHome({ searchParams }: { searchParams?: Prom
             Renewed — your plan now runs until {m.expiresOn}.
           </p>
         )}
-        <form action={renewPlan} style={{ marginTop: 14 }}>
-          <button className="btn btn-ink" type="submit">Renew my plan</button>
-        </form>
-        <p className="muted" style={{ marginTop: 8 }}>Renews from the later of today and your current end date — you never lose days.</p>
       </section>
 
-      <MemberActions />
-
-      <section style={{ marginTop: 30 }} aria-label="My bookings">
-        <div className="sec-head"><h2>My bookings</h2></div>
-        {home.bookings.length === 0 ? (
-          <p className="empty">No bookings yet.</p>
-        ) : (
-          <div className="ledger-wrap">
-            <table className="ledger">
-              <thead><tr><th>Date</th><th>Time</th><th>Court</th><th className="r">Price</th><th>Status</th></tr></thead>
-              <tbody>
-                {home.bookings.map((b) => (
-                  <tr key={b.id} className={b.state === "CANCELLED" ? "row-off" : undefined}>
-                    <td>{b.date}</td>
-                    <td>{fmtTime(b.start)}</td>
-                    <td>{b.court}</td>
-                    <td className="r">{b.price === 0 ? (b.type === "TRIAL" ? "Free trial" : "Covered by plan") : inr(b.price)}</td>
-                    <td><span className={`status ${b.state === "BOOKED" ? "booked" : "cancelled"}`}>{b.state === "BOOKED" ? "Booked" : "Cancelled"}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <MemberActions bookings={home.bookings} planCode={m.planCode} planState={m.state} />
 
       <section style={{ marginTop: 30 }} aria-label="My shop orders">
         <div className="sec-head"><h2>My shop orders</h2></div>
@@ -143,7 +109,7 @@ export default async function MemberHome({ searchParams }: { searchParams?: Prom
                 {home.orders.map((o) => (
                   <tr key={o.id}>
                     <td>{o.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}{o.fulfilment === "DELIVERY" ? " · Delivery" : ""}</td>
-                    <td>{o.createdAt.slice(0, 10)}</td>
+                    <td>{fmtDate(o.createdAt)}</td>
                     <td className="hide-m">{o.payMethod === "ONLINE" ? `Online · ${o.payState === "PAID" ? "paid" : "pending"}` : o.payMethod}</td>
                     <td className="r">{inr(o.total)}</td>
                   </tr>

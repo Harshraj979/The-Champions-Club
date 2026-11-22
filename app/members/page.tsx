@@ -3,7 +3,6 @@ import { useState } from "react";
 import { api, ApiClientError } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 import { Loading, ErrorBox, Empty } from "@/components/States";
-import DemoRazorpayModal from "@/components/DemoRazorpayModal";
 import { inr, todayISO } from "@/lib/format";
 import type { MemberDTO } from "@/lib/types";
 
@@ -25,19 +24,9 @@ export default function Members() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [renewBusy, setRenewBusy] = useState<number | null>(null);
-
-  // Demo Razorpay Modal
-  const [razorpayModal, setRazorpayModal] = useState<{
-    isOpen: boolean;
-    amount: number;
-    title: string;
-    description: string;
-  }>({
-    isOpen: false,
-    amount: 0,
-    title: "",
-    description: "",
-  });
+  // When set, the form below changes this member's plan instead of
+  // creating a new one (createMember would 409 on an existing member).
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const members = useApi(() => api.members(q || undefined), [q]);
   const plans = useApi(() => api.plans());
@@ -55,9 +44,9 @@ export default function Members() {
   const list = stateFilter === "all" ? all : all.filter((m) => m.state === stateFilter);
 
   const selectedPlanObj = plans.data?.find((p) => p.code === form.planCode);
-  const planFee = form.planCode === "gold" ? 1500 : form.planCode === "silver" ? 1000 : 600;
+  const planFee = (selectedPlanObj as any)?.fee as number | undefined;
 
-  async function add(paidOnline = false) {
+  async function add() {
     if (!form.name.trim() && !form.email.trim()) {
       return setMsg({ ok: false, text: "Enter at least the member name or email." });
     }
@@ -82,28 +71,41 @@ export default function Members() {
     setBusy(true);
     setMsg(null);
     try {
-      const m = await api.createMember({
-        name: form.name.trim() || form.email.split("@")[0],
-        phone: form.phone.trim(),
-        email: form.email.trim() || undefined,
-        planCode: form.planCode,
-        parentName: form.planCode === "junior" ? form.parentName.trim() : undefined,
-        parentPhone: form.planCode === "junior" ? form.parentPhone.trim() : undefined,
-        parentEmail: form.planCode === "junior" && form.parentEmail.trim() ? form.parentEmail.trim() : undefined,
-        dateOfBirth: form.dateOfBirth || undefined,
-      });
       const plan = plans.data?.find((p) => p.code === form.planCode);
-      setMsg({
-        ok: true,
-        text: `✓ Membership plan activated for ${m.name}! ${m.plan} active for ${plan?.termDays ?? 365} days${
-          paidOnline ? " (Paid online via Demo Razorpay)" : " (Paid at desk)"
-        }.${
-          m.email
-            ? ` When logging in with ${m.email}, they will immediately see their active ${m.plan} plan on their portal dashboard.`
-            : ""
-        }${m.parentName ? ` Parent/Guardian: ${m.parentName} (${m.parentPhone || "No phone"}).` : ""}`,
-      });
+      if (editingId !== null) {
+        // Existing member: change their plan (paid at the desk, receipt
+        // taken) instead of creating a duplicate member.
+        const m = await api.changeMemberPlan(editingId, form.planCode, true);
+        setMsg({
+          ok: true,
+          text: `✓ ${m.name}'s plan changed to ${m.plan}, active for ${plan?.termDays ?? 365} days (paid at desk).${
+            m.email
+              ? ` They will see the updated ${m.plan} plan on their portal dashboard.`
+              : ""
+          }`,
+        });
+      } else {
+        const m = await api.createMember({
+          name: form.name.trim() || form.email.split("@")[0],
+          phone: form.phone.trim(),
+          email: form.email.trim() || undefined,
+          planCode: form.planCode,
+          parentName: form.planCode === "junior" ? form.parentName.trim() : undefined,
+          parentPhone: form.planCode === "junior" ? form.parentPhone.trim() : undefined,
+          parentEmail: form.planCode === "junior" && form.parentEmail.trim() ? form.parentEmail.trim() : undefined,
+          dateOfBirth: form.dateOfBirth || undefined,
+        });
+        setMsg({
+          ok: true,
+          text: `✓ Membership plan activated for ${m.name}! ${m.plan} active for ${plan?.termDays ?? 365} days (paid at desk).${
+            m.email
+              ? ` When logging in with ${m.email}, they will immediately see their active ${m.plan} plan on their portal dashboard.`
+              : ""
+          }${m.parentName ? ` Parent/Guardian: ${m.parentName} (${m.parentPhone || "No phone"}).` : ""}`,
+        });
+      }
       setForm({ name: "", phone: "", email: "", planCode: "gold", parentName: "", parentPhone: "", parentEmail: "", dateOfBirth: "" });
+      setEditingId(null);
       void members.reload();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof ApiClientError ? e.message : "Availing membership failed. Try again." });
@@ -113,6 +115,7 @@ export default function Members() {
   }
 
   function openAvailFor(m: MemberDTO) {
+    setEditingId(m.id);
     setForm({
       name: m.name,
       phone: m.phone || "",
@@ -224,7 +227,7 @@ export default function Members() {
                   <td><span className={`status ${m.state}`}>{stateLabel[m.state]}</span></td>
                   <td>
                     <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                      <button className="btn btn-quiet" disabled={renewBusy !== null} onClick={() => renew(m)}>
+                      <button className="btn btn-quiet" disabled={renewBusy === m.id} onClick={() => renew(m)}>
                         {renewBusy === m.id ? "Renewing..." : "Renew"}
                       </button>
                       <button
@@ -251,6 +254,15 @@ export default function Members() {
           <p className="text-xs text-[#617065]" style={{ marginBottom: 16 }}>
             Avail a membership plan for an existing member or a new visitor. With their <strong>email</strong>, their account is instantly linked so that upon logging into their Member Portal, they see their active plan tier with member benefits!
           </p>
+          {editingId !== null && (
+            <p className="notice" role="status" style={{ marginBottom: 16 }}>
+              Changing the plan for <strong>{form.name}</strong> — pick their new plan below.
+              {" "}
+              <button type="button" className="text-link" onClick={() => { setEditingId(null); setForm({ name: "", phone: "", email: "", planCode: "gold", parentName: "", parentPhone: "", parentEmail: "", dateOfBirth: "" }); }}>
+                New member instead
+              </button>
+            </p>
+          )}
 
           <div className="field-row">
             <div>
@@ -332,26 +344,14 @@ export default function Members() {
           <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <button
               className="btn btn-ink"
-              onClick={() => add(false)}
+              onClick={() => add()}
               disabled={busy || (!form.name.trim() && !form.email.trim())}
             >
-              {busy ? "Availing..." : `Avail ${selectedPlanObj?.name || "Membership"} (${inr(planFee)} at desk)`}
-            </button>
-            <button
-              type="button"
-              className="btn btn-quiet"
-              onClick={() =>
-                setRazorpayModal({
-                  isOpen: true,
-                  amount: planFee,
-                  title: `${selectedPlanObj?.name || "Membership"} Plan`,
-                  description: `Avail for ${form.name || form.email || "Member"} (1 Month)`,
-                })
-              }
-              disabled={busy || (!form.name.trim() && !form.email.trim())}
-              style={{ background: "#0b1a30", color: "#dfff45", border: "1px solid #3395ff", fontWeight: 700 }}
-            >
-              💳 Pay Online ({inr(planFee)})
+              {busy
+                ? "Availing..."
+                : editingId !== null
+                ? `Change to ${selectedPlanObj?.name || "Membership"}${planFee ? ` (${inr(planFee)} at desk)` : " (pay at desk)"}`
+                : `Avail ${selectedPlanObj?.name || "Membership"}${planFee ? ` (${inr(planFee)} at desk)` : " (pay at desk)"}`}
             </button>
           </div>
 
@@ -359,18 +359,6 @@ export default function Members() {
         </div>
       </section>
 
-      {/* Demo Razorpay modal */}
-      <DemoRazorpayModal
-        isOpen={razorpayModal.isOpen}
-        amount={razorpayModal.amount}
-        title={razorpayModal.title}
-        description={razorpayModal.description}
-        onClose={() => setRazorpayModal((prev) => ({ ...prev, isOpen: false }))}
-        onSuccess={() => {
-          setRazorpayModal((prev) => ({ ...prev, isOpen: false }));
-          void add(true);
-        }}
-      />
     </main>
   );
 }

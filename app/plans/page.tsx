@@ -56,9 +56,11 @@ export default function Plans() {
                       <li>Save {p.shopDiscount}% in the pro shop</li>
                       <li>Save {p.barDiscount}% at the bar &amp; café</li>
                       <li>{p.termDays} days of membership</li>
+                      {(p as any).fee ? <li>Membership {inr((p as any).fee)} for {p.termDays} days</li> : null}
                       {p.code === "junior" && <li>For players under 18</li>}
                     </ul>
-                    <Link href="/trial" className="btn btn-ink plan-cta">Book a free trial</Link>
+                    <Link href={`/member-login?tab=signup&plan=${p.code}`} className="btn btn-ink plan-cta">Join {p.name}</Link>
+                    <Link href="/trial" className="btn btn-quiet plan-cta" style={{ marginTop: 8 }}>Book a free trial</Link>
                   </article>
                 );
               })}
