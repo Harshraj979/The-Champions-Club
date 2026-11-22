@@ -33,6 +33,8 @@ export default function MemberAuth() {
       setErr("Google sign-in could not be completed. Try again or use your password.");
     } else if (q.get("error") === "gtoken") {
       setErr("Google authorization token exchange failed. Please try again.");
+    } else if (q.get("error") === "google_config") {
+      setErr("Google OAuth credentials are not configured yet. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your .env file to enable real Google sign-in.");
     }
 
     const next = q.get("next") ?? (q.get("tab") === "signup" ? "/courts" : "/member");

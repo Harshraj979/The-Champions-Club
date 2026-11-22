@@ -36,6 +36,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.redirect(
-    new URL(`/member-login?next=${encodeURIComponent(next)}`, req.url),
+    new URL(`/member-login?error=google_config&next=${encodeURIComponent(next)}`, req.url),
   );
 }
